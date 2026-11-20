@@ -1219,7 +1219,7 @@ function closeInfo() { infoId = null; $("rinfo").hidden = true; }
 function addFriend(r, mem) {
   const c = $("mcard"); c.textContent = ""; c.append(el("div", "mprev", "＋ إضافة صديق"));
   const box = el("div", "acts"); box.style.cssText = "display:flex;flex-direction:column;gap:6px;max-height:55vh;overflow-y:auto";
-  box.append(friendFinder(mem, r.banned || [], u => { $("msheet").hidden = true; upd({ members: AU(u) }, r.id); setStatus("✓ تمت إضافته للغرفة"); setTimeout(() => setStatus(""), 2500); }));
+  box.append(friendFinder(mem, [...(r.banned || []), ...(r.invites || [])], async u => { $("msheet").hidden = true; try { await db.collection("rooms").doc(r.id).update({ invites: AU(u) }); notifyUser(u, r, "invite"); flash("✓ اتبعتله دعوة، هيدخل أول ما يوافق"); } catch (e) { flash(errMsg(e)); } }));
   c.append(box); $("msheet").hidden = false;
 }
 const GEN_KICK = [["⏱️", "ساعة", 3600000], ["🌙", "24 ساعة", 86400000], ["📅", "7 أيام", 604800000]];
@@ -2080,20 +2080,34 @@ async function start() {
 const needApproval = r => r.approval !== false;
 const pendingIn = d => !!d && !!d.req && d.req !== myId && !d.acc && !(d.blockedBy || []).includes(myId) && !!d.last && d.last.ts > dmClearedAt(d);
 const myName = () => (profiles[myId] || {}).name || gName() || "مجهول";
-const joinReqs = () => rooms.filter(adminOf).map(r => ({ r, us: (r.requests || []).filter(u => u !== myId && !(r.banned || []).includes(u)) })).filter(x => x.us.length);
+const joinReqs = () => rooms.filter(adminOf).map(r => ({ r, us: (r.requests || []).filter(u => u !== myId && !(r.banned || []).includes(u) && !(r.members || []).includes(u)) })).filter(x => x.us.length);
 const dmReqs = () => Object.values(dms).filter(pendingIn).sort((a, b) => b.last.ts - a.last.ts);
+const myInvites = () => rooms.filter(r => (r.invites || []).includes(myId) && !(r.members || []).includes(myId) && !(r.banned || []).includes(myId));
 const myWaiting = () => rooms.filter(r => (r.requests || []).includes(myId) && !canSee(r));
-const reqCount = () => joinReqs().reduce((n, x) => n + x.us.length, 0) + dmReqs().length;
+const reqCount = () => joinReqs().reduce((n, x) => n + x.us.length, 0) + dmReqs().length + myInvites().length;
 function notifyUser(u, r, kind) { if (db && u && u !== myId) db.collection("joins").add({ owner: u, uid: myId, name: myName(), room: r.id, roomName: r.name || "", kind, ts: Date.now() }).catch(() => {}); }
 async function decideJoin(r, u, ok) {
+  const cur = rooms.find(x => x.id === r.id);
+  if (!cur || !(cur.requests || []).includes(u)) { flash("الطلب ده مبقاش موجود"); return; }
   try { await db.collection("rooms").doc(r.id).update(ok ? { requests: AR(u), members: AU(u) } : { requests: AR(u) }); notifyUser(u, r, ok ? "approved" : "declined"); flash(ok ? "✓ اتقبل الطلب" : "✕ اترفض الطلب"); }
   catch (e) { flash(errMsg(e)); }
+}
+async function decideInvite(r, ok) {
+  const cur = rooms.find(x => x.id === r.id);
+  if (!cur || !(cur.invites || []).includes(myId)) { flash("الدعوة دي اتلغت"); return; }
+  try {
+    await db.collection("rooms").doc(r.id).update(ok ? { members: AU(myId), invites: AR(myId) } : { invites: AR(myId) });
+    if (r.by && r.by !== myId) db.collection("joins").add({ owner: r.by, uid: myId, name: myName(), room: r.id, roomName: r.name || "", kind: ok ? "inv_ok" : "inv_no", ts: Date.now() }).catch(() => {});
+    flash(ok ? "✓ انضميت لغرفة " + r.name : "✕ اترفضت الدعوة");
+  } catch (e) { flash(errMsg(e)); }
 }
 async function decideDM(d, ok) {
   try { await db.collection("dms").doc(d.id).update(ok ? { acc: true } : { ["cleared." + myId]: Math.max(Date.now(), d.last.ts + 1), ["unread." + myId]: 0 }); flash(ok ? "✓ اتقبلت المحادثة" : "✕ اترفض الطلب"); }
   catch (e) { flash(errMsg(e)); }
 }
+const reqSeen = {};
 function reqToast(d, id) {
+  if (reqSeen[id]) return; reqSeen[id] = 1;
   const t = "📩 " + nameOf(dmPeerOf(id)) + " بعتلك طلب محادثة"; toast(t); $("toast").onclick = () => { $("toast").hidden = true; openReqs(); };
   if (document.hidden && "Notification" in window && Notification.permission === "granted") pushLocal("Very Chat", t, "req");
 }
@@ -2101,9 +2115,14 @@ function openReqs() { closeDrawer(); closeInfo(); $("reqView").hidden = false; r
 function renderReqs() {
   const box = $("reqBody"); if ($("reqView").hidden) return; box.textContent = "";
   const J = joinReqs(), D = dmReqs(), W = myWaiting();
-  if (!J.length && !D.length && !W.length) { const e = el("div", "rq-empty"); e.append(el("i", "", "🎉"), document.createTextNode("مفيش طلبات دلوقتي")); box.append(e); return; }
+  const I = myInvites();
+  if (!J.length && !D.length && !W.length && !I.length) { const e = el("div", "rq-empty"); e.append(el("i", "", "🎉"), document.createTextNode("مفيش طلبات دلوقتي")); box.append(e); return; }
   const card = t => { const c = el("div", "ri-card"); c.append(el("h3", "", t)); box.append(c); return c; };
   const btn = (cls, t, fn) => { const b = el("button", cls, t); b.type = "button"; b.onclick = async () => { b.disabled = true; try { await fn(); } finally { b.disabled = false; } }; return b; };
+  if (I.length) {
+    const c = card("📨 دعوات للانضمام (" + I.length + ")");
+    I.forEach(r => { const row = el("div", "ri-mem"), mi = el("div", "mi"); mi.append(el("b", "", r.name), el("small", "", "دعوة من " + nameOf(r.by))); row.append(avatar(r.emoji || r.photo ? r : { emoji: "💬", color: "#5b6b78" }), mi, btn("ri-ok", "✓", () => decideInvite(r, true)), btn("ri-no", "✕", () => decideInvite(r, false))); c.append(row); });
+  }
   J.forEach(({ r, us }) => {
     const c = card("✋ طلبات الانضمام لـ «" + r.name + "» (" + us.length + ")");
     if (us.length > 1) c.append(btn("rq-all", "✓ قبول الكل", async () => { for (const u of us) await decideJoin(r, u, true); }));
@@ -2159,7 +2178,7 @@ function logJoin(r, kind) {
   const owner = r.id === "general" ? OWNER_UID : r.by; if (!owner || owner === myId) return;
   db.collection("joins").add({ owner, uid: myId, name: (profiles[myId] || {}).name || gName() || "مجهول", room: r.id, roomName: r.name || "عام", kind, ts: Date.now() }).catch(() => {});
 }
-const joinText = j => j.kind === "request" ? "✋ " + j.name + " طلب الانضمام لغرفة «" + j.roomName + "»" : j.kind === "approved" ? "✅ اتقبل طلب انضمامك لغرفة «" + j.roomName + "»" : j.kind === "declined" ? "❌ طلب انضمامك لغرفة «" + j.roomName + "» اترفض" : j.room === "general" ? "👋 " + j.name + " انضم للدردشة العامة" : "👋 " + j.name + " انضم لغرفة «" + j.roomName + "»";
+const joinText = j => j.kind === "request" ? "✋ " + j.name + " طلب الانضمام لغرفة «" + j.roomName + "»" : j.kind === "invite" ? "📨 " + j.name + " دعاك لغرفة «" + j.roomName + "»" : j.kind === "inv_ok" ? "✅ " + j.name + " قبل دعوتك لغرفة «" + j.roomName + "»" : j.kind === "inv_no" ? "❌ " + j.name + " رفض دعوتك لغرفة «" + j.roomName + "»" : j.kind === "approved" ? "✅ اتقبل طلب انضمامك لغرفة «" + j.roomName + "»" : j.kind === "declined" ? "❌ طلب انضمامك لغرفة «" + j.roomName + "» اترفض" : j.room === "general" ? "👋 " + j.name + " انضم للدردشة العامة" : "👋 " + j.name + " انضم لغرفة «" + j.roomName + "»";
 function presenceStart() {
   if (presOn) return; presOn = true;
   db.collection("presence").onSnapshot(s => { presence = {}; s.docs.forEach(d => { presence[d.id] = d.data(); }); paintHSub(); }, () => {});
@@ -2175,12 +2194,13 @@ function presenceStart() {
   // إشعار المالك بالانضمام (للمالك بس)
   let seen = 0; try { seen = +localStorage.getItem("vc_joins_seen") || 0; } catch (e) {}
   db.collection("joins").where("owner", "==", myId).onSnapshot(s => {
+    s.docs.forEach(d => { if ((d.data().ts || 0) < Date.now() - 6048e5) d.ref.delete().catch(() => {}); });
     const all = s.docs.map(d => d.data()).filter(j => j.uid !== myId);
     if (!seen) { seen = Date.now(); try { localStorage.setItem("vc_joins_seen", seen); } catch (e) {} return; }
     const fresh = all.filter(j => j.ts > seen).sort((a, b) => a.ts - b.ts); if (!fresh.length) return;
     seen = fresh[fresh.length - 1].ts; try { localStorage.setItem("vc_joins_seen", seen); } catch (e) {}
     const txt = fresh.length === 1 ? joinText(fresh[0]) : "🔔 " + fresh.length + " إشعارات جديدة";
-    toast(txt); if (fresh.some(j => j.kind === "request")) $("toast").onclick = () => { $("toast").hidden = true; openReqs(); }; if (document.hidden && "Notification" in window && Notification.permission === "granted") pushLocal("Very Chat", txt, fresh.some(j => j.kind === "request") ? "join" : "info");
+    toast(txt); if (fresh.some(j => j.kind === "request" || j.kind === "invite")) $("toast").onclick = () => { $("toast").hidden = true; openReqs(); }; if (document.hidden && "Notification" in window && Notification.permission === "granted") pushLocal("Very Chat", txt, fresh.some(j => j.kind === "request" || j.kind === "invite") ? "join" : "info");
   }, () => {});
   // انضمام عضو جديد للدردشة العامة = أول مرة يحفظ بروفايله
   let noProfile = false, gLogged = false;
