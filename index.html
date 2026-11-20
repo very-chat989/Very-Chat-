@@ -1,0 +1,1084 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>Very Chat</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#0f8f7a">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" href="icon-192.png">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+<style>
+:root{--bg:#eef2f1;--card:#fff;--ink:#14201d;--mute:#6a7a76;--pri:#0f8f7a;--onpri:#fff;--mine:#0f8f7a;--onmine:#fff;--line:#dde5e3;color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0d1413;--card:#172220;--ink:#e8f0ee;--mute:#8fa19c;--pri:#2cc4a9;--onpri:#06231d;--mine:#1f7a6a;--onmine:#fff;--line:#25332f;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0d1413;--card:#172220;--ink:#e8f0ee;--mute:#8fa19c;--pri:#2cc4a9;--onpri:#06231d;--mine:#1f7a6a;--onmine:#fff;--line:#25332f;color-scheme:dark}
+*{box-sizing:border-box}[hidden]{display:none!important}
+html{height:100%;scroll-padding-top:env(safe-area-inset-top,0px)}
+#splash{position:fixed;inset:0;z-index:20;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;transition:opacity .4s}
+#splash.out{opacity:0;pointer-events:none}
+#sLogo{width:104px;height:104px;animation:pop .7s cubic-bezier(.2,1.4,.4,1) both;filter:drop-shadow(0 10px 24px rgba(15,143,122,.35))}
+#sLogo svg,#hLogo svg{width:100%;height:100%;display:block}
+.sn{direction:ltr;font-size:32px;font-weight:800;letter-spacing:.5px;color:var(--pri);animation:rise .6s .25s both}
+.ss{font-size:14px;color:var(--mute);animation:rise .6s .4s both}
+@keyframes pop{from{transform:scale(.3);opacity:0}to{transform:scale(1);opacity:1}}
+@keyframes rise{from{transform:translateY(12px);opacity:0}to{transform:none;opacity:1}}
+body{margin:0;height:100%;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",Tahoma,Arial,sans-serif}
+button,input{font:inherit;color:inherit}
+.app{height:100%;display:flex;flex-direction:column;max-width:720px;margin:0 auto;background:var(--bg)}
+header{display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--card);border-bottom:1px solid var(--line)}
+header h1{flex:1;margin:0;font-size:18px}
+.av{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:19px;flex:none;overflow:hidden;background:var(--line)}
+.av img{width:100%;height:100%;object-fit:cover}
+.me-btn{border:0;background:none;padding:0;cursor:pointer}
+.chips{display:flex;gap:8px;overflow-x:auto;padding:8px 14px;background:var(--card);border-bottom:1px solid var(--line)}
+.chip{flex:none;border:1px solid var(--line);background:var(--bg);border-radius:18px;padding:6px 14px;cursor:pointer;font-size:14px}
+.chip.on{background:var(--pri);color:var(--onpri);border-color:var(--pri)}
+#msgs{flex:1;overflow-y:auto;padding:12px 12px 6px;display:flex;flex-direction:column;gap:3px;direction:ltr}
+.row{display:flex;gap:8px;align-items:flex-end;max-width:85%}
+.row.me{align-self:flex-end;flex-direction:row-reverse}
+.row.first{margin-top:9px}
+.sp{width:36px;flex:none}
+.b{padding:8px 12px;border-radius:16px;background:var(--card);border:1px solid var(--line);overflow-wrap:anywhere;min-width:60px}
+.me .b{background:var(--mine);color:var(--onmine);border-color:transparent}
+.n{font-size:12px;font-weight:700;color:var(--pri);margin-bottom:2px}
+.tx{white-space:pre-wrap;line-height:1.5}
+.t{font-size:11px;opacity:.65;margin-top:2px;display:flex;gap:8px;justify-content:flex-end}
+.t button{border:0;background:none;padding:0;cursor:pointer;opacity:.8}
+.b{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+#editBar{display:flex;justify-content:space-between;align-items:center;padding:6px 14px;background:var(--card);border-top:1px solid var(--line);font-size:13px;color:var(--mute)}
+#editBar button{border:0;background:none;color:var(--pri);cursor:pointer;font-weight:700}
+#selBar{display:flex;align-items:center;gap:10px;padding:8px 14px;background:var(--pri);color:var(--onpri)}
+#selBar span{flex:1;font-weight:700}
+#pStrip{display:flex;align-items:center;gap:10px;padding:7px 14px;background:var(--card);border-bottom:1px solid var(--line);font-size:13px}
+#pStrip button{border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:12px;padding:4px 10px;cursor:pointer}
+#selBar button{border:0;background:rgba(255,255,255,.22);color:inherit;border-radius:10px;padding:6px 12px;cursor:pointer}
+.ck{width:22px;height:22px;border-radius:50%;border:2px solid var(--mute);display:flex;align-items:center;justify-content:center;font-size:13px;flex:none;align-self:center;color:var(--onpri)}
+.row.sel .ck{background:var(--pri);border-color:var(--pri)}.row.sel .b{outline:2px solid var(--pri)}
+.rxs{display:flex;flex-wrap:wrap;gap:4px;margin-top:5px}
+.rx{display:flex;align-items:center;gap:3px;padding:2px 8px 2px 5px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font-size:12px;cursor:pointer}
+.rx svg{width:18px;height:18px}.rx.on{border-color:var(--pri)}
+.pick{display:flex;justify-content:space-around;gap:4px}
+.pick button{border:2px solid transparent;background:var(--bg);border-radius:50%;width:48px;height:48px;padding:6px;cursor:pointer}
+.pick button.on{border-color:var(--pri)}.pick svg{width:100%;height:100%}
+#status{text-align:center;color:var(--mute);font-size:13px;padding:8px 12px}
+form.bar{display:flex;gap:8px;padding:8px 12px 10px;background:var(--card);border-top:1px solid var(--line)}
+.bar input{flex:1;min-width:0;padding:11px 15px;border-radius:22px;border:1px solid var(--line);background:var(--bg)}
+.send{background:var(--pri);color:var(--onpri);border:0;border-radius:22px;padding:0 20px;font-weight:700;cursor:pointer}
+.send:disabled{opacity:.5}
+#sheet,#msheet{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:flex-end;justify-content:center;z-index:5}
+.card{width:100%;max-width:520px;background:var(--card);border-radius:22px 22px 0 0;padding:20px 18px calc(20px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:14px;max-height:92%;overflow-y:auto}
+.card h2{margin:0;text-align:center;font-size:18px}
+.big{width:84px;height:84px;font-size:44px;margin:0 auto}
+.grid{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
+.opt{width:40px;height:40px;border-radius:50%;border:2px solid transparent;background:var(--bg);font-size:21px;cursor:pointer;padding:0}
+.opt.on{border-color:var(--pri)}
+.opt.sv{padding:4px}.opt svg{width:100%;height:100%}
+.col{width:30px;height:30px}
+.card input[type=text]{padding:12px 14px;border-radius:12px;border:1px solid var(--line);background:var(--bg);text-align:center}
+.ghost{border:1px solid var(--line);background:var(--bg);border-radius:12px;padding:10px;cursor:pointer}
+#msheet{align-items:center;background:rgba(6,12,11,.6);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
+#msheet .card{background:none;border-radius:0;padding:12px;gap:14px;max-width:360px;align-items:stretch;overflow:visible}
+.rpill{display:flex;justify-content:space-between;gap:2px;padding:8px 10px;background:var(--card);border-radius:34px;box-shadow:0 12px 30px rgba(0,0,0,.35);animation:drop .35s cubic-bezier(.2,1.3,.4,1) both}
+.rpill button{width:46px;height:46px;border:0;border-radius:50%;background:none;padding:4px;cursor:pointer;animation:pop .45s cubic-bezier(.2,1.6,.4,1) both;transition:transform .15s}
+.rpill button:active{transform:scale(1.35) rotate(-8deg)}
+.rpill button.on{background:var(--line);box-shadow:0 0 0 2px var(--pri)}
+.rpill svg{width:100%;height:100%}
+.mprev{align-self:center;max-width:100%;padding:12px 18px;border-radius:20px;background:linear-gradient(135deg,#2cc4a9,#0f8f7a);color:#fff;white-space:pre-wrap;overflow-wrap:anywhere;box-shadow:0 14px 34px rgba(15,143,122,.45);transform:rotate(-1.5deg);animation:pop .4s .1s both}
+.acts{display:grid;grid-template-columns:repeat(auto-fit,minmax(70px,1fr));gap:10px;padding:16px 10px;background:var(--card);border-radius:26px;box-shadow:0 12px 30px rgba(0,0,0,.35);animation:rise .4s .15s both}
+.act{border:0;background:none;display:flex;flex-direction:column;align-items:center;gap:6px;cursor:pointer;font-size:12px;color:var(--ink);padding:0}
+.act i{font-style:normal;width:52px;height:52px;border-radius:18px;display:flex;align-items:center;justify-content:center;font-size:24px;box-shadow:0 6px 14px rgba(0,0,0,.25);transition:transform .15s}
+.act:active i{transform:scale(.88) rotate(6deg)}
+.seen{display:flex;align-items:center;justify-content:center;gap:8px;color:#fff;font-size:13px;animation:rise .4s .25s both}
+.seen .stack{display:flex}.seen .stack .av{width:28px;height:28px;font-size:14px;margin-inline-start:-8px;border:2px solid var(--card)}
+@keyframes drop{from{transform:translateY(-14px) scale(.85);opacity:0}to{transform:none;opacity:1}}
+/* ───── تحديث الشكل ───── */
+header{box-shadow:0 2px 14px rgba(0,0,0,.07);position:relative;z-index:2}
+.me-btn .av{box-shadow:0 0 0 2px var(--pri)}
+.chips{gap:14px;padding:12px 14px 6px;border-bottom:0;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{display:flex;flex-direction:column;align-items:center;gap:5px;border:0;background:none;padding:0;border-radius:0;width:64px;font-size:11.5px;color:var(--mute);cursor:pointer}
+.chip.on{background:none;border:0;color:var(--pri);font-weight:700}
+.chip .av{width:52px;height:52px;font-size:26px;box-shadow:0 0 0 2px var(--line);border:3px solid var(--card);transition:transform .15s,box-shadow .15s}
+.chip.on .av{box-shadow:0 0 0 2.5px var(--pri);transform:scale(1.06)}
+.chip:active .av{transform:scale(.93)}
+.chip span{max-width:64px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.chip .plus{width:52px;height:52px;border-radius:50%;border:2px dashed var(--mute);display:flex;align-items:center;justify-content:center;font-size:24px;color:var(--mute);max-width:none}
+#pStrip{padding:4px 14px 10px;border-bottom:1px solid var(--line);gap:10px}
+#pStrip>span{background:var(--bg);border-radius:14px;padding:6px 12px}
+#msgs{background-image:radial-gradient(var(--line) 1.1px,transparent 1.1px);background-size:22px 22px}
+.day{align-self:center;font-size:12px;color:var(--mute);background:var(--card);border:1px solid var(--line);border-radius:12px;padding:3px 12px;margin:10px 0 4px}
+.b{border-radius:18px;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.row.first:not(.me) .b{border-bottom-left-radius:5px}
+.row.first.me .b{border-bottom-right-radius:5px}
+.me .b{background-color:var(--mine);background-image:linear-gradient(160deg,rgba(255,255,255,.16),rgba(0,0,0,.12))}
+form.bar{margin:6px 10px calc(8px);padding:6px 6px 6px 8px;border:1px solid var(--line);border-radius:30px;box-shadow:0 6px 22px rgba(0,0,0,.12)}
+.bar input{border:0;background:transparent;padding:10px 12px}
+.bar .send{border-radius:24px;padding:0 20px;background-image:linear-gradient(135deg,rgba(255,255,255,.22),rgba(0,0,0,.1));box-shadow:0 4px 12px rgba(15,143,122,.35)}
+.card{animation:up .3s ease both}
+@keyframes up{from{transform:translateY(40px);opacity:0}}
+.grab{width:44px;height:5px;border-radius:3px;background:var(--line);margin:-8px auto 0}
+.hero{display:flex;flex-direction:column;align-items:center;gap:12px}
+.hero input{width:100%}
+.sec{background:var(--bg);border-radius:18px;padding:12px;display:flex;flex-direction:column;gap:10px}
+.sec label{font-size:13px;font-weight:700;color:var(--mute)}
+.sec .opt,.sec .ghost{background:var(--card)}
+.note{color:var(--mute);text-align:center;font-size:12px}
+/* ───── إعادة ترتيب: هيدر الغرفة + درج الغرف ───── */
+header{gap:10px;padding:8px 12px}
+.hb{border:0;background:var(--bg);color:var(--ink);width:40px;height:40px;border-radius:14px;font-size:20px;cursor:pointer;flex:none}
+#hRoom{flex:1;min-width:0;display:flex;align-items:center;gap:10px;cursor:pointer}
+#hRoom .av{width:42px;height:42px;font-size:21px}
+#hRoom>div:last-child{min-width:0}
+#hRoom b{display:block;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#hRoom small{display:block;color:var(--mute);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#selBar{position:absolute;inset:0;z-index:3;padding:0 14px}
+#drawer{position:fixed;inset:0;z-index:4;background:rgba(6,12,11,.5);-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)}
+.dpanel{position:absolute;top:0;bottom:0;inset-inline-start:0;width:min(86%,330px);background:var(--card);display:flex;flex-direction:column;gap:12px;padding:calc(16px + env(safe-area-inset-top,0px)) 14px calc(16px + env(safe-area-inset-bottom,0px));animation:slide .28s ease both;box-shadow:0 0 40px rgba(0,0,0,.35)}
+@keyframes slide{from{transform:translateX(100%)}}
+.dhead{display:flex;align-items:center;justify-content:flex-end;gap:10px;direction:ltr;padding:2px 6px 10px;border-bottom:1px solid var(--line)}
+.dhead #dLogo{width:36px;height:36px}.dhead svg{width:100%;height:100%;display:block}
+.dhead b{font-size:21px;color:var(--pri);font-weight:800}
+.dsub{font-size:12px;font-weight:700;color:var(--mute);padding:0 6px}
+#dlist{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:6px}
+.rrow{display:flex;align-items:center;gap:12px;border:0;background:none;text-align:start;padding:10px;border-radius:16px;cursor:pointer;color:var(--ink);width:100%}
+.rrow .av{width:46px;height:46px;font-size:23px}
+.rrow.on{background:var(--bg);box-shadow:inset 0 0 0 2px var(--pri)}
+.rt{display:flex;flex-direction:column;gap:2px;min-width:0}
+.rt b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rt small{color:var(--mute);font-size:12px}
+.b{position:relative}
+.b.hasrx{margin-bottom:12px}
+html,body{overflow:hidden;overscroll-behavior:none}
+.app{height:var(--vh,100%)}
+.rxs{position:absolute;bottom:-14px;left:10px;margin:0;z-index:1}
+.me .rxs{left:auto;right:10px}
+.rx{box-shadow:0 2px 6px rgba(0,0,0,.2);background:var(--card);color:var(--ink)}
+#editBar{margin:6px 10px 0;border-radius:18px 18px 0 0;border:1px solid var(--line);border-bottom:0;border-inline-start:4px solid var(--pri);padding:7px 12px}
+#editBar:not([hidden])+form.bar{border-radius:0 0 30px 30px;margin-top:0}
+.fw{font-size:11.5px;opacity:.75;margin-bottom:3px}
+.acts{grid-template-columns:repeat(auto-fit,minmax(56px,1fr));gap:8px}
+.act i{width:48px;height:48px;font-size:22px}
+#net{background:#e08a2f;color:#fff;text-align:center;font-size:13px;padding:5px}
+.bdg{margin-inline-start:auto;background:var(--pri);color:var(--onpri);border-radius:12px;min-width:22px;height:22px;padding:0 7px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700}
+.hb{position:relative}.hb.un::after{content:"";position:absolute;top:5px;inset-inline-end:5px;width:11px;height:11px;border-radius:50%;background:#e0507a;border:2px solid var(--card)}
+#replyBar{display:flex;justify-content:space-between;align-items:center;gap:8px;margin:6px 10px 0;border-radius:18px 18px 0 0;border:1px solid var(--line);border-bottom:0;border-inline-start:4px solid #2f90d9;padding:7px 12px;background:var(--card);font-size:13px;color:var(--mute)}
+#replyBar span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#replyBar button{border:0;background:none;color:var(--pri);cursor:pointer;font-weight:700}
+#replyBar:not([hidden])~form.bar{border-radius:0 0 30px 30px;margin-top:0}
+.qt{border-inline-start:3px solid #4fc3f7;background:rgba(127,127,127,.16);border-radius:8px;padding:4px 8px;margin-bottom:5px;font-size:12.5px}
+.qt b{display:block;font-size:12px}
+#rinfo{position:fixed;inset:0;z-index:4;background:var(--bg);display:flex;flex-direction:column;animation:up .25s ease both}
+.ri-top{display:flex;align-items:center;gap:10px;padding:calc(10px + env(safe-area-inset-top,0px)) 14px 10px;background:var(--card);box-shadow:0 2px 10px rgba(0,0,0,.08);font-size:17px}
+.ri-top button{border:0;background:var(--bg);color:var(--ink);width:40px;height:40px;border-radius:14px;font-size:18px;cursor:pointer}
+#riBody{flex:1;overflow-y:auto;padding-bottom:calc(24px + env(safe-area-inset-bottom,0px))}
+.ri-hero{padding:26px 16px 44px;text-align:center;color:#fff}
+.ri-hero h2{margin:6px 0 4px;font-size:23px}.ri-hero p{margin:0 0 8px;opacity:.85;font-size:14px}
+.ri-av{width:96px!important;height:96px!important;font-size:48px!important;margin:0 auto;box-shadow:0 0 0 4px rgba(255,255,255,.35)}
+.ri-chips{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:8px}
+.ri-chip{border:0;background:rgba(255,255,255,.2);color:#fff;border-radius:14px;padding:5px 12px;font-size:13px;backdrop-filter:blur(6px)}
+button.ri-chip{cursor:pointer}
+.ri-quick{display:flex;gap:10px;justify-content:center;margin:-26px 14px 0;position:relative}
+.ri-q{flex:1;max-width:120px;border:0;background:var(--card);color:var(--ink);border-radius:18px;padding:10px 4px;display:flex;flex-direction:column;align-items:center;gap:4px;box-shadow:0 6px 18px rgba(0,0,0,.14);cursor:pointer;font-size:12px}
+.ri-q i{font-style:normal;font-size:22px}
+.ri-card{background:var(--card);border-radius:20px;margin:14px;padding:14px;box-shadow:0 2px 10px rgba(0,0,0,.06);display:flex;flex-direction:column;gap:10px}
+.ri-card h3{margin:0;font-size:15px}
+.ri-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:6px 0;border-top:1px solid var(--line)}
+.ri-row small{display:block;color:var(--mute);font-size:12px;margin-top:2px}
+.sw{flex:none;width:48px;height:28px;border-radius:14px;border:0;background:var(--line);position:relative;cursor:pointer;transition:background .2s}
+.sw::after{content:"";position:absolute;top:3px;inset-inline-start:3px;width:22px;height:22px;border-radius:50%;background:#fff;transition:transform .2s;box-shadow:0 1px 3px rgba(0,0,0,.3)}
+.sw.on{background:var(--pri)}.sw.on::after{transform:translateX(-20px)}
+.seg{display:flex;background:var(--bg);border-radius:12px;padding:3px;gap:2px;flex:none}
+.seg button{border:0;background:none;color:var(--ink);border-radius:10px;padding:6px 9px;font-size:12px;cursor:pointer}
+.seg button.on{background:var(--pri);color:var(--onpri);font-weight:700}
+.ri-mem{display:flex;align-items:center;gap:12px;padding:8px 0;border-top:1px solid var(--line)}
+.ri-mem .av{width:40px;height:40px;font-size:20px}.ri-mem b{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}
+.ri-tag{font-size:14px}.ri-dots{border:0;background:var(--bg);color:var(--ink);width:34px;height:34px;border-radius:50%;font-size:18px;cursor:pointer}
+.ri-ok,.ri-no{border:0;width:36px;height:36px;border-radius:50%;font-size:16px;cursor:pointer;color:#fff}
+.ri-ok{background:#2cae6a}.ri-no{background:#d64545}
+.ri-danger{border:0;background:rgba(214,69,69,.12);color:#d64545;border-radius:14px;padding:13px;font-weight:700;cursor:pointer}
+#pin{display:flex;align-items:center;gap:8px;padding:7px 14px;background:var(--card);border-bottom:1px solid var(--line);font-size:13px}
+#pin span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#pin button{border:0;background:none;color:var(--mute);cursor:pointer;font-size:15px}
+#descIn{width:100%}
+/* ───── v2: تسجيل الدخول + أماكن أكتر تميّزاً ───── */
+#login{position:fixed;inset:0;z-index:10;display:flex;align-items:center;justify-content:center;padding:24px;background:radial-gradient(circle at 15% 8%,rgba(44,196,169,.30),transparent 55%),radial-gradient(circle at 88% 92%,rgba(47,111,237,.22),transparent 50%),var(--bg)}
+.lbox{width:100%;max-width:360px;display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center}
+#lLogo{width:92px;height:92px;filter:drop-shadow(0 10px 24px rgba(15,143,122,.35));animation:pop .6s both}
+#lLogo svg{width:100%;height:100%;display:block}
+.gbtn{width:100%;display:flex;align-items:center;justify-content:center;gap:10px;padding:13px;border-radius:16px;border:1px solid var(--line);background:#fff;color:#1f1f1f;font-weight:700;cursor:pointer;box-shadow:0 6px 18px rgba(0,0,0,.12)}
+.gbtn:disabled,.lbox .ghost:disabled{opacity:.55}
+.lbox .ghost{width:100%}
+.rrow{position:relative;overflow:hidden;background:var(--bg);padding-inline-start:16px}
+.rrow::before{content:"";position:absolute;inset-block:10px;inset-inline-start:0;width:5px;border-radius:5px;background:var(--rc,var(--line))}
+.rrow.on::before{background:var(--pri)}
+.ri-hero{position:relative;overflow:hidden}
+.ri-hero::before{content:"";position:absolute;inset:0;background-image:radial-gradient(rgba(255,255,255,.14) 1.5px,transparent 1.5px);background-size:18px 18px;pointer-events:none}
+.ri-hero>*{position:relative}
+.ri-card h3{display:flex;align-items:center;gap:8px;padding-bottom:8px;border-bottom:2px solid var(--line)}
+.ri-card{border-inline-start:5px solid var(--pri)}
+.ri-card.dn{border-inline-start-color:#d64545}
+#lb{position:fixed;inset:0;z-index:30;background:rgba(0,0,0,.88);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:20px;animation:pop .25s both}
+#lbPic{width:min(86vw,420px);height:min(86vw,420px);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:min(40vw,200px);overflow:hidden;box-shadow:0 0 0 4px rgba(255,255,255,.25),0 20px 60px rgba(0,0,0,.5)}
+#lb b{color:#fff;font-size:18px}
+.row .av,.ri-mem .av,.ri-av{cursor:zoom-in}
+</style>
+</head>
+<body>
+<div id="splash"><div id="sLogo"></div><div class="sn">Very Chat</div><div class="ss">شات الشلة</div></div>
+<div id="login" hidden><div class="lbox"><div id="lLogo"></div><div class="sn">Very Chat</div><div class="ss">سجّل دخولك علشان غرفك ورسايلك تفضل معاك على أي جهاز</div><button class="gbtn" id="gBtn"><svg viewBox="0 0 48 48" width="20" height="20"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.9 6.1C12.4 13.6 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.5-4.8 7.2l7.6 5.9c4.4-4.1 7-10.1 7-17.6z"/><path fill="#FBBC05" d="M10.5 28.7c-.5-1.5-.8-3-.8-4.7s.3-3.2.8-4.7l-7.9-6.1C1 16.5 0 20.1 0 24s1 7.5 2.6 10.8l7.9-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 12-2.1 16-5.8l-7.6-5.9c-2.1 1.4-4.9 2.3-8.4 2.3-6.3 0-11.6-4.1-13.5-9.8l-7.9 6.1C6.5 42.6 14.6 48 24 48z"/></svg> المتابعة بحساب Google</button><button class="ghost" id="guestBtn">دخول كضيف (مؤقت)</button><div id="lErr" class="note" hidden></div></div></div>
+<div id="lb" hidden><div id="lbPic"></div><b id="lbName"></b></div>
+<div class="app">
+  <header>
+    <button class="hb" id="menuBtn" aria-label="الغرف">☰</button>
+    <div id="hRoom"></div>
+    <button class="me-btn" id="meBtn" title="شخصيتك"><div class="av" id="meAv">👤</div></button>
+    <div id="selBar" hidden><button id="selCancel">✕</button><span id="selCount"></span><button id="selFwd">↪️</button><button id="selCopy">📋 نسخ</button><button id="selDel">🗑 حذف</button></div>
+  </header>
+  <div id="pin" hidden></div>
+  <div id="net" hidden>⚠️ مفيش اتصال بالنت، رسايلك هتتبعت أول ما يرجع</div>
+  <div id="status">جاري التحميل…</div>
+  <div id="msgs"></div>
+  <div id="replyBar" hidden><span id="replyTxt"></span><button type="button" id="cancelReply">✕</button></div>
+  <div id="editBar" hidden><span>✏️ بتعدّل رسالة</span><button type="button" id="cancelEdit">إلغاء</button></div>
+  <form class="bar" id="f">
+    <input id="inp" placeholder="اكتب رسالة…" autocomplete="off" maxlength="1000" dir="auto">
+    <button class="send" id="sendBtn">إرسال</button>
+  </form>
+</div>
+
+<div id="rinfo" hidden>
+  <div class="ri-top"><button id="riBack" aria-label="رجوع">→</button><b>معلومات الغرفة</b></div>
+  <div id="riBody"></div>
+</div>
+
+<div id="drawer" hidden>
+  <div class="dpanel">
+    <div class="dhead"><div id="dLogo"></div><b>Very Chat</b></div>
+    <div class="dsub">الغرف · اضغط مطوّلاً على غرفتك للتعديل</div>
+    <div id="dlist"></div>
+    <button class="ghost" id="dFind">🔎 اكتشاف غرف / الانضمام بكود</button>
+    <button class="ghost" id="dNotif" hidden>🔔 تفعيل الإشعارات</button>
+    <button class="ghost" id="dInvite">👋 دعوة صديق للتطبيق</button>
+    <button class="send" id="dAdd" style="padding:13px">＋ غرفة جديدة</button>
+  </div>
+</div>
+
+<div id="sheet" hidden>
+  <div class="card">
+    <div class="grab"></div>
+    <h2 id="shTitle">بروفايلك</h2>
+    <div class="hero">
+      <div class="av big" id="pvAv"></div>
+      <input type="text" id="nameIn" placeholder="اسمك" maxlength="20" autocomplete="off">
+      <input type="text" id="descIn" placeholder="وصف الغرفة (اختياري)" maxlength="120" autocomplete="off" hidden>
+    </div>
+    <div class="sec" id="accSec" hidden><label>حسابك</label><div class="note" id="accNote"></div><button class="ghost" id="accBtn"></button></div>
+    <label class="sec" id="privRow" hidden style="flex-direction:row;align-items:center;gap:10px;cursor:pointer"><input type="checkbox" id="privCk"><span>🔒 غرفة خاصة (الأعضاء اللي تضيفهم بس يشوفوها)</span></label>
+    <div class="sec"><label>شخصيات الشلة</label><div class="grid" id="shalla"></div></div>
+    <div class="sec"><label>إيموجي</label><div class="grid" id="emojis"></div></div>
+    <div class="sec"><label>لون الخلفية</label><div class="grid" id="colors"></div></div>
+    <div class="sec">
+      <label>صورة من جهازك</label>
+      <div class="grid">
+        <div class="ghost" id="upBtn" style="position:relative;overflow:hidden">📷 ارفع صورة<input type="file" id="file" accept="image/*" style="position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;font-size:0"></div>
+        <button class="ghost" id="rmPhoto" hidden>إزالة الصورة</button>
+      </div>
+      <div class="note">لو مافتحش اختيار الصور، افتح الصفحة من المتصفح (Chrome أو Safari) بدل التطبيق</div>
+    </div>
+    <div id="pErr" style="color:var(--mute);text-align:center;font-size:13px" hidden></div>
+    <button class="ghost" id="skipBtn" hidden>استخدم بروفايلي الأساسي</button>
+    <button class="ghost" id="cancelSheet" hidden>إلغاء</button>
+    <button class="send" id="saveBtn" style="padding:13px">حفظ</button>
+  </div>
+</div>
+
+<div id="msheet" hidden><div class="card" id="mcard"></div></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script>
+// ═══ إعدادات Firebase: الصق هنا القيم من Firebase Console ← Project settings ← Your apps ← Web app ═══
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyA2G05p10GHyhFR8hOfdx0f__pYRw8fG9s",
+  authDomain: "very-chat-c7e65.firebaseapp.com",
+  projectId: "very-chat-c7e65",
+  appId: "1:351423421163:web:f61b829b9b65deb38abcae"
+};
+const $ = id => document.getElementById(id);
+const logo = id => `<svg viewBox='0 0 100 100'><defs><linearGradient id='${id}' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='#2cc4a9'/><stop offset='1' stop-color='#0f8f7a'/></linearGradient></defs><rect width='100' height='100' rx='26' fill='url(#${id})'/><path d='M50 18c-18 0-32 12-32 28 0 8 4 15 10 20l-3 14 15-7c3 1 6 1 10 1 18 0 32-12 32-28S68 18 50 18z' fill='#fff'/><path d='M36 38l14 22 14-22' fill='none' stroke='#0f8f7a' stroke-width='8' stroke-linecap='round' stroke-linejoin='round'/></svg>`;
+$("sLogo").innerHTML = logo("lgS"); $("dLogo").innerHTML = logo("lgD");
+setTimeout(() => { $("splash").classList.add("out"); setTimeout(() => $("splash").remove(), 450); }, 1700);
+const EMOJIS = ["😀","😎","🤓","🥳","🐱","🦁","🐼","🦊","🚀","⚽","🎮","🌶️"];
+const COLORS = ["#0f8f7a","#2f6fed","#8a4fe0","#e0507a","#e08a2f","#c9a400","#3f8f3f","#5b6b78"];
+let confirmDel = false;
+async function delRoom() {
+  const id = room;
+  try {
+    const s = await db.collection("msgs").where("room", "==", id).get();
+    await Promise.all(s.docs.map(d => db.collection("msgs").doc(d.id).delete()));
+    await db.collection("rooms").doc(id).delete();
+    openRoom("general");
+  } catch (e) { setStatus("ماقدرتش أحذف الغرفة."); }
+}
+let db = null, myId = null, room = "general", rooms = [], profiles = {}, unsub = null, creating = false, lastList = [], draft = null, loaded = false;
+
+function setStatus(t) { $("status").textContent = t; $("status").hidden = !t; }
+function avatar(p, big) {
+  const d = document.createElement("div"); d.className = "av";
+  if (p && p.photo) { const i = document.createElement("img"); i.src = p.photo; i.alt = ""; d.appendChild(i); }
+  else { d.style.background = (p && p.color) || "var(--line)"; d.textContent = (p && p.emoji) || "👤"; }
+  return d;
+}
+function setAvatar(el, p) { el.replaceChildren(...avatar(p).childNodes); el.style.background = (p && !p.photo && p.color) || "var(--line)"; }
+
+function closeDrawer() { $("drawer").hidden = true; }
+function buildChips() {
+  const box = $("dlist"); box.textContent = "";
+  [{ id: "general", name: "عام" }, ...rooms.filter(canSee)].forEach(r => {
+    const row = document.createElement("button"); row.className = "rrow" + (r.id === room ? " on" : ""); row.style.setProperty("--rc", r.color || "#5b6b78");
+    const ic = avatar(r.id === "general" ? { emoji: "🌐", color: "#5b6b78" } : (r.emoji || r.photo ? r : { emoji: "💬", color: "#5b6b78" }));
+    const tx = document.createElement("div"); tx.className = "rt";
+    const nm = document.createElement("b"); nm.textContent = r.name;
+    const last = recent.find(m => m.room === r.id), un = unreadOf(r.id);
+    const sb = document.createElement("small"); sb.dir = "auto";
+    sb.textContent = (r.by === myId ? "👑 " : "") + (r.private ? "🔒 " : "") + (r.onlyAdmins ? "📢 " : "") + (last ? nameOf(last.uid, r.id) + ": " + (last.text || "").slice(0, 28) : "أنت: " + ((profileFor(myId, r.id) || {}).name || "—"));
+    tx.append(nm, sb); row.append(ic, tx);
+    if (un) { const bd = document.createElement("span"); bd.className = "bdg"; bd.textContent = un > 99 ? "99+" : un; row.append(bd); }
+    let tm, fired = false;
+    row.onclick = () => { if (fired) { fired = false; return; } closeDrawer(); openRoom(r.id); };
+    if (r.id !== "general") {
+      const go = () => { fired = false; tm = setTimeout(() => { fired = true; openRoomMenu(r); }, 500); }, stop = () => clearTimeout(tm);
+      ["touchstart", "mousedown"].forEach(ev => row.addEventListener(ev, go, { passive: true }));
+      ["touchmove", "touchend", "touchcancel", "mouseup", "mouseleave"].forEach(ev => row.addEventListener(ev, stop, { passive: true }));
+      row.addEventListener("contextmenu", e => { e.preventDefault(); stop(); fired = true; openRoomMenu(r); });
+    }
+    box.appendChild(row);
+  });
+  refreshMe(); updateTotal();
+}
+$("menuBtn").onclick = () => { buildChips(); $("dNotif").hidden = !("Notification" in window) || Notification.permission !== "default"; $("drawer").hidden = false; };
+$("drawer").onclick = e => { if (e.target === $("drawer")) closeDrawer(); };
+$("dAdd").onclick = () => { closeDrawer(); openSheet("room"); };
+$("hRoom").onclick = () => { if (room !== "general" && curR()) openInfo(room); else $("meBtn").click(); };
+
+function render(list) {
+  lastList = list;
+  const box = $("msgs");
+  const near = box.scrollHeight - box.scrollTop - box.clientHeight < 90;
+  box.textContent = "";
+  list.forEach((m, i) => {
+    const prev = list[i - 1], mine = m.uid === myId, p = profileFor(m.uid);
+    const newDay = !prev || new Date(prev.ts).toDateString() !== new Date(m.ts).toDateString();
+    if (newDay) { const dv = document.createElement("div"), d0 = new Date(m.ts); dv.className = "day"; dv.textContent = d0.toDateString() === new Date().toDateString() ? "اليوم" : d0.toLocaleDateString("ar-EG", { day: "numeric", month: "long" }); box.appendChild(dv); }
+    const first = newDay || prev.uid !== m.uid || m.ts - prev.ts > 300000;
+    const row = document.createElement("div"); row.className = "row" + (mine ? " me" : "") + (first ? " first" : "") + (sel.has(m.id) ? " sel" : "");
+    if (first) row.appendChild(avatar(p)); else { const s = document.createElement("div"); s.className = "sp"; row.appendChild(s); }
+    const b = document.createElement("div"); b.className = "b";
+    if (first && !mine) { const n = document.createElement("div"); n.className = "n"; n.dir = "auto"; n.textContent = (p && p.name) || "مجهول"; b.appendChild(n); }
+    if (m.fwd) b.appendChild(el("div", "fw", "↪️ محوّلة من " + m.fwd));
+    if (m.reply) { const q = el("div", "qt"); q.dir = "auto"; q.append(el("b", "", m.reply.name || "مجهول"), document.createTextNode(m.reply.text || "")); b.appendChild(q); }
+    const tx = document.createElement("div"); tx.className = "tx"; tx.dir = "auto"; linkify(tx, m.text); b.appendChild(tx);
+    const rc = {}; Object.values(m.reacts || {}).forEach(k => { if (EMO[k]) rc[k] = (rc[k] || 0) + 1; });
+    if (Object.keys(rc).length) {
+      const rw = document.createElement("div"); rw.className = "rxs";
+      Object.keys(rc).forEach(k => { const c = document.createElement("button"); c.type = "button"; c.className = "rx" + ((m.reacts || {})[myId] === k ? " on" : ""); c.innerHTML = EMO[k].s; c.appendChild(document.createTextNode(" " + rc[k])); c.onclick = () => toggleReact(m, k); rw.appendChild(c); });
+      b.appendChild(rw); b.classList.add("hasrx");
+    }
+    const t = document.createElement("div"); t.className = "t";
+    if (m.edited) { const ed = document.createElement("span"); ed.textContent = "معدّلة"; t.appendChild(ed); }
+    if (mine) { const sc = document.createElement("span"); const n = seenOK() ? seenBy(m).length : 0; sc.textContent = n ? "👁 " + n : "✓"; t.appendChild(sc); }
+    const tm = document.createElement("span"); tm.textContent = new Date(m.ts).toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit" }); t.appendChild(tm);
+    b.appendChild(t); holdMenu(b, m); row.appendChild(b);
+    if (selMode) { const ck = document.createElement("span"); ck.className = "ck"; ck.textContent = sel.has(m.id) ? "✓" : ""; row.appendChild(ck); }
+    row.onclick = () => { if (selMode) toggleSel(m.id); }; box.appendChild(row);
+  });
+  if (near || list.length < 4) box.scrollTop = box.scrollHeight;
+  markSeen(list); updateTotal();
+  setStatus(list.length ? "" : "مفيش رسايل لسه. ابدأ إنت!");
+}
+
+const EMO = {
+  fol: { n: "فل", s: `<svg viewBox='0 0 40 40'><g fill='#fff' stroke='#e7a8c8' stroke-width='1.5'><circle cx='20' cy='9' r='7'/><circle cx='31' cy='17' r='7'/><circle cx='27' cy='30' r='7'/><circle cx='13' cy='30' r='7'/><circle cx='9' cy='17' r='7'/></g><circle cx='20' cy='20' r='9' fill='#ffd34d'/><circle cx='17' cy='19' r='1.4' fill='#4a3200'/><circle cx='23' cy='19' r='1.4' fill='#4a3200'/><path d='M16 23q4 4 8 0' fill='none' stroke='#4a3200' stroke-width='1.6' stroke-linecap='round'/></svg>` },
+  nar: { n: "نار", s: `<svg viewBox='0 0 40 40'><path d='M20 3c2 7 11 11 11 21a11 11 0 0 1-22 0c0-5 3-8 5-11 1 3 2 4 4 4 0-5 0-8 2-14z' fill='#ff7a2f'/><path d='M20 17c1 4 6 6 6 11a6 6 0 0 1-12 0c0-3 2-5 3-7 1 2 2 2 3 2z' fill='#ffd34d'/><rect x='12' y='22' width='7' height='5' rx='2' fill='#1b1b1b'/><rect x='21' y='22' width='7' height='5' rx='2' fill='#1b1b1b'/><path d='M19 24h2' stroke='#1b1b1b' stroke-width='1.5'/></svg>` },
+  qalb: { n: "قلب", s: `<svg viewBox='0 0 40 40'><path d='M20 35C5 25 3 14 10 9c5-3 9 0 10 4 1-4 5-7 10-4 7 5 5 16-10 26z' fill='#ff4d79'/><circle cx='15' cy='20' r='1.5' fill='#3a0a1a'/><circle cx='25' cy='20' r='1.5' fill='#3a0a1a'/><path d='M17 24q3 3 6 0' fill='none' stroke='#3a0a1a' stroke-width='1.5' stroke-linecap='round'/><circle cx='12.5' cy='23' r='2' fill='#ff9db5'/><circle cx='27.5' cy='23' r='2' fill='#ff9db5'/></svg>` },
+  dahk: { n: "ضحك", s: `<svg viewBox='0 0 40 40'><circle cx='20' cy='20' r='16' fill='#ffd34d'/><path d='M11 17q3-3 6 0M23 17q3-3 6 0' fill='none' stroke='#4a3200' stroke-width='2' stroke-linecap='round'/><path d='M12 24h16q-1 8-8 8t-8-8z' fill='#4a3200'/><path d='M5 20c-3 5 0 8 2 4 0-2-1-3-2-4zM35 20c3 5 0 8-2 4 0-2 1-3 2-4z' fill='#4fc3f7'/></svg>` },
+  tamam: { n: "تمام", s: `<svg viewBox='0 0 40 40'><path d='M20 2l5 6 8-1 1 8 6 5-5 6 1 8-8 1-5 6-5-6-8-1-1-8-6-5 5-6-1-8 8 1z' fill='#2cc4a9'/><path d='M12 21l6 6 11-12' fill='none' stroke='#fff' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'/></svg>` },
+  oyoun: { n: "عيون", s: `<svg viewBox='0 0 40 40'><ellipse cx='12' cy='20' rx='9' ry='12' fill='#fff' stroke='#333' stroke-width='2'/><ellipse cx='28' cy='20' rx='9' ry='12' fill='#fff' stroke='#333' stroke-width='2'/><circle cx='14' cy='23' r='4.5' fill='#222'/><circle cx='30' cy='23' r='4.5' fill='#222'/></svg>` }
+};
+function toggleReact(m, k) {
+  if (selMode) return;
+  const cr = curR(); if (cr && cr.noReact && !adminOf(cr)) { setStatus("التفاعلات متوقفة في الغرفة دي"); return; }
+  const on = (m.reacts || {})[myId] === k;
+  db.collection("msgs").doc(m.id).update({ ["reacts." + myId]: on ? FV().delete() : k }).catch(() => setStatus("ماقدرتش أضيف التفاعل."));
+}
+let selMode = false, selDelArm = false; const sel = new Set();
+function updSel() { $("selBar").hidden = !selMode; $("selCopy").hidden = $("selFwd").hidden = fwdBlocked(); $("selCount").textContent = "تم تحديد " + sel.size; $("selDel").textContent = "🗑 حذف"; selDelArm = false; if (lastList.length) render(lastList); }
+function enterSel(id) { selMode = true; sel.clear(); sel.add(id); updSel(); }
+function exitSel() { selMode = false; sel.clear(); updSel(); }
+function toggleSel(id) { if (sel.has(id)) sel.delete(id); else sel.add(id); if (!sel.size) exitSel(); else updSel(); }
+async function copyText(t) {
+  try { await navigator.clipboard.writeText(t); return true; } catch (e) {}
+  try { const ta = document.createElement("textarea"); ta.value = t; ta.style.cssText = "position:fixed;opacity:0"; document.body.appendChild(ta); ta.select(); const ok = document.execCommand("copy"); ta.remove(); return ok; } catch (e) { return false; }
+}
+$("selCancel").onclick = exitSel;
+$("selCopy").onclick = async () => {
+  const txt = lastList.filter(x => sel.has(x.id)).map(x => ((profileFor(x.uid) || {}).name || "مجهول") + ": " + x.text).join("\n");
+  const ok = await copyText(txt);
+  $("selCopy").textContent = ok ? "✓ تم" : "فشل النسخ";
+  setTimeout(() => { $("selCopy").textContent = "📋 نسخ"; if (ok) exitSel(); }, 700);
+};
+$("selDel").onclick = () => {
+  const cr = curR(), mine = lastList.filter(x => sel.has(x.id) && ((x.uid === myId && (!cr || !cr.noDelOwn || adminOf(cr))) || adminOf(cr)));
+  if (!mine.length) { setStatus("تقدر تحذف رسايلك إنت بس."); return; }
+  if (!selDelArm) { selDelArm = true; $("selDel").textContent = "تأكيد حذف " + mine.length + "؟"; setTimeout(() => { if (selDelArm) { selDelArm = false; $("selDel").textContent = "🗑 حذف"; } }, 4000); return; }
+  Promise.all(mine.map(x => db.collection("msgs").doc(x.id).delete())).catch(() => setStatus("ماقدرتش أحذف بعض الرسايل."));
+  exitSel();
+};
+let editingId = null, reads = {}, myReads = {}, readsLoaded = false;
+function seenBy(m) { return Object.keys(reads).filter(u => u !== m.uid && ((reads[u] || {})[room] || 0) >= m.ts); }
+function markSeen(list) {
+  if (!db || !readsLoaded || !list.length || document.hidden) return;
+  const last = list[list.length - 1].ts;
+  if ((myReads[room] || 0) >= last) return;
+  myReads[room] = last;
+  db.doc("reads/" + myId).set({ ...myReads }).catch(() => {});
+}
+function cancelEdit() { if (!editingId) return; editingId = null; $("editBar").hidden = true; $("sendBtn").textContent = "إرسال"; $("inp").value = ""; }
+$("cancelEdit").onclick = cancelEdit;
+$("msheet").onclick = e => { if (e.target === $("msheet")) $("msheet").hidden = true; };
+function holdMenu(el, m) {
+  let tm;
+  const go = () => { if (selMode) return; tm = setTimeout(() => openMsg(m), 500); }, stop = () => clearTimeout(tm);
+  ["touchstart", "mousedown"].forEach(ev => el.addEventListener(ev, go, { passive: true }));
+  ["touchmove", "touchend", "touchcancel", "mouseup", "mouseleave"].forEach(ev => el.addEventListener(ev, stop, { passive: true }));
+  el.addEventListener("contextmenu", e => { e.preventDefault(); stop(); if (!selMode) openMsg(m); });
+}
+function openMsg(m) {
+  const c = $("mcard"); c.textContent = ""; const cr0 = curR(), fb = fwdBlocked();
+  const close = () => { $("msheet").hidden = true; };
+  const pill = document.createElement("div"); pill.className = "rpill";
+  Object.keys(EMO).forEach((k, i) => {
+    const bt = document.createElement("button"); bt.type = "button"; bt.title = EMO[k].n; bt.innerHTML = EMO[k].s;
+    bt.style.animationDelay = (0.05 * i) + "s"; if ((m.reacts || {})[myId] === k) bt.className = "on";
+    bt.onclick = () => { close(); toggleReact(m, k); }; pill.appendChild(bt);
+  });
+  if (!(cr0 && cr0.noReact && !adminOf(cr0))) c.appendChild(pill);
+  const pv = document.createElement("div"); pv.className = "mprev"; pv.dir = "auto";
+  pv.textContent = m.text.length > 160 ? m.text.slice(0, 160) + "…" : m.text; c.appendChild(pv);
+  const acts = document.createElement("div"); acts.className = "acts";
+  const act = (ico, label, grad, fn) => {
+    const b = document.createElement("button"); b.type = "button"; b.className = "act";
+    const i = document.createElement("i"); i.textContent = ico; i.style.background = grad;
+    const s = document.createElement("span"); s.textContent = label; b.append(i, s);
+    b.onclick = () => fn(b, s); acts.appendChild(b);
+  };
+  if (!fb) act("📋", "نسخ", "linear-gradient(135deg,#2cc4a9,#0f8f7a)", async (b, s) => {
+    const ok = await copyText(m.text); s.textContent = ok ? "تم ✓" : "فشل";
+    if (ok) setTimeout(close, 600);
+  });
+  act("☑️", "تحديد", "linear-gradient(135deg,#a07cff,#6b46e0)", () => { close(); enterSel(m.id); });
+  if (!fb) act("↪️", "توجيه", "linear-gradient(135deg,#ffb347,#e08a2f)", () => openForward([m]));
+  act("↩️", "رد", "linear-gradient(135deg,#4fc3f7,#2f90d9)", () => { close(); startReply(m); });
+  if (m.uid === myId && !writeBlock(cr0) && (!cr0 || !cr0.noEdit || adminOf(cr0))) {
+    act("✏️", "تعديل", "linear-gradient(135deg,#5aa9ff,#2f6fed)", () => {
+      close(); clearReply(); editingId = m.id; $("inp").value = m.text; $("editBar").hidden = false; $("sendBtn").textContent = "حفظ"; $("inp").focus();
+    });
+  }
+  const curRoom = rooms.find(x => x.id === room);
+  if (curRoom && adminOf(curRoom)) act("📌", "تثبيت", "linear-gradient(135deg,#f5c542,#d9a300)", () => { close(); upd({ pinned: { id: m.id, name: nameOf(m.uid), text: (m.text || "").slice(0, 120) } }); });
+  if ((m.uid === myId && (!curRoom || !curRoom.noDelOwn || adminOf(curRoom))) || (curRoom && adminOf(curRoom))) {
+    act("🗑", "حذف", "linear-gradient(135deg,#ff7a7a,#d64545)", (b, s) => {
+      if (b.dataset.ok) { close(); db.collection("msgs").doc(m.id).delete().catch(() => setStatus("ماقدرتش أحذف الرسالة.")); }
+      else { b.dataset.ok = "1"; s.textContent = "تأكيد؟"; }
+    });
+  }
+  acts.style.gridTemplateColumns = "repeat(" + (acts.children.length <= 4 ? acts.children.length : 3) + ",1fr)"; c.appendChild(acts);
+  const seen = seenOK() ? seenBy(m) : [], sw = document.createElement("div"); sw.className = "seen";
+  if (seen.length) { const st = document.createElement("div"); st.className = "stack"; seen.slice(0, 6).forEach(u => st.appendChild(avatar(profileFor(u)))); sw.appendChild(st); }
+  const tx = document.createElement("span"); tx.style.textAlign = "center";
+  tx.textContent = "👁 شوهدت بواسطة " + seen.length + (seen.length ? ": " + seen.map(u => (profileFor(u) || {}).name || "مجهول").join("، ") : "");
+  if (seenOK()) { sw.appendChild(tx); c.appendChild(sw); }
+  $("msheet").hidden = false;
+}
+
+const PAGE_URL = location.href.split("#")[0];
+const el = (t, c, x) => { const e = document.createElement(t); if (c) e.className = c; if (x !== undefined) e.textContent = x; return e; };
+const canSee = r => !(r.banned || []).includes(myId) && (r.by === myId || (r.members || []).includes(myId) || (!r.private && !r.members));
+const isOwner = r => !r.by || r.by === myId;
+const nameOf = (u, rid) => (profileFor(u, rid) || {}).name || "مجهول";
+const newCode = () => Array.from({ length: 6 }, () => "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"[Math.floor(Math.random() * 32)]).join("");
+let joinId = (location.hash.match(/^#r-([A-Za-z0-9-]+)$/) || [])[1] || null;
+const FV = () => firebase.firestore.FieldValue;
+const findByCode = code => rooms.find(x => String(x.code || "").toLowerCase() === String(code || "").trim().toLowerCase());
+async function joinRoom(r) {
+  if ((r.banned || []).includes(myId)) { const e = new Error("أنت محظور من الغرفة دي"); e.custom = true; throw e; }
+  if (!canSee(r)) {
+    $("msheet").hidden = true; closeDrawer();
+    if (r.approval) {
+      if (!(r.requests || []).includes(myId)) await db.collection("rooms").doc(r.id).update({ requests: AU(myId) });
+      setStatus("✓ اتبعت طلب الانضمام، استنى موافقة المالك"); return;
+    }
+    await db.collection("rooms").doc(r.id).update({ members: AU(myId) });
+  }
+  $("msheet").hidden = true; closeDrawer(); openRoom(r.id); setStatus("✓ انضميت لغرفة " + r.name);
+}
+function tryJoin() {
+  if (!joinId || !db) return;
+  const r = findByCode(joinId); if (!r) return;
+  joinId = null;
+  joinRoom(r).catch(e => setStatus("ماقدرتش أدخل الغرفة: " + errMsg(e)));
+}
+async function shareText(text) {
+  if (navigator.share) { try { await navigator.share({ title: "Very Chat", text }); return "shared"; } catch (e) { if (e && e.name === "AbortError") return "shared"; } }
+  return (await copyText(text)) ? "copied" : "failed";
+}
+function shareInvite(r) {
+  shareText("انضم لغرفة «" + r.name + "» على Very Chat\nالكود: " + r.code + "\nالرابط: " + PAGE_URL + "#r-" + r.code).then(x => { if (x !== "shared") setStatus(x === "copied" ? "✓ اتنسخت رسالة الدعوة" : "ماقدرتش أنسخ الدعوة"); });
+}
+function openDiscover() {
+  const c = $("mcard"); c.textContent = ""; c.append(el("div", "mprev", "🔎 اكتشاف الغرف"));
+  const box = el("div", "acts"); box.style.cssText = "display:flex;flex-direction:column;gap:10px;max-height:64vh;overflow-y:auto";
+  const inp = ph => { const i = el("input"); i.type = "text"; i.placeholder = ph; i.autocomplete = "off"; i.style.cssText = "padding:12px 14px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--ink);text-align:center;width:100%"; return i; };
+  box.append(el("div", "note", "عندك كود دعوة؟"));
+  const row = el("div"); row.style.cssText = "display:flex;gap:8px";
+  const cin = inp("اكتب الكود"); cin.maxLength = 12; cin.autocapitalize = "characters";
+  const go = el("button", "send", "انضمام"); go.style.padding = "0 18px"; const msg = el("div", "note");
+  go.onclick = async () => {
+    if (!cin.value.trim()) return; const r = findByCode(cin.value);
+    if (!r) { msg.textContent = "مفيش غرفة بالكود ده، اتأكد منه."; return; }
+    go.disabled = true; try { await joinRoom(r); } catch (e) { go.disabled = false; msg.textContent = errMsg(e); }
+  };
+  row.append(cin, go); box.append(row, msg, el("div", "note", "أو دوّر على غرفة عامة"));
+  const sin = inp("ابحث بالاسم…"), res = el("div"); res.style.cssText = "display:flex;flex-direction:column;gap:6px";
+  const draw = () => {
+    const q = sin.value.trim().toLowerCase(); res.textContent = "";
+    const list = rooms.filter(r => !r.private && !canSee(r) && !(r.banned || []).includes(myId) && (!q || String(r.name || "").toLowerCase().includes(q))).sort((a, b) => (b.members || []).length - (a.members || []).length).slice(0, 50);
+    if (!list.length) { res.append(el("div", "note", q ? "مفيش نتايج بالاسم ده" : "مفيش غرف عامة جديدة دلوقتي")); return; }
+    list.forEach(r => {
+      const b = el("button", "rrow"), t = el("div", "rt"); t.append(el("b", "", r.name), el("small", "", "👥 " + (r.members || []).length + " عضو"));
+      b.append(avatar(r.emoji || r.photo ? r : { emoji: "💬", color: "#5b6b78" }), t, el("span", "bdg", r.approval ? ((r.requests || []).includes(myId) ? "تم الطلب" : "طلب انضمام") : "انضمام"));
+      b.onclick = async () => { try { await joinRoom(r); } catch (e) { msg.textContent = errMsg(e); } };
+      res.append(b);
+    });
+  };
+  sin.oninput = draw; draw(); box.append(sin, res); c.append(box); $("msheet").hidden = false;
+}
+$("dFind").onclick = () => { closeDrawer(); openDiscover(); };
+window.addEventListener("online", () => { if (!started) start(); });
+window.addEventListener("hashchange", () => { const m = location.hash.match(/^#r-([A-Za-z0-9-]+)$/); if (m) { joinId = m[1]; tryJoin(); } });
+function copyBtn(label, text, cls) {
+  const b = el("button", cls || "ghost", label);
+  b.onclick = async () => { const ok = await copyText(text); b.textContent = ok ? "✓ تم النسخ" : "ماقدرتش أنسخ، انسخه يدوياً: " + text; if (ok) setTimeout(() => { b.textContent = label; }, 1600); };
+  return b;
+}
+function openForward(msgs) {
+  const c = $("mcard"); c.textContent = ""; const pick = new Set();
+  c.append(el("div", "mprev", "↪️ حوّل " + (msgs.length > 1 ? msgs.length + " رسائل" : "الرسالة") + " إلى…"));
+  const list = el("div", "acts"); list.style.cssText = "display:flex;flex-direction:column;gap:6px;max-height:48vh;overflow-y:auto";
+  [{ id: "general", name: "عام", emoji: "🌐", color: "#5b6b78" }, ...rooms.filter(r => canSee(r) && !writeBlock(r))].forEach(r => {
+    const b = el("button", "rrow"), ck = el("span", "ck"); ck.style.marginInlineStart = "auto";
+    b.append(avatar(r.emoji || r.photo ? r : { emoji: "💬", color: "#5b6b78" }), el("b", "", r.name), ck);
+    b.onclick = () => { if (pick.has(r.id)) pick.delete(r.id); else pick.add(r.id); ck.textContent = pick.has(r.id) ? "✓" : ""; b.classList.toggle("on", pick.has(r.id)); };
+    list.appendChild(b);
+  });
+  const go = el("button", "send", "إرسال"); go.style.padding = "13px";
+  go.onclick = async () => {
+    if (!pick.size) return; go.disabled = true; let i = 0;
+    try {
+      for (const rid of pick) for (const m of msgs) await db.collection("msgs").add({ room: rid, text: m.text, uid: myId, ts: Date.now() + (i++), fwd: m.fwd || nameOf(m.uid) });
+      $("msheet").hidden = true; if (selMode) exitSel(); setStatus("✓ تم التحويل");
+    } catch (e) { go.disabled = false; setStatus("ماقدرتش أحوّل الرسالة."); }
+  };
+  c.append(list, go); $("msheet").hidden = false;
+}
+function openMembers(r) {
+  const c = $("mcard"); c.textContent = ""; const owner = isOwner(r);
+  const mem = [...new Set([...(r.members || []), ...(r.by ? [r.by] : [])])];
+  const change = async (u, add) => { await db.collection("rooms").doc(r.id).update({ members: add ? FV().arrayUnion(u) : FV().arrayRemove(u) }); openMembers({ ...r, members: add ? [...new Set([...mem, u])] : mem.filter(y => y !== u) }); };
+  c.append(el("div", "mprev", "👥 " + r.name));
+  const box = el("div", "acts"); box.style.cssText = "display:flex;flex-direction:column;gap:6px;max-height:46vh;overflow-y:auto";
+  box.append(el("div", "note", r.private ? "🔒 غرفة خاصة: الأعضاء بس هم اللي بيشوفوها، والانضمام بالكود أو الرابط بس" : "🌐 غرفة عامة: أي حد يلاقيها في البحث وينضم"));
+  mem.forEach(u => {
+    const row = el("div", "rrow"); row.append(avatar(profileFor(u, r.id)), el("b", "", nameOf(u, r.id) + (u === r.by ? " (المنشئ)" : "")));
+    if (owner && u !== r.by && u !== myId) { const x = el("button", "ghost", "إزالة"); x.style.marginInlineStart = "auto"; x.onclick = () => change(u, false).catch(() => setStatus("ماقدرتش أشيله.")); row.append(x); }
+    box.append(row);
+  });
+  if (owner) {
+    const others = Object.keys(profiles).filter(u => !mem.includes(u));
+    box.append(el("div", "note", others.length ? "أضف صديق للغرفة:" : "كل اللي فتحوا الصفحة معاك موجودين في الغرفة"));
+    others.forEach(u => { const b = el("button", "rrow"); b.append(avatar(profiles[u]), el("b", "", "＋ " + profiles[u].name)); b.onclick = () => change(u, true).catch(() => setStatus("ماقدرتش أضيفه.")); box.append(b); });
+  }
+  c.append(box);
+  const canInvite = owner || (!r.private && canSee(r));
+  if (canInvite && r.code) {
+    c.append(el("div", "mprev", "🔑 كود الغرفة: " + r.code), copyBtn("📋 نسخ الكود", r.code), copyBtn("🔗 نسخ رابط الدعوة", PAGE_URL + "#r-" + r.code));
+    const sh = el("button", "send", "📤 مشاركة الدعوة"); sh.onclick = () => shareInvite(r); c.append(sh);
+  }
+  else if (owner) {
+    const mk = el("button", "send", "🔗 إنشاء رابط دعوة");
+    mk.onclick = async () => { const { id, ...keep } = r, code = newCode(); try { await db.collection("rooms").doc(r.id).set({ ...keep, code }); openMembers({ ...r, code }); } catch (e) { setStatus("ماقدرتش أنشئ الرابط."); } };
+    c.append(mk);
+  }
+  if (!owner && (r.members || []).includes(myId)) {
+    const lv = el("button", "ghost", "🚪 مغادرة الغرفة");
+    lv.onclick = async () => { try { await db.collection("rooms").doc(r.id).update({ members: FV().arrayRemove(myId) }); $("msheet").hidden = true; openRoom("general"); } catch (e) { setStatus("ماقدرتش أغادر."); } };
+    c.append(lv);
+  }
+  $("msheet").hidden = false;
+}
+function openInvite() {
+  const c = $("mcard"); c.textContent = ""; c.append(el("div", "mprev", "👋 دعوة صديق للتطبيق"));
+  const box = el("div", "acts"); box.style.cssText = "display:flex;flex-direction:column;gap:10px;line-height:1.7;font-size:14px";
+  ["١. ابعت رابط التطبيق لصاحبك (زرار المشاركة تحت).", "٢. يفتحه من موبايله ويضغط «إضافة إلى الشاشة الرئيسية» علشان يبقى تطبيق.", "٣. لو معاك كود غرفة: يكتبه من 🔎 اكتشاف الغرف. أو ابعتله رابط الغرفة من أعضاء الغرفة ← مشاركة الدعوة."].forEach(t => box.append(el("div", "", t)));
+  const sh = el("button", "send", "📤 مشاركة التطبيق");
+  sh.onclick = async () => { const x = await shareText("جرّب Very Chat 💬\n" + PAGE_URL); if (x !== "shared") sh.textContent = x === "copied" ? "✓ اتنسخ الرابط" : "فشل النسخ"; };
+  c.append(box, sh, copyBtn("🔗 نسخ رابط التطبيق", PAGE_URL));
+  $("msheet").hidden = false;
+}
+$("dInvite").onclick = () => { closeDrawer(); openInvite(); };
+$("selFwd").onclick = () => openForward(lastList.filter(x => sel.has(x.id)));
+
+let recent = [], firstRecent = true, replyTo = null; const T0 = Date.now();
+function errMsg(e) {
+  if (e && e.custom) return e.message;
+  const c = (e && e.code) || "";
+  if (c === "permission-denied") return "مفيش صلاحية. اتأكد من قواعد Firebase (Rules).";
+  if (c === "unavailable") return "السيرفر مش متاح دلوقتي، اتأكد من النت.";
+  if (c === "failed-precondition") return "فيه إعداد ناقص في Firebase: " + ((e && e.message) || "");
+  return "حصلت مشكلة: " + ((e && e.message) || c || "غير معروفة");
+}
+function netUI() { $("net").hidden = navigator.onLine !== false; }
+window.addEventListener("online", netUI); window.addEventListener("offline", netUI);
+function unreadOf(rid) { return readsLoaded ? recent.filter(m => m.room === rid && m.uid !== myId && m.ts > (myReads[rid] || 0)).length : 0; }
+function updateTotal() {
+  let n = 0; ["general", ...rooms.filter(canSee).map(r => r.id)].forEach(id => { n += unreadOf(id); });
+  $("menuBtn").classList.toggle("un", n > 0); document.title = (n ? "(" + n + ") " : "") + "Very Chat";
+}
+async function pushLocal(title, body, tag) {
+  try { const reg = await navigator.serviceWorker.getRegistration(); if (reg) { await reg.showNotification(title, { body, tag, icon: "icon-192.png" }); return; } } catch (e) {}
+  try { new Notification(title, { body, tag }); } catch (e) {}
+}
+function notifyMsg(m) {
+  if (m.uid === myId || !document.hidden || !("Notification" in window) || Notification.permission !== "granted") return;
+  if (m.room !== "general" && !rooms.some(r => r.id === m.room && canSee(r))) return;
+  pushLocal(m.room === "general" ? "عام" : roomName(m.room), nameOf(m.uid, m.room) + ": " + (m.text || ""), m.room);
+}
+function linkify(node, text) {
+  String(text || "").split(/(https?:\/\/[^\s]+)/g).forEach(part => {
+    if (/^https?:\/\//.test(part)) {
+      const a = document.createElement("a"); a.href = part; a.textContent = part; a.target = "_blank"; a.rel = "noopener noreferrer";
+      a.style.cssText = "color:inherit;text-decoration:underline"; a.addEventListener("click", e => e.stopPropagation()); node.appendChild(a);
+    } else if (part) node.appendChild(document.createTextNode(part));
+  });
+}
+function startReply(m) {
+  cancelEdit(); replyTo = { name: nameOf(m.uid), text: (m.text || "").slice(0, 80) };
+  $("replyTxt").textContent = "↩️ رد على " + replyTo.name + ": " + replyTo.text; $("replyBar").hidden = false; $("inp").focus();
+}
+function clearReply() { replyTo = null; $("replyBar").hidden = true; }
+$("cancelReply").onclick = clearReply;
+const gName = () => { try { return (firebase.auth().currentUser.displayName || "").slice(0, 20); } catch (e) { return ""; } };
+function accUI() {
+  if (!(window.firebase && firebase.auth && firebase.auth().currentUser)) return;
+  const u = firebase.auth().currentUser;
+  $("accNote").textContent = u.isAnonymous ? "حسابك مؤقت على الجهاز ده. اربطه بجوجل علشان تدخل بنفس الحساب والرسايل من أي جهاز." : "مربوط بجوجل: " + (u.email || "");
+  $("accBtn").textContent = u.isAnonymous ? "🔐 ربط الحساب بجوجل" : "تسجيل الخروج";
+}
+$("accBtn").onclick = async () => {
+  const u = firebase.auth().currentUser, prov = new firebase.auth.GoogleAuthProvider();
+  try {
+    if (u.isAnonymous) {
+      try { await u.linkWithPopup(prov); }
+      catch (e) { if (e.code === "auth/credential-already-in-use" && e.credential) await firebase.auth().signInWithCredential(e.credential); else throw e; }
+    } else await firebase.auth().signOut();
+    location.reload();
+  } catch (e) { perr("ماقدرتش أكمل (" + (e.code || e.message) + "). اتأكد إن تسجيل جوجل متفعل في Firebase."); }
+};
+$("dNotif").onclick = async () => { try { await Notification.requestPermission(); } catch (e) {} $("dNotif").hidden = !("Notification" in window) || Notification.permission !== "default"; };
+function registerSW() { if ("serviceWorker" in navigator && /^https?:/.test(location.protocol)) navigator.serviceWorker.register("sw.js").catch(() => {}); }
+
+const curR = () => rooms.find(x => x.id === room);
+const ownerOf = r => !!r && r.by === myId;
+const adminOf = r => !!r && (r.by === myId || (r.admins || []).includes(myId));
+const AU = v => FV().arrayUnion(v), AR = v => FV().arrayRemove(v);
+const lastSent = {}; let infoId = null;
+const LINK_RE = /(https?:\/\/|www\.)/i;
+const fwdBlocked = () => { const r = curR(); return !!r && !!r.noFwd && !adminOf(r); };
+const seenOK = () => { const r = curR(); return !r || !r.hideSeen || adminOf(r); };
+function writeBlock(r) {
+  if (!r) return "";
+  if ((r.banned || []).includes(myId)) return "أنت محظور من الغرفة دي";
+  if ((r.muted || []).includes(myId) || ((r.mutedUntil || {})[myId] || 0) > Date.now()) return "المالك كتمك في الغرفة دي";
+  if (r.onlyAdmins && !adminOf(r)) return "الكتابة للمشرفين بس في الغرفة دي";
+  return "";
+}
+function updateComposer() {
+  const why = writeBlock(curR());
+  $("inp").disabled = !!why; $("sendBtn").disabled = !!why || !db;
+  $("inp").placeholder = why ? "🔒 " + why : "اكتب رسالة…";
+}
+function renderPin() {
+  const r = curR(), p = r && r.pinned, box = $("pin"); box.textContent = "";
+  box.hidden = !p; if (!p) return;
+  const t = el("span", "", "📌 " + (p.name || "") + ": " + (p.text || "")); t.dir = "auto"; box.append(t);
+  if (adminOf(r)) { const x = el("button", "", "✕"); x.onclick = () => upd({ pinned: FV().delete() }); box.append(x); }
+}
+async function upd(patch, rid) { try { await db.collection("rooms").doc(rid || room).update(patch); } catch (e) { setStatus(errMsg(e)); } }
+function swRow(title, desc, on, fn) {
+  const r = el("div", "ri-row"), t = el("div"); t.append(el("b", "", title), el("small", "", desc));
+  const sw = el("button", "sw" + (on ? " on" : "")); sw.type = "button"; sw.setAttribute("aria-pressed", on ? "true" : "false"); sw.onclick = () => fn(!on); r.append(t, sw); return r;
+}
+function openInfo(id) { if (!id || id === "general") return; infoId = id; $("rinfo").hidden = false; renderInfo(); }
+function closeInfo() { infoId = null; $("rinfo").hidden = true; }
+function addFriend(r, mem) {
+  const c = $("mcard"); c.textContent = ""; c.append(el("div", "mprev", "＋ إضافة صديق"));
+  const box = el("div", "acts"); box.style.cssText = "display:flex;flex-direction:column;gap:6px;max-height:55vh;overflow-y:auto";
+  const others = Object.keys(profiles).filter(u => !mem.includes(u) && !(r.banned || []).includes(u));
+  if (!others.length) box.append(el("div", "note", "كل اللي فتحوا التطبيق موجودين في الغرفة"));
+  others.forEach(u => { const b = el("button", "rrow"); b.append(avatar(profiles[u]), el("b", "", profiles[u].name)); b.onclick = () => { $("msheet").hidden = true; upd({ members: AU(u) }, r.id); }; box.append(b); });
+  c.append(box); $("msheet").hidden = false;
+}
+function memberMenu(r, u) {
+  const c = $("mcard"); c.textContent = ""; const close = () => { $("msheet").hidden = true; };
+  const head = el("div", "mprev"); head.style.cssText += ";display:flex;align-items:center;gap:10px";
+  const a = avatar(profileFor(u, r.id)); a.style.cssText += ";width:40px;height:40px"; head.append(a, el("b", "", nameOf(u, r.id))); c.append(head);
+  const acts = el("div", "acts"), isAdm = (r.admins || []).includes(u), isMut = (r.muted || []).includes(u) || ((r.mutedUntil || {})[u] || 0) > Date.now();
+  const act = (ico, lb, grad, fn) => { const b = el("button", "act"); b.type = "button"; const i = el("i", "", ico); i.style.background = grad; b.append(i, el("span", "", lb)); b.onclick = () => { close(); fn(); }; acts.append(b); };
+  const gone = extra => ({ members: AR(u), ...(isMut ? { muted: AR(u) } : {}), ...(isAdm ? { admins: AR(u) } : {}), ...extra });
+  if (ownerOf(r)) act("🛡️", isAdm ? "إلغاء الإشراف" : "ترقية لمشرف", "linear-gradient(135deg,#5aa9ff,#2f6fed)", () => upd({ admins: isAdm ? AR(u) : AU(u) }, r.id));
+  act("🔇", isMut ? "إلغاء الكتم" : "كتم", "linear-gradient(135deg,#a07cff,#6b46e0)", () => upd(isMut ? { muted: AR(u), ["mutedUntil." + u]: FV().delete() } : { muted: AU(u) }, r.id));
+  if (!isMut) act("⏱️", "كتم ساعة", "linear-gradient(135deg,#8f7cff,#5b46e0)", () => upd({ ["mutedUntil." + u]: Date.now() + 3600000 }, r.id));
+  act("🧽", "مسح رسايله", "linear-gradient(135deg,#6bd0c0,#2a9d8f)", async () => { try { const q = await db.collection("msgs").where("room", "==", r.id).where("uid", "==", u).get(); await Promise.allSettled(q.docs.map(d => d.ref.delete())); setStatus("✓ اتمسحت رسايل " + nameOf(u, r.id)); } catch (e) { setStatus(errMsg(e)); } });
+  act("🚪", "طرد", "linear-gradient(135deg,#ffb347,#e08a2f)", () => upd(gone({}), r.id));
+  act("⛔", "حظر", "linear-gradient(135deg,#ff7a7a,#d64545)", () => upd(gone({ banned: AU(u) }), r.id));
+  acts.style.gridTemplateColumns = "repeat(" + (acts.children.length <= 4 ? acts.children.length : 3) + ",1fr)"; c.append(acts); $("msheet").hidden = false;
+}
+function renderInfo() {
+  const r = rooms.find(x => x.id === infoId), box = $("riBody");
+  if (!r || !canSee(r)) { closeInfo(); return; }
+  box.textContent = "";
+  const owner = ownerOf(r), admin = adminOf(r), mem = [...new Set([...(r.members || []), ...(r.by ? [r.by] : [])])];
+  const card = title => { const c = el("div", "ri-card"); if (title) c.append(el("h3", "", title)); box.append(c); return c; };
+  const hero = el("div", "ri-hero"); hero.style.background = "linear-gradient(160deg," + (r.color || "#5b6b78") + ",#0d1413)";
+  const av = avatar(r.emoji || r.photo ? r : { emoji: "💬", color: "#5b6b78" }); av.classList.add("ri-av");
+  hero.append(av, el("h2", "", r.name)); if (r.desc) hero.append(el("p", "", r.desc));
+  const chips = el("div", "ri-chips"), canCode = !!r.code && (admin || !r.lockInvite);
+  const chipCopy = (lb, val, done) => { const b = el("button", "ri-chip", lb); b.onclick = async () => { b.textContent = (await copyText(val)) ? done : "ماقدرتش أنسخ"; setTimeout(() => { b.textContent = lb; }, 1500); }; return b; };
+  if (canCode) chips.append(chipCopy("🔑 " + r.code, r.code, "✓ اتنسخ الكود"), chipCopy("🔗 نسخ الرابط", PAGE_URL + "#r-" + r.code, "✓ اتنسخ الرابط"));
+  chips.append(el("span", "ri-chip", "👥 " + mem.length), el("span", "ri-chip", r.private ? "🔒 خاصة" : "🌐 عامة")); hero.append(chips); box.append(hero);
+  const q = el("div", "ri-quick"), qa = (ico, lb, fn) => { const b = el("button", "ri-q"); b.append(el("i", "", ico), el("span", "", lb)); b.onclick = fn; q.append(b); };
+  if (canCode && (admin || !r.private)) qa("📤", "دعوة", () => shareInvite(r));
+  qa("🎭", "شخصيتي", () => openSheet("persona", r.id));
+  if (owner) qa("✏️", "تعديل", () => openSheet("editroom", r.id));
+  box.append(q);
+  if (owner) {
+    const S = (c, t, d, k) => c.append(swRow(t, d, !!r[k], v => upd({ [k]: v }, r.id)));
+    const c = card("🔐 الخصوصية والدعوة");
+    S(c, "🔒 غرفة خاصة", "مش بتظهر في البحث، بالكود أو الرابط بس", "private");
+    S(c, "✋ الانضمام بموافقتك", "اللي عايز ينضم يبعت طلب وإنت توافق", "approval");
+    S(c, "🙈 إخفاء الكود والرابط عن الأعضاء", "المشرفين بس يشوفوا الكود ويدعوا", "lockInvite");
+    S(c, "👥 إخفاء قائمة الأعضاء", "الأعضاء العاديين مايشوفوش مين في الغرفة", "hideMembers");
+    S(c, "👁 إخفاء «شوهدت بواسطة»", "المشرفين بس يشوفوا مين قرا الرسالة", "hideSeen");
+    S(c, "🚫 منع النسخ والتحويل", "الأعضاء مايقدروش ينسخوا أو يحوّلوا الرسايل", "noFwd");
+    const rg = el("button", "ghost", r.code ? "🔄 تجديد كود ورابط الدعوة (القديم يبطل)" : "🔗 إنشاء كود ورابط دعوة");
+    rg.onclick = () => { if (r.code && !rg.dataset.ok) { rg.dataset.ok = "1"; rg.textContent = "اضغط تاني للتأكيد"; return; } upd({ code: newCode() }, r.id); };
+    c.append(rg);
+    const c2 = card("💬 التحكم في المحادثة");
+    S(c2, "✍️ الكتابة للمشرفين فقط", "الأعضاء يقروا بس ومايقدروش يكتبوا", "onlyAdmins");
+    S(c2, "🔗 منع الروابط", "الأعضاء مايقدروش يبعتوا روابط", "noLinks");
+    S(c2, "😀 إيقاف التفاعلات", "مفيش تفاعلات على الرسايل", "noReact");
+    S(c2, "✏️ منع تعديل الرسايل", "الأعضاء مايعدّلوش رسايلهم بعد الإرسال", "noEdit");
+    S(c2, "🗑 منع حذف الأعضاء لرسايلهم", "المشرفين بس يحذفوا", "noDelOwn");
+    const sl = el("div", "ri-row"), t = el("div"); t.append(el("b", "", "🐢 الوضع البطيء"), el("small", "", "الفاصل بين رسالة ورسالة للأعضاء"));
+    const seg = el("div", "seg"); [[0, "بدون"], [10, "١٠ث"], [30, "٣٠ث"], [60, "دقيقة"], [300, "٥د"]].forEach(([v, lb]) => { const b = el("button", (r.slow || 0) === v ? "on" : "", lb); b.onclick = () => upd({ slow: v }, r.id); seg.append(b); });
+    sl.append(t, seg); c2.append(sl);
+  }
+  const reqs = r.requests || [];
+  if (admin && reqs.length) {
+    const c = card("✋ طلبات الانضمام (" + reqs.length + ")");
+    reqs.forEach(u => {
+      const row = el("div", "ri-mem"), ok = el("button", "ri-ok", "✓"), no = el("button", "ri-no", "✕");
+      ok.onclick = () => upd({ requests: AR(u), members: AU(u) }, r.id); no.onclick = () => upd({ requests: AR(u) }, r.id);
+      row.append(avatar(profileFor(u)), el("b", "", nameOf(u)), ok, no); c.append(row);
+    });
+  }
+  const mc = card("👥 الأعضاء (" + mem.length + ")");
+  if (admin) { const add = el("button", "ghost", "＋ إضافة صديق"); add.onclick = () => addFriend(r, mem); mc.append(add); }
+  if (!admin && r.hideMembers) mc.append(el("div", "note", "🙈 المالك أخفى قائمة الأعضاء"));
+  (admin || !r.hideMembers ? mem : [myId]).forEach(u => {
+    const row = el("div", "ri-mem"), nm = el("b", "", nameOf(u, r.id) + (u === myId ? " (أنت)" : ""));
+    const tag = (u === r.by ? " 👑" : "") + ((r.admins || []).includes(u) ? " 🛡️" : "") + ((r.muted || []).includes(u) || ((r.mutedUntil || {})[u] || 0) > Date.now() ? " 🔇" : "");
+    row.append(avatar(profileFor(u, r.id)), nm, el("span", "ri-tag", tag));
+    if (u !== myId && u !== r.by && (owner || (admin && !(r.admins || []).includes(u)))) { const d = el("button", "ri-dots", "⋮"); d.onclick = () => memberMenu(r, u); row.append(d); }
+    mc.append(row);
+  });
+  if (admin && (r.banned || []).length) {
+    const c = card("⛔ المحظورون");
+    r.banned.forEach(u => { const row = el("div", "ri-mem"), b = el("button", "ghost", "إلغاء الحظر"); b.onclick = () => upd({ banned: AR(u) }, r.id); row.append(avatar(profileFor(u)), el("b", "", nameOf(u)), b); c.append(row); });
+  }
+  const dc = card();
+  if (!owner && (r.members || []).includes(myId)) {
+    const lv = el("button", "ri-danger", "🚪 مغادرة الغرفة");
+    lv.onclick = async () => { try { await db.collection("rooms").doc(r.id).update({ members: AR(myId) }); closeInfo(); openRoom("general"); } catch (e) { setStatus(errMsg(e)); } };
+    dc.append(lv);
+  }
+  if (owner) {
+    const cl = el("button", "ri-danger", "🧹 مسح كل الرسايل");
+    cl.onclick = async () => { if (!cl.dataset.ok) { cl.dataset.ok = "1"; cl.textContent = "اضغط تاني للتأكيد"; return; } cl.disabled = true; try { const qq = await db.collection("msgs").where("room", "==", r.id).get(); await Promise.allSettled(qq.docs.map(d => d.ref.delete())); cl.textContent = "✓ اتمسحت"; } catch (e) { setStatus(errMsg(e)); } };
+    dc.append(cl);
+    const dl = el("button", "ri-danger", "🗑 حذف الغرفة");
+    dl.onclick = async () => {
+      if (!dl.dataset.ok) { dl.dataset.ok = "1"; dl.textContent = "اضغط تاني للتأكيد (هتتمسح الرسايل كمان)"; return; }
+      try {
+        const qq = await db.collection("msgs").where("room", "==", r.id).get();
+        await Promise.allSettled(qq.docs.map(d => db.collection("msgs").doc(d.id).delete()));
+        await db.collection("rooms").doc(r.id).delete(); closeInfo(); openRoom("general");
+      } catch (e) { setStatus(errMsg(e)); }
+    };
+    dc.append(dl);
+  }
+  if (!dc.children.length) dc.remove();
+}
+$("riBack").onclick = closeInfo;
+function openRoomMenu(r) {
+  const c = $("mcard"); c.textContent = ""; const close = () => { $("msheet").hidden = true; };
+  const head = document.createElement("div"); head.className = "mprev"; head.style.cssText += ";display:flex;align-items:center;gap:10px";
+  const ic = avatar(r.emoji || r.photo ? r : { emoji: "💬", color: "#5b6b78" }); ic.style.cssText += ";width:42px;height:42px;font-size:22px";
+  const nm = document.createElement("span"); nm.textContent = r.name; nm.style.fontWeight = "700"; head.append(ic, nm); c.appendChild(head);
+  const acts = document.createElement("div"); acts.className = "acts";
+  const act = (ico, label, grad, fn) => {
+    const b = document.createElement("button"); b.type = "button"; b.className = "act";
+    const i = document.createElement("i"); i.textContent = ico; i.style.background = grad;
+    const sp = document.createElement("span"); sp.textContent = label; b.append(i, sp); b.onclick = () => fn(b, sp); acts.appendChild(b);
+  };
+  act("⚙️", "الإعدادات", "linear-gradient(135deg,#a07cff,#6b46e0)", () => { $("msheet").hidden = true; closeDrawer(); openRoom(r.id); openInfo(r.id); });
+  if (isOwner(r)) {
+  act("✏️", "تعديل الغرفة", "linear-gradient(135deg,#5aa9ff,#2f6fed)", () => { close(); closeDrawer(); openSheet("editroom", r.id); });
+  act("🗑", "حذف الغرفة", "linear-gradient(135deg,#ff7a7a,#d64545)", async (b, sp) => {
+    if (!b.dataset.ok) { b.dataset.ok = "1"; sp.textContent = "تأكيد؟"; return; }
+    close();
+    try {
+      const q = await db.collection("msgs").where("room", "==", r.id).get();
+      await Promise.allSettled(q.docs.map(d => db.collection("msgs").doc(d.id).delete()));
+      await db.collection("rooms").doc(r.id).delete();
+      if (room === r.id) openRoom("general");
+    } catch (e) { setStatus("ماقدرتش أحذف الغرفة."); }
+  });
+  }
+  acts.style.gridTemplateColumns = "repeat(" + (acts.children.length <= 4 ? acts.children.length : 3) + ",1fr)";
+  c.appendChild(acts); $("msheet").hidden = false;
+}
+
+function openRoom(id) {
+  if (!db) { setStatus("التطبيق لسه مش متصل بـ Firebase: حط إعدادات FIREBASE_CONFIG في أول الملف وافتح الصفحة من رابط مستضاف (مش من المعاينة)."); return; }
+  clearReply(); selMode = false; sel.clear(); $("selBar").hidden = true;
+  cancelEdit();
+  room = id; creating = false; confirmDel = false; $("inp").placeholder = "اكتب رسالة…"; buildChips(); refreshMe();
+  if (unsub) unsub();
+  setStatus("جاري تحميل الرسايل…");
+  const timer = setTimeout(() => setStatus("مش قادر أوصل للرسايل دلوقتي، ممكن النت ضعيف."), 10000);
+  unsub = db.collection("msgs").where("room", "==", id).onSnapshot(
+    s => { clearTimeout(timer); render(s.docs.map(d => ({ ...d.data(), id: d.id })).sort((a, b) => (a.ts - b.ts) || a.id.localeCompare(b.id)).slice(-150)); },
+    e => { clearTimeout(timer); setStatus(errMsg(e)); });
+  maybePersona();
+}
+
+// ───── البروفايل ─────
+function perr(t) { $("pErr").textContent = t; $("pErr").hidden = !t; }
+function paintDraft() {
+  const pv = $("pvAv"); pv.replaceChildren(...avatar(draft).childNodes); pv.style.background = draft.photo ? "var(--line)" : draft.color;
+  document.querySelectorAll("#emojis .opt").forEach(o => o.classList.toggle("on", o.textContent === draft.emoji));
+  document.querySelectorAll("#colors .opt").forEach(o => o.classList.toggle("on", o.dataset.c === draft.color));
+  $("rmPhoto").hidden = !draft.photo;
+}
+let sheetMode = "me", sheetRoom = null, rprofiles = {}, rpLoaded = false;
+function roomName(id) { const r = rooms.find(x => x.id === id); return r ? r.name : "الغرفة"; }
+function profileFor(uid, rid) { rid = rid || room; const rp = (rprofiles[uid] || {})[rid]; return (rid !== "general" && rp && !rp.skip && rp) || profiles[uid]; }
+function refreshMe() {
+  const p = profileFor(myId); setAvatar($("meAv"), p);
+  const r = room === "general" ? { name: "عام", emoji: "🌐", color: "#5b6b78" } : (rooms.find(x => x.id === room) || { name: "غرفة" });
+  const box = $("hRoom"); box.textContent = "";
+  const ra = avatar(r.id === undefined && room === "general" ? r : (r.emoji || r.photo ? r : { emoji: "💬", color: "#5b6b78" }));
+  const t = document.createElement("div"); const nm = document.createElement("b"); nm.textContent = r.name;
+  const sb = document.createElement("small"); sb.textContent = "أنت: " + ((p && p.name) || "—") + (ownerOf(r) ? "  👑" : adminOf(r) ? "  🛡️" : "") + (room === "general" ? "  ✏️" : "  ⚙️");
+  t.append(nm, sb); box.append(ra, t); renderPin(); updateComposer();
+}
+function openSheet(mode, rid) {
+  sheetMode = mode; sheetRoom = rid || null;
+  const g = profiles[myId] || {};
+  const base = mode === "me" ? g : mode === "persona" ? ((rprofiles[myId] || {})[rid] || {}) : mode === "editroom" ? (rooms.find(x => x.id === rid) || {}) : {};
+  const src = (mode === "persona" && (!base.name || base.skip)) ? g : base;
+  draft = { name: mode === "room" ? "" : (src.name || (mode === "me" ? gName() : "")), emoji: src.emoji || (mode === "room" || mode === "editroom" ? "💬" : "😀"), color: src.color || COLORS[0], photo: src.photo || "" };
+  $("shTitle").textContent = mode === "me" ? "بروفايلك" : mode === "room" ? "غرفة جديدة" : mode === "editroom" ? "تعديل الغرفة" : "شخصيتك في غرفة " + roomName(rid);
+  $("nameIn").placeholder = mode === "room" || mode === "editroom" ? "اسم الغرفة" : mode === "persona" ? "اسمك في الغرفة دي" : "اسمك";
+  $("nameIn").maxLength = mode === "room" || mode === "editroom" ? 30 : 20;
+  $("saveBtn").textContent = mode === "room" ? "إنشاء الغرفة" : mode === "editroom" ? "حفظ التعديلات" : "حفظ";
+  $("skipBtn").hidden = mode !== "persona"; $("cancelSheet").hidden = (mode === "me" && !g.name);
+  $("accSec").hidden = mode !== "me"; if (mode === "me") accUI();
+  $("privRow").hidden = !(mode === "room" || mode === "editroom"); $("descIn").hidden = !(mode === "room" || mode === "editroom"); $("descIn").value = mode === "editroom" ? ((src && src.desc) || "") : ""; $("privCk").checked = !!(src && src.private);
+  $("nameIn").value = draft.name; $("sheet").hidden = false; perr(""); paintDraft();
+}
+function openProfile() { openSheet("me"); }
+function maybePersona() {}
+EMOJIS.forEach(e => { const b = document.createElement("button"); b.className = "opt"; b.textContent = e; b.onclick = () => { draft.emoji = e; draft.photo = ""; paintDraft(); }; $("emojis").appendChild(b); });
+COLORS.forEach(c => { const b = document.createElement("button"); b.className = "opt col"; b.dataset.c = c; b.style.background = c; b.onclick = () => { draft.color = c; paintDraft(); }; $("colors").appendChild(b); });
+$("rmPhoto").onclick = () => { draft.photo = ""; paintDraft(); };
+Object.keys(EMO).forEach(k => {
+  const b = document.createElement("button"); b.className = "opt sv"; b.title = EMO[k].n; b.innerHTML = EMO[k].s;
+  b.onclick = () => { draft.photo = "data:image/svg+xml;utf8," + encodeURIComponent(EMO[k].s.replace("<svg ", "<svg xmlns='http://www.w3.org/2000/svg' ")); paintDraft(); };
+  $("shalla").appendChild(b);
+});
+$("file").onchange = e => {
+  const f = e.target.files[0]; if (!f) return;
+  const fr = new FileReader();
+  fr.onload = () => {
+    const img = new Image();
+    img.onload = () => {
+      const s = Math.min(img.width, img.height), o = Math.min(s, 360), c = document.createElement("canvas"); c.width = c.height = o;
+      c.getContext("2d").drawImage(img, (img.width - s) / 2, (img.height - s) / 2, s, s, 0, 0, o, o);
+      draft.photo = c.toDataURL("image/jpeg", 0.85); paintDraft(); perr("✓ الصورة جاهزة، اضغط حفظ");
+    };
+    img.onerror = () => perr("الصورة دي مش مدعومة، جرّب صورة تانية (JPG أو PNG).");
+    img.src = fr.result;
+  };
+  fr.onerror = () => perr("ماقدرتش أقرأ الصورة، جرّب صورة تانية.");
+  perr("⏳ جاري معالجة الصورة…");
+  fr.readAsDataURL(f); e.target.value = "";
+};
+$("saveBtn").onclick = async () => {
+  const name = $("nameIn").value.trim(); if (!name) { $("nameIn").focus(); return; }
+  const data = { name, emoji: draft.emoji, color: draft.color, photo: draft.photo };
+  try {
+    if (sheetMode === "me") await db.doc("profiles/" + myId).set(data);
+    else if (sheetMode === "persona") await db.doc("rprofiles/" + myId).set({ ...(rprofiles[myId] || {}), [sheetRoom]: data });
+    else if (sheetMode === "editroom") {
+      const cur0 = rooms.find(x => x.id === sheetRoom) || {}, patch = { ...data, name: name.slice(0, 30), private: $("privCk").checked, desc: $("descIn").value.trim() };
+      if (!cur0.by) { patch.by = myId; patch.members = [...new Set([...(cur0.members || []), myId])]; }
+      await db.collection("rooms").doc(sheetRoom).update(patch);
+    }
+    else { const priv = $("privCk").checked, nr = { ...data, name: name.slice(0, 30), by: myId, private: priv, members: [myId], code: newCode(), desc: $("descIn").value.trim() }; const r = await db.collection("rooms").add(nr); $("sheet").hidden = true; rooms = [...rooms, { ...nr, id: r.id }]; buildChips(); openRoom(r.id); return; }
+    $("sheet").hidden = true;
+  } catch (e) { perr("ماقدرتش أحفظ: " + errMsg(e) + (e && e.code ? " [" + e.code + "]" : "")); }
+};
+$("skipBtn").onclick = async () => {
+  try { await db.doc("rprofiles/" + myId).set({ ...(rprofiles[myId] || {}), [sheetRoom]: { skip: true } }); } catch (e) {}
+  $("sheet").hidden = true;
+};
+$("cancelSheet").onclick = () => { $("sheet").hidden = true; };
+$("meBtn").onclick = () => { if (db) { if (room === "general") openSheet("me"); else openSheet("persona", room); } };
+
+// ───── الإرسال ─────
+$("f").onsubmit = async e => {
+  e.preventDefault();
+  const text = $("inp").value.trim(); if (!text || !db) return;
+  { const c0 = curR(), w0 = writeBlock(c0) || (c0 && c0.noLinks && !adminOf(c0) && LINK_RE.test(text) ? "🔗 المالك منع الروابط في الغرفة دي" : ""); if (w0) { setStatus(w0); return; } }
+  if (!editingId) {
+    const cr = curR();
+    const wait = cr && !adminOf(cr) && cr.slow ? cr.slow - (Date.now() - (lastSent[room] || 0)) / 1000 : 0;
+    if (wait > 0) { setStatus("🐢 وضع بطيء: استنى " + Math.ceil(wait) + " ثانية"); return; }
+    lastSent[room] = Date.now();
+  }
+  $("inp").value = "";
+  if (editingId) {
+    const id = editingId; cancelEdit();
+    try { await db.collection("msgs").doc(id).update({ text, edited: true }); }
+    catch (err) { setStatus("ماقدرتش أعدّل الرسالة."); }
+    return;
+  }
+  const doc = { room, text, uid: myId, ts: Date.now() }; if (replyTo) { doc.reply = replyTo; clearReply(); }
+  try { await db.collection("msgs").add(doc); }
+  catch (err) { setStatus("الرسالة ماتبعتتش. غالباً مفيش صلاحية كتابة، اتأكد من النت ومن قواعد Firebase."); }
+};
+
+const lerr = t => { $("lErr").textContent = t; $("lErr").hidden = !t; };
+const authMsg = e => ({ "auth/unauthorized-domain": "الدومين ده مش مضاف: Firebase ← Authentication ← Settings ← Authorized domains", "auth/operation-not-allowed": "فعّل الطريقة دي من Firebase ← Authentication ← Sign-in method", "auth/network-request-failed": "مفيش نت، جرّب تاني", "auth/popup-closed-by-user": "", "auth/cancelled-popup-request": "", "auth/operation-not-supported-in-this-environment": "افتح الصفحة من المتصفح بلينك http/https، مش من ملف على الجهاز" })[e.code] ?? ("حصلت مشكلة: " + (e.code || e.message));
+function askLogin() {
+  return new Promise(res => {
+    $("lLogo").innerHTML = logo("lgL"); $("login").hidden = false;
+    const done = u => { $("login").hidden = true; res(u); }, busy = v => { $("gBtn").disabled = $("guestBtn").disabled = v; };
+    $("gBtn").onclick = async () => {
+      busy(true); lerr("");
+      try { done((await firebase.auth().signInWithPopup(new firebase.auth.GoogleAuthProvider())).user); }
+      catch (e) {
+        if (e.code === "auth/popup-blocked") { try { await firebase.auth().signInWithRedirect(new firebase.auth.GoogleAuthProvider()); return; } catch (e2) { e = e2; } }
+        lerr(authMsg(e)); busy(false);
+      }
+    };
+    $("guestBtn").onclick = async () => { busy(true); lerr(""); try { done((await firebase.auth().signInAnonymously()).user); } catch (e) { lerr(authMsg(e)); busy(false); } };
+  });
+}
+function showPic(av, name) {
+  const pic = $("lbPic"); pic.textContent = ""; pic.style.background = "";
+  const im = av.querySelector("img");
+  if (im) { const i = new Image(); i.src = im.src; i.alt = ""; i.style.cssText = "width:100%;height:100%;object-fit:cover"; pic.append(i); }
+  else { pic.style.background = av.style.background || "var(--line)"; pic.textContent = av.textContent; }
+  $("lbName").textContent = name || ""; $("lb").hidden = false;
+}
+$("lb").onclick = () => { $("lb").hidden = true; };
+document.addEventListener("click", e => {
+  const av = e.target.closest(".row .av, .ri-mem .av, .ri-av"); if (!av || selMode) return;
+  const nm = (av.closest(".ri-mem") && av.closest(".ri-mem").querySelector("b")) || (av.closest(".row") && av.closest(".row").querySelector(".n")) || document.querySelector(".ri-hero h2");
+  showPic(av, nm ? nm.textContent : "");
+});
+let started = false, starting = false;
+async function start() {
+  if (started || starting) return; starting = true;
+  if (!FIREBASE_CONFIG.apiKey || FIREBASE_CONFIG.apiKey.startsWith("PASTE")) { setStatus("لازم تحط إعدادات Firebase في أول ملف الصفحة (FIREBASE_CONFIG)."); $("sendBtn").disabled = true; return; }
+  try {
+    if (!(firebase.apps || []).length) firebase.initializeApp(FIREBASE_CONFIG);
+    const au = firebase.auth(); au.getRedirectResult().catch(e => lerr(authMsg(e)));
+    let user = await new Promise(res => { const un = au.onAuthStateChanged(u => { un(); res(u); }); });
+    if (!user) user = await askLogin();
+    myId = user.uid; db = firebase.firestore(); try { await db.enablePersistence({ synchronizeTabs: true }); } catch (e) {}
+  } catch (e) { setStatus(e.code === "auth/operation-not-allowed" || e.code === "auth/admin-restricted-operation" ? "فعّل تسجيل الدخول Anonymous من Firebase ← Authentication ← Sign-in method." : "ماقدرتش أتصل بـ Firebase: " + (e.code || e.message)); $("sendBtn").disabled = true; starting = false; setTimeout(() => { if (!started) start(); }, 6000); return; }
+  started = true; starting = false; $("sendBtn").disabled = false;
+  db.collection("profiles").onSnapshot(s => {
+    profiles = {}; s.docs.forEach(d => profiles[d.id] = d.data());
+    refreshMe();
+    if (!loaded) { loaded = true; if (!profiles[myId]) openProfile(); }
+    if (lastList.length) render(lastList);
+  }, () => { loaded = true; });
+  db.collection("rprofiles").onSnapshot(s => {
+    rprofiles = {}; s.docs.forEach(d => { rprofiles[d.id] = d.data(); });
+    refreshMe(); if (!rpLoaded) { rpLoaded = true; maybePersona(); }
+    if (lastList.length) render(lastList);
+  }, () => { rpLoaded = true; });
+  db.collection("msgs").orderBy("ts", "desc").limit(400).onSnapshot(s => {
+    recent = s.docs.map(d => ({ ...d.data(), id: d.id }));
+    if (!firstRecent && !s.metadata.hasPendingWrites) s.docChanges().forEach(ch => { const m = ch.doc.data(); if (ch.type === "added" && m.ts >= T0 - 2000) notifyMsg(m); });
+    firstRecent = false; updateTotal(); if (!$("drawer").hidden) buildChips();
+  }, e => setStatus(errMsg(e)));
+  document.addEventListener("visibilitychange", () => { if (!document.hidden && lastList.length) render(lastList); });
+  db.collection("reads").onSnapshot(s => {
+    reads = {}; s.docs.forEach(d => { reads[d.id] = d.data(); });
+    if (!readsLoaded) { readsLoaded = true; myReads = { ...(reads[myId] || {}) }; }
+    if (lastList.length) render(lastList);
+  }, () => {});
+  db.collection("rooms").onSnapshot(s => {
+    const had = rooms.some(r => r.id === room);
+    rooms = s.docs.map(d => ({ ...d.data(), id: d.id })).sort((a, b) => (a.name || "").localeCompare(b.name || "", "ar"));
+    buildChips();
+    if (room !== "general" && had && !rooms.some(r => r.id === room && canSee(r))) openRoom("general");
+    tryJoin(); if (infoId) renderInfo(); refreshMe();
+  }, () => {});
+  buildChips(); openRoom(room);
+}
+const vv = window.visualViewport;
+function fit() {
+  if (!vv) return;
+  const cs = getComputedStyle(document.documentElement);
+  const h = vv.height - (parseFloat(cs.paddingTop) || 0) - (parseFloat(cs.paddingBottom) || 0);
+  document.documentElement.style.setProperty("--vh", Math.max(200, h) + "px");
+  document.querySelector(".app").style.transform = vv.offsetTop ? "translateY(" + vv.offsetTop + "px)" : "";
+  window.scrollTo(0, 0);
+  const m = $("msgs"); if (m && document.activeElement === $("inp")) m.scrollTop = m.scrollHeight;
+}
+if (vv) { vv.addEventListener("resize", fit); vv.addEventListener("scroll", fit); }
+$("inp").addEventListener("focus", () => { fit(); setTimeout(fit, 120); setTimeout(fit, 350); });
+fit();
+netUI(); buildChips(); registerSW();
+start();
+</script>
+</body>
+</html>
