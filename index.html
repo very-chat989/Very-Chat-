@@ -79,7 +79,7 @@ form.bar{display:flex;gap:8px;padding:8px 12px 10px;background:var(--card);borde
 #msheet{align-items:center;background:rgba(6,12,11,.6);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
 #msheet .card{background:none;border-radius:0;padding:12px;gap:14px;max-width:360px;align-items:stretch;overflow:visible}
 .rpill{display:flex;justify-content:space-between;gap:2px;padding:8px 10px;background:var(--card);border-radius:34px;box-shadow:0 12px 30px rgba(0,0,0,.35);animation:drop .35s cubic-bezier(.2,1.3,.4,1) both}
-.rpill button{width:46px;height:46px;border:0;border-radius:50%;background:none;padding:4px;cursor:pointer;animation:pop .45s cubic-bezier(.2,1.6,.4,1) both;transition:transform .15s}
+.rpill button{width:40px;height:40px;border:0;border-radius:50%;background:none;padding:4px;cursor:pointer;animation:pop .45s cubic-bezier(.2,1.6,.4,1) both;transition:transform .15s}
 .rpill button:active{transform:scale(1.35) rotate(-8deg)}
 .rpill button.on{background:var(--line);box-shadow:0 0 0 2px var(--pri)}
 .rpill svg{width:100%;height:100%}
@@ -218,15 +218,38 @@ button.ri-chip{cursor:pointer}
 .ri-card{border-inline-start:5px solid var(--pri)}
 .ri-card.dn{border-inline-start-color:#d64545}
 #lb{position:fixed;inset:0;z-index:30;background:rgba(0,0,0,.88);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:20px;animation:pop .25s both}
-#lbPic{width:min(86vw,420px);height:min(86vw,420px);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:min(40vw,200px);overflow:hidden;box-shadow:0 0 0 4px rgba(255,255,255,.25),0 20px 60px rgba(0,0,0,.5)}
+#lbPic{width:min(94vw,640px);height:min(94vw,640px,72vh);border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:min(40vw,200px);overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.5);background:transparent}
+#lbPic.emo{width:min(70vw,320px);height:min(70vw,320px);border-radius:50%;box-shadow:0 0 0 4px rgba(255,255,255,.25),0 20px 60px rgba(0,0,0,.5)}
+#lbPic img{width:100%;height:100%;object-fit:contain;display:block}
+.vp{display:flex;align-items:center;gap:8px;min-width:190px}
+.vpb{flex:none;width:36px;height:36px;border-radius:50%;border:0;background:var(--pri);color:var(--onpri);font-size:14px;cursor:pointer;padding:0}
+.vpt{flex:1;height:5px;border-radius:3px;background:rgba(127,127,127,.35);overflow:hidden;direction:ltr}
+.vpt i{display:block;height:100%;width:0;background:var(--pri)}
+.vpd{font-size:12px;opacity:.75;font-variant-numeric:tabular-nums;direction:ltr}
+.row.me .vpb{background:#fff;color:var(--mine)}.row.me .vpt i{background:#fff}
+#micBtn,#emoBtn{flex:none;padding:0;width:44px;font-size:19px}
+#emoBtn{background:none;box-shadow:none;border:0}
+#recBar{flex:1;display:flex;align-items:center;gap:10px;padding:0 8px}
+#recBar .dot{width:10px;height:10px;border-radius:50%;background:#e53935;animation:blink 1s infinite}
+@keyframes blink{50%{opacity:.25}}
+#recBar .x{border:0;background:none;font-size:20px;cursor:pointer;padding:0 4px}
+#recTime{flex:1;font-variant-numeric:tabular-nums;direction:ltr;text-align:start;font-weight:700}
+#emoPanel{background:var(--card);border-top:1px solid var(--line);padding:6px 10px 8px}
+#emoTabs{display:flex;gap:4px;overflow-x:auto;padding-bottom:6px}
+#emoTabs button{flex:none;border:0;background:none;font-size:20px;padding:4px 8px;border-radius:10px;cursor:pointer}
+#emoTabs button.on{background:var(--line)}
+#emoGrid{display:grid;grid-template-columns:repeat(8,1fr);gap:2px;max-height:190px;overflow-y:auto}
+#emoGrid button{border:0;background:none;font-size:24px;padding:5px 0;cursor:pointer;border-radius:8px}
+#emoGrid button:active{background:var(--line)}
+#lbX{position:absolute;top:calc(14px + env(safe-area-inset-top,0px));inset-inline-end:16px;width:42px;height:42px;border-radius:50%;border:0;background:rgba(255,255,255,.16);color:#fff;font-size:20px;cursor:pointer}
 #lb b{color:#fff;font-size:18px}
-.row .av,.ri-mem .av,.ri-av{cursor:zoom-in}
+.av:not(.nz){cursor:zoom-in}
 </style>
 </head>
 <body>
 <div id="splash"><div id="sLogo"></div><div class="sn">Very Chat</div><div class="ss">شات الشلة</div></div>
 <div id="login" hidden><div class="lbox"><div id="lLogo"></div><div class="sn">Very Chat</div><div class="ss">سجّل دخولك علشان غرفك ورسايلك تفضل معاك على أي جهاز</div><button class="gbtn" id="gBtn"><svg viewBox="0 0 48 48" width="20" height="20"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.9 6.1C12.4 13.6 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.5-4.8 7.2l7.6 5.9c4.4-4.1 7-10.1 7-17.6z"/><path fill="#FBBC05" d="M10.5 28.7c-.5-1.5-.8-3-.8-4.7s.3-3.2.8-4.7l-7.9-6.1C1 16.5 0 20.1 0 24s1 7.5 2.6 10.8l7.9-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 12-2.1 16-5.8l-7.6-5.9c-2.1 1.4-4.9 2.3-8.4 2.3-6.3 0-11.6-4.1-13.5-9.8l-7.9 6.1C6.5 42.6 14.6 48 24 48z"/></svg> المتابعة بحساب Google</button><button class="ghost" id="guestBtn">دخول كضيف (مؤقت)</button><div id="lErr" class="note" hidden></div></div></div>
-<div id="lb" hidden><div id="lbPic"></div><b id="lbName"></b></div>
+<div id="lb" hidden><button id="lbX" type="button" aria-label="إغلاق">✕</button><div id="lbPic"></div><b id="lbName"></b></div>
 <div class="app">
   <header>
     <button class="hb" id="menuBtn" aria-label="الغرف">☰</button>
@@ -240,8 +263,12 @@ button.ri-chip{cursor:pointer}
   <div id="msgs"></div>
   <div id="replyBar" hidden><span id="replyTxt"></span><button type="button" id="cancelReply">✕</button></div>
   <div id="editBar" hidden><span>✏️ بتعدّل رسالة</span><button type="button" id="cancelEdit">إلغاء</button></div>
+  <div id="emoPanel" hidden><div id="emoTabs"></div><div id="emoGrid"></div></div>
   <form class="bar" id="f">
+    <button class="send" id="emoBtn" type="button" aria-label="إيموجي">😊</button>
+    <div id="recBar" hidden><button class="x" id="recCancel" type="button" aria-label="إلغاء">🗑</button><span class="dot"></span><span id="recTime">0:00</span></div>
     <input id="inp" placeholder="اكتب رسالة…" autocomplete="off" maxlength="1000" dir="auto">
+    <button class="send" id="micBtn" type="button" aria-label="رسالة صوتية">🎤</button>
     <button class="send" id="sendBtn">إرسال</button>
   </form>
 </div>
@@ -272,6 +299,7 @@ button.ri-chip{cursor:pointer}
       <input type="text" id="nameIn" placeholder="اسمك" maxlength="20" autocomplete="off">
       <input type="text" id="descIn" placeholder="وصف الغرفة (اختياري)" maxlength="120" autocomplete="off" hidden>
     </div>
+    <div class="sec" id="codeSec" hidden><label>كودك (شاركه مع صحابك علشان يضيفوك)</label><div class="grid"><div class="note" id="myUidRow" dir="ltr" style="grid-column:1/-1;font-size:11px;user-select:all;word-break:break-all">—</div><div class="ghost" id="myCode" dir="ltr" style="font-weight:800;letter-spacing:2px;font-size:18px;text-align:center;cursor:default">—</div><button class="ghost" id="copyCode" type="button">📋 نسخ</button></div></div>
     <div class="sec" id="accSec" hidden><label>حسابك</label><div class="note" id="accNote"></div><button class="ghost" id="accBtn"></button></div>
     <label class="sec" id="privRow" hidden style="flex-direction:row;align-items:center;gap:10px;cursor:pointer"><input type="checkbox" id="privCk"><span>🔒 غرفة خاصة (الأعضاء اللي تضيفهم بس يشوفوها)</span></label>
     <div class="sec"><label>شخصيات الشلة</label><div class="grid" id="shalla"></div></div>
@@ -309,7 +337,7 @@ const $ = id => document.getElementById(id);
 const logo = id => `<svg viewBox='0 0 100 100'><defs><linearGradient id='${id}' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='#2cc4a9'/><stop offset='1' stop-color='#0f8f7a'/></linearGradient></defs><rect width='100' height='100' rx='26' fill='url(#${id})'/><path d='M50 18c-18 0-32 12-32 28 0 8 4 15 10 20l-3 14 15-7c3 1 6 1 10 1 18 0 32-12 32-28S68 18 50 18z' fill='#fff'/><path d='M36 38l14 22 14-22' fill='none' stroke='#0f8f7a' stroke-width='8' stroke-linecap='round' stroke-linejoin='round'/></svg>`;
 $("sLogo").innerHTML = logo("lgS"); $("dLogo").innerHTML = logo("lgD");
 setTimeout(() => { $("splash").classList.add("out"); setTimeout(() => $("splash").remove(), 450); }, 1700);
-const EMOJIS = ["😀","😎","🤓","🥳","🐱","🦁","🐼","🦊","🚀","⚽","🎮","🌶️"];
+const EMOJIS = ["😀","😎","🤓","🥳","😍","🤩","😂","🥹","😴","🤠","👻","🤖","👽","💀","🐱","🐶","🦁","🐼","🦊","🐯","🐸","🐵","🦄","🐧","🦅","🐢","🐬","🦋","🚀","⚽","🏀","🎮","🎧","🎸","🌶️","🍕","🍔","🔥","⭐","👑","💎","❤️","🌹","🌙"];
 const COLORS = ["#0f8f7a","#2f6fed","#8a4fe0","#e0507a","#e08a2f","#c9a400","#3f8f3f","#5b6b78"];
 let confirmDel = false;
 async function delRoom() {
@@ -325,24 +353,25 @@ let db = null, myId = null, room = "general", rooms = [], profiles = {}, unsub =
 
 function setStatus(t) { $("status").textContent = t; $("status").hidden = !t; }
 function avatar(p, big) {
-  const d = document.createElement("div"); d.className = "av";
+  const d = document.createElement("div"); d.className = "av"; d.dataset.name = (p && p.name) || "";
+  if (p && p.photo) { d._photo = p.photo; }
   if (p && p.photo) { const i = document.createElement("img"); i.src = p.photo; i.alt = ""; d.appendChild(i); }
   else { d.style.background = (p && p.color) || "var(--line)"; d.textContent = (p && p.emoji) || "👤"; }
   return d;
 }
-function setAvatar(el, p) { el.replaceChildren(...avatar(p).childNodes); el.style.background = (p && !p.photo && p.color) || "var(--line)"; }
+function setAvatar(el, p) { el._photo = p && p.photo || ""; el.dataset.name = (p && p.name) || ""; el.replaceChildren(...avatar(p).childNodes); el.style.background = (p && !p.photo && p.color) || "var(--line)"; }
 
 function closeDrawer() { $("drawer").hidden = true; }
 function buildChips() {
   const box = $("dlist"); box.textContent = "";
-  [{ id: "general", name: "عام" }, ...rooms.filter(canSee)].forEach(r => {
+  [generalRoom(), ...rooms.filter(canSee)].forEach(r => {
     const row = document.createElement("button"); row.className = "rrow" + (r.id === room ? " on" : ""); row.style.setProperty("--rc", r.color || "#5b6b78");
-    const ic = avatar(r.id === "general" ? { emoji: "🌐", color: "#5b6b78" } : (r.emoji || r.photo ? r : { emoji: "💬", color: "#5b6b78" }));
+    const ic = avatar(r.id === "general" || r.emoji || r.photo ? r : { emoji: "💬", color: "#5b6b78" });
     const tx = document.createElement("div"); tx.className = "rt";
     const nm = document.createElement("b"); nm.textContent = r.name;
     const last = recent.find(m => m.room === r.id), un = unreadOf(r.id);
     const sb = document.createElement("small"); sb.dir = "auto";
-    sb.textContent = (r.by === myId ? "👑 " : "") + (r.private ? "🔒 " : "") + (r.onlyAdmins ? "📢 " : "") + (last ? nameOf(last.uid, r.id) + ": " + (last.text || "").slice(0, 28) : "أنت: " + ((profileFor(myId, r.id) || {}).name || "—"));
+    sb.textContent = (r.by === myId ? "👑 " : "") + (r.private ? "🔒 " : "") + (r.onlyAdmins ? "📢 " : "") + (last ? nameOf(last.uid, r.id) + ": " + mtext(last).slice(0, 28) : "أنت: " + ((profileFor(myId, r.id) || {}).name || "—"));
     tx.append(nm, sb); row.append(ic, tx);
     if (un) { const bd = document.createElement("span"); bd.className = "bdg"; bd.textContent = un > 99 ? "99+" : un; row.append(bd); }
     let tm, fired = false;
@@ -360,7 +389,7 @@ function buildChips() {
 $("menuBtn").onclick = () => { buildChips(); $("dNotif").hidden = !("Notification" in window) || Notification.permission !== "default"; $("drawer").hidden = false; };
 $("drawer").onclick = e => { if (e.target === $("drawer")) closeDrawer(); };
 $("dAdd").onclick = () => { closeDrawer(); openSheet("room"); };
-$("hRoom").onclick = () => { if (room !== "general" && curR()) openInfo(room); else $("meBtn").click(); };
+$("hRoom").onclick = () => { if (curR()) openInfo(room); else $("meBtn").click(); };
 
 function render(list) {
   lastList = list;
@@ -378,7 +407,7 @@ function render(list) {
     if (first && !mine) { const n = document.createElement("div"); n.className = "n"; n.dir = "auto"; n.textContent = (p && p.name) || "مجهول"; b.appendChild(n); }
     if (m.fwd) b.appendChild(el("div", "fw", "↪️ محوّلة من " + m.fwd));
     if (m.reply) { const q = el("div", "qt"); q.dir = "auto"; q.append(el("b", "", m.reply.name || "مجهول"), document.createTextNode(m.reply.text || "")); b.appendChild(q); }
-    const tx = document.createElement("div"); tx.className = "tx"; tx.dir = "auto"; linkify(tx, m.text); b.appendChild(tx);
+    const tx = document.createElement("div"); tx.className = "tx"; tx.dir = "auto"; if (m.audio) b.appendChild(audioPlayer(m)); else { linkify(tx, m.text); b.appendChild(tx); }
     const rc = {}; Object.values(m.reacts || {}).forEach(k => { if (EMO[k]) rc[k] = (rc[k] || 0) + 1; });
     if (Object.keys(rc).length) {
       const rw = document.createElement("div"); rw.className = "rxs";
@@ -398,12 +427,17 @@ function render(list) {
   setStatus(list.length ? "" : "مفيش رسايل لسه. ابدأ إنت!");
 }
 
+const mtext = m => m.audio ? "🎤 رسالة صوتية" : (m.text || "");
 const EMO = {
   fol: { n: "فل", s: `<svg viewBox='0 0 40 40'><g fill='#fff' stroke='#e7a8c8' stroke-width='1.5'><circle cx='20' cy='9' r='7'/><circle cx='31' cy='17' r='7'/><circle cx='27' cy='30' r='7'/><circle cx='13' cy='30' r='7'/><circle cx='9' cy='17' r='7'/></g><circle cx='20' cy='20' r='9' fill='#ffd34d'/><circle cx='17' cy='19' r='1.4' fill='#4a3200'/><circle cx='23' cy='19' r='1.4' fill='#4a3200'/><path d='M16 23q4 4 8 0' fill='none' stroke='#4a3200' stroke-width='1.6' stroke-linecap='round'/></svg>` },
   nar: { n: "نار", s: `<svg viewBox='0 0 40 40'><path d='M20 3c2 7 11 11 11 21a11 11 0 0 1-22 0c0-5 3-8 5-11 1 3 2 4 4 4 0-5 0-8 2-14z' fill='#ff7a2f'/><path d='M20 17c1 4 6 6 6 11a6 6 0 0 1-12 0c0-3 2-5 3-7 1 2 2 2 3 2z' fill='#ffd34d'/><rect x='12' y='22' width='7' height='5' rx='2' fill='#1b1b1b'/><rect x='21' y='22' width='7' height='5' rx='2' fill='#1b1b1b'/><path d='M19 24h2' stroke='#1b1b1b' stroke-width='1.5'/></svg>` },
   qalb: { n: "قلب", s: `<svg viewBox='0 0 40 40'><path d='M20 35C5 25 3 14 10 9c5-3 9 0 10 4 1-4 5-7 10-4 7 5 5 16-10 26z' fill='#ff4d79'/><circle cx='15' cy='20' r='1.5' fill='#3a0a1a'/><circle cx='25' cy='20' r='1.5' fill='#3a0a1a'/><path d='M17 24q3 3 6 0' fill='none' stroke='#3a0a1a' stroke-width='1.5' stroke-linecap='round'/><circle cx='12.5' cy='23' r='2' fill='#ff9db5'/><circle cx='27.5' cy='23' r='2' fill='#ff9db5'/></svg>` },
   dahk: { n: "ضحك", s: `<svg viewBox='0 0 40 40'><circle cx='20' cy='20' r='16' fill='#ffd34d'/><path d='M11 17q3-3 6 0M23 17q3-3 6 0' fill='none' stroke='#4a3200' stroke-width='2' stroke-linecap='round'/><path d='M12 24h16q-1 8-8 8t-8-8z' fill='#4a3200'/><path d='M5 20c-3 5 0 8 2 4 0-2-1-3-2-4zM35 20c3 5 0 8-2 4 0-2 1-3 2-4z' fill='#4fc3f7'/></svg>` },
   tamam: { n: "تمام", s: `<svg viewBox='0 0 40 40'><path d='M20 2l5 6 8-1 1 8 6 5-5 6 1 8-8 1-5 6-5-6-8-1-1-8-6-5 5-6-1-8 8 1z' fill='#2cc4a9'/><path d='M12 21l6 6 11-12' fill='none' stroke='#fff' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'/></svg>` },
+  wow: { n: "واو", s: `<svg viewBox='0 0 40 40'><circle cx='20' cy='20' r='16' fill='#ffd34d'/><circle cx='14' cy='17' r='2' fill='#4a3200'/><circle cx='26' cy='17' r='2' fill='#4a3200'/><ellipse cx='20' cy='27' rx='4' ry='5' fill='#4a3200'/><path d='M10 11q4-3 8-1M22 10q4-2 8 1' fill='none' stroke='#4a3200' stroke-width='1.6' stroke-linecap='round'/></svg>` },
+  bka: { n: "حزين", s: `<svg viewBox='0 0 40 40'><circle cx='20' cy='20' r='16' fill='#ffd34d'/><circle cx='14' cy='18' r='2' fill='#4a3200'/><circle cx='26' cy='18' r='2' fill='#4a3200'/><path d='M14 29q6-5 12 0' fill='none' stroke='#4a3200' stroke-width='2' stroke-linecap='round'/><path d='M13 21c-2 4 0 6 2 3 0-1-1-2-2-3z' fill='#4fc3f7'/></svg>` },
+  kool: { n: "كوول", s: `<svg viewBox='0 0 40 40'><circle cx='20' cy='20' r='16' fill='#ffd34d'/><path d='M6 15h28v3q0 6-6 6t-6-5h-4q0 5-6 5t-6-6z' fill='#1b1b1b'/><path d='M14 28q6 4 12 0' fill='none' stroke='#4a3200' stroke-width='2' stroke-linecap='round'/></svg>` },
+  like: { n: "إعجاب", s: `<svg viewBox='0 0 40 40'><circle cx='20' cy='20' r='17' fill='#4f8cff'/><rect x='9' y='19' width='5' height='12' rx='1.5' fill='#fff'/><path d='M16 19l4-9c2.5 0 3.5 1.5 3 4l-1 4h7c1.6 0 2.7 1.5 2.2 3l-2.2 8c-.4 1.3-1.5 2-2.8 2H16z' fill='#fff'/></svg>` },
   oyoun: { n: "عيون", s: `<svg viewBox='0 0 40 40'><ellipse cx='12' cy='20' rx='9' ry='12' fill='#fff' stroke='#333' stroke-width='2'/><ellipse cx='28' cy='20' rx='9' ry='12' fill='#fff' stroke='#333' stroke-width='2'/><circle cx='14' cy='23' r='4.5' fill='#222'/><circle cx='30' cy='23' r='4.5' fill='#222'/></svg>` }
 };
 function toggleReact(m, k) {
@@ -423,7 +457,7 @@ async function copyText(t) {
 }
 $("selCancel").onclick = exitSel;
 $("selCopy").onclick = async () => {
-  const txt = lastList.filter(x => sel.has(x.id)).map(x => ((profileFor(x.uid) || {}).name || "مجهول") + ": " + x.text).join("\n");
+  const txt = lastList.filter(x => sel.has(x.id)).map(x => ((profileFor(x.uid) || {}).name || "مجهول") + ": " + mtext(x)).join("\n");
   const ok = await copyText(txt);
   $("selCopy").textContent = ok ? "✓ تم" : "فشل النسخ";
   setTimeout(() => { $("selCopy").textContent = "📋 نسخ"; if (ok) exitSel(); }, 700);
@@ -465,7 +499,7 @@ function openMsg(m) {
   });
   if (!(cr0 && cr0.noReact && !adminOf(cr0))) c.appendChild(pill);
   const pv = document.createElement("div"); pv.className = "mprev"; pv.dir = "auto";
-  pv.textContent = m.text.length > 160 ? m.text.slice(0, 160) + "…" : m.text; c.appendChild(pv);
+  { const mt = mtext(m); pv.textContent = mt.length > 160 ? mt.slice(0, 160) + "…" : mt; } c.appendChild(pv);
   const acts = document.createElement("div"); acts.className = "acts";
   const act = (ico, label, grad, fn) => {
     const b = document.createElement("button"); b.type = "button"; b.className = "act";
@@ -473,20 +507,21 @@ function openMsg(m) {
     const s = document.createElement("span"); s.textContent = label; b.append(i, s);
     b.onclick = () => fn(b, s); acts.appendChild(b);
   };
-  if (!fb) act("📋", "نسخ", "linear-gradient(135deg,#2cc4a9,#0f8f7a)", async (b, s) => {
+  if (!fb && !m.audio) act("📋", "نسخ", "linear-gradient(135deg,#2cc4a9,#0f8f7a)", async (b, s) => {
     const ok = await copyText(m.text); s.textContent = ok ? "تم ✓" : "فشل";
     if (ok) setTimeout(close, 600);
   });
   act("☑️", "تحديد", "linear-gradient(135deg,#a07cff,#6b46e0)", () => { close(); enterSel(m.id); });
   if (!fb) act("↪️", "توجيه", "linear-gradient(135deg,#ffb347,#e08a2f)", () => openForward([m]));
   act("↩️", "رد", "linear-gradient(135deg,#4fc3f7,#2f90d9)", () => { close(); startReply(m); });
-  if (m.uid === myId && !writeBlock(cr0) && (!cr0 || !cr0.noEdit || adminOf(cr0))) {
+  if (m.uid === myId && !m.audio && !writeBlock(cr0) && (!cr0 || !cr0.noEdit || adminOf(cr0))) {
     act("✏️", "تعديل", "linear-gradient(135deg,#5aa9ff,#2f6fed)", () => {
       close(); clearReply(); editingId = m.id; $("inp").value = m.text; $("editBar").hidden = false; $("sendBtn").textContent = "حفظ"; $("inp").focus();
     });
   }
-  const curRoom = rooms.find(x => x.id === room);
-  if (curRoom && adminOf(curRoom)) act("📌", "تثبيت", "linear-gradient(135deg,#f5c542,#d9a300)", () => { close(); upd({ pinned: { id: m.id, name: nameOf(m.uid), text: (m.text || "").slice(0, 120) } }); });
+  const curRoom = curR();
+  if (curRoom && adminOf(curRoom) && m.uid !== myId && m.uid !== curRoom.by && (ownerOf(curRoom) || !(curRoom.admins || []).includes(m.uid))) act("👤", "إدارة العضو", "linear-gradient(135deg,#5aa9ff,#2f6fed)", () => { close(); memberMenu(curRoom, m.uid); });
+  if (curRoom && adminOf(curRoom)) act("📌", "تثبيت", "linear-gradient(135deg,#f5c542,#d9a300)", () => { close(); upd({ pinned: { id: m.id, name: nameOf(m.uid), text: mtext(m).slice(0, 120) } }); });
   if ((m.uid === myId && (!curRoom || !curRoom.noDelOwn || adminOf(curRoom))) || (curRoom && adminOf(curRoom))) {
     act("🗑", "حذف", "linear-gradient(135deg,#ff7a7a,#d64545)", (b, s) => {
       if (b.dataset.ok) { close(); db.collection("msgs").doc(m.id).delete().catch(() => setStatus("ماقدرتش أحذف الرسالة.")); }
@@ -576,7 +611,7 @@ function openForward(msgs) {
   const c = $("mcard"); c.textContent = ""; const pick = new Set();
   c.append(el("div", "mprev", "↪️ حوّل " + (msgs.length > 1 ? msgs.length + " رسائل" : "الرسالة") + " إلى…"));
   const list = el("div", "acts"); list.style.cssText = "display:flex;flex-direction:column;gap:6px;max-height:48vh;overflow-y:auto";
-  [{ id: "general", name: "عام", emoji: "🌐", color: "#5b6b78" }, ...rooms.filter(r => canSee(r) && !writeBlock(r))].forEach(r => {
+  [generalRoom(), ...rooms.filter(canSee)].filter(r => !writeBlock(r)).forEach(r => {
     const b = el("button", "rrow"), ck = el("span", "ck"); ck.style.marginInlineStart = "auto";
     b.append(avatar(r.emoji || r.photo ? r : { emoji: "💬", color: "#5b6b78" }), el("b", "", r.name), ck);
     b.onclick = () => { if (pick.has(r.id)) pick.delete(r.id); else pick.add(r.id); ck.textContent = pick.has(r.id) ? "✓" : ""; b.classList.toggle("on", pick.has(r.id)); };
@@ -586,11 +621,62 @@ function openForward(msgs) {
   go.onclick = async () => {
     if (!pick.size) return; go.disabled = true; let i = 0;
     try {
-      for (const rid of pick) for (const m of msgs) await db.collection("msgs").add({ room: rid, text: m.text, uid: myId, ts: Date.now() + (i++), fwd: m.fwd || nameOf(m.uid) });
+      for (const rid of pick) for (const m of msgs) await db.collection("msgs").add({ room: rid, text: m.text || "", ...(m.audio ? { audio: m.audio, dur: m.dur || 0 } : {}), uid: myId, ts: Date.now() + (i++), fwd: m.fwd || nameOf(m.uid) });
       $("msheet").hidden = true; if (selMode) exitSel(); setStatus("✓ تم التحويل");
     } catch (e) { go.disabled = false; setStatus("ماقدرتش أحوّل الرسالة."); }
   };
   c.append(list, go); $("msheet").hidden = false;
+}
+
+const FCA = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+const rndFCode = () => Array.from({ length: 8 }, () => FCA[Math.floor(Math.random() * 32)]).join("");
+const fmtFCode = c => c ? c.slice(0, 4) + "-" + c.slice(4) : "";
+const normFCode = v => String(v || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+async function uniqueFCode() {
+  for (let i = 0; i < 6; i++) {
+    const c = rndFCode();
+    if (Object.values(profiles).some(p => p && p.fcode === c)) continue;
+    try { const s = await db.collection("profiles").where("fcode", "==", c).limit(1).get(); if (s.empty) return c; }
+    catch (e) { return c; }
+  }
+  return rndFCode();
+}
+let codeBusy = false;
+async function ensureMyCode() {
+  const p = profiles[myId]; if (!p || p.fcode || codeBusy || !db) return;
+  codeBusy = true;
+  try { await db.doc("profiles/" + myId).update({ fcode: await uniqueFCode() }); } catch (e) {}
+  codeBusy = false;
+}
+function paintMyCode() { const u = $("myUidRow"); if (u) u.textContent = "معرّفك: " + (myId || "—"); const e = $("myCode"); if (e) e.textContent = fmtFCode((profiles[myId] || {}).fcode) || "جاري إنشاء الكود…"; }
+function friendFinder(mem, banned, onAdd) {
+  const w = el("div", "ffind"); w.style.cssText = "display:flex;flex-direction:column;gap:8px";
+  w.append(el("div", "note", "اكتب كود صديقك (8 حروف وأرقام) وهيظهرلك هو بالظبط. كل واحد ليه كود مختلف، فمفيش لخبطة في الأسامي."));
+  const inp = document.createElement("input"); inp.placeholder = "مثال: K7M2-9QXA"; inp.maxLength = 12; inp.dir = "ltr"; inp.autocomplete = "off"; inp.autocapitalize = "characters"; inp.spellcheck = false;
+  inp.style.cssText = "text-align:center;letter-spacing:2px;font-size:18px;font-weight:700;padding:12px;border-radius:14px;border:1px solid var(--line);background:var(--bg);color:var(--ink);width:100%";
+  const go = el("button", "send", "🔎 بحث"); go.type = "button"; go.style.padding = "12px";
+  const out = el("div"); out.style.cssText = "display:flex;flex-direction:column;gap:6px";
+  const run = async () => {
+    const code = normFCode(inp.value); out.textContent = "";
+    if (code.length !== 8) { out.append(el("div", "note", "الكود لازم يكون 8 حروف وأرقام.")); return; }
+    go.disabled = true; let uid = null, data = null;
+    const loc = Object.keys(profiles).find(u => profiles[u] && profiles[u].fcode === code);
+    if (loc) { uid = loc; data = profiles[loc]; }
+    else {
+      try { const s = await db.collection("profiles").where("fcode", "==", code).limit(1).get(); if (!s.empty) { uid = s.docs[0].id; data = s.docs[0].data(); } }
+      catch (e) { go.disabled = false; out.append(el("div", "note", "ماقدرتش أبحث دلوقتي، جرّب تاني.")); return; }
+    }
+    go.disabled = false;
+    if (!uid) { out.append(el("div", "note", "مفيش حد بالكود ده، اتأكد منه.")); return; }
+    const row = el("div", "rrow"); row.style.cursor = "default"; row.append(avatar(data), el("b", "", data.name || "مجهول"));
+    if (uid === myId) row.append(el("span", "note", "ده كودك أنت"));
+    else if (mem.includes(uid)) row.append(el("span", "note", "موجود في الغرفة"));
+    else if (banned.includes(uid)) row.append(el("span", "note", "محظور"));
+    else { const b = el("button", "send", "＋ إضافة"); b.type = "button"; b.style.cssText += ";margin-inline-start:auto;padding:8px 16px"; b.onclick = () => { b.disabled = true; onAdd(uid); }; row.append(b); }
+    out.append(row);
+  };
+  go.onclick = run; inp.onkeydown = e => { if (e.key === "Enter") { e.preventDefault(); run(); } };
+  w.append(inp, go, out); return w;
 }
 function openMembers(r) {
   const c = $("mcard"); c.textContent = ""; const owner = isOwner(r);
@@ -605,9 +691,7 @@ function openMembers(r) {
     box.append(row);
   });
   if (owner) {
-    const others = Object.keys(profiles).filter(u => !mem.includes(u));
-    box.append(el("div", "note", others.length ? "أضف صديق للغرفة:" : "كل اللي فتحوا الصفحة معاك موجودين في الغرفة"));
-    others.forEach(u => { const b = el("button", "rrow"); b.append(avatar(profiles[u]), el("b", "", "＋ " + profiles[u].name)); b.onclick = () => change(u, true).catch(() => setStatus("ماقدرتش أضيفه.")); box.append(b); });
+    box.append(friendFinder(mem, r.banned || [], u => change(u, true).catch(() => setStatus("ماقدرتش أضيفه."))));
   }
   c.append(box);
   const canInvite = owner || (!r.private && canSee(r));
@@ -634,6 +718,7 @@ function openInvite() {
   const sh = el("button", "send", "📤 مشاركة التطبيق");
   sh.onclick = async () => { const x = await shareText("جرّب Very Chat 💬\n" + PAGE_URL); if (x !== "shared") sh.textContent = x === "copied" ? "✓ اتنسخ الرابط" : "فشل النسخ"; };
   c.append(box, sh, copyBtn("🔗 نسخ رابط التطبيق", PAGE_URL));
+  const mc = (profiles[myId] || {}).fcode; if (mc) c.append(copyBtn("🆔 نسخ كودي: " + fmtFCode(mc), fmtFCode(mc)));
   $("msheet").hidden = false;
 }
 $("dInvite").onclick = () => { closeDrawer(); openInvite(); };
@@ -662,7 +747,7 @@ async function pushLocal(title, body, tag) {
 function notifyMsg(m) {
   if (m.uid === myId || !document.hidden || !("Notification" in window) || Notification.permission !== "granted") return;
   if (m.room !== "general" && !rooms.some(r => r.id === m.room && canSee(r))) return;
-  pushLocal(m.room === "general" ? "عام" : roomName(m.room), nameOf(m.uid, m.room) + ": " + (m.text || ""), m.room);
+  pushLocal(m.room === "general" ? "عام" : roomName(m.room), nameOf(m.uid, m.room) + ": " + mtext(m), m.room);
 }
 function linkify(node, text) {
   String(text || "").split(/(https?:\/\/[^\s]+)/g).forEach(part => {
@@ -673,7 +758,7 @@ function linkify(node, text) {
   });
 }
 function startReply(m) {
-  cancelEdit(); replyTo = { name: nameOf(m.uid), text: (m.text || "").slice(0, 80) };
+  cancelEdit(); replyTo = { name: nameOf(m.uid), text: mtext(m).slice(0, 80) };
   $("replyTxt").textContent = "↩️ رد على " + replyTo.name + ": " + replyTo.text; $("replyBar").hidden = false; $("inp").focus();
 }
 function clearReply() { replyTo = null; $("replyBar").hidden = true; }
@@ -698,7 +783,11 @@ $("accBtn").onclick = async () => {
 $("dNotif").onclick = async () => { try { await Notification.requestPermission(); } catch (e) {} $("dNotif").hidden = !("Notification" in window) || Notification.permission !== "default"; };
 function registerSW() { if ("serviceWorker" in navigator && /^https?:/.test(location.protocol)) navigator.serviceWorker.register("sw.js").catch(() => {}); }
 
-const curR = () => rooms.find(x => x.id === room);
+// معرّف مالك الدردشة العامة: انسخه من بروفايلك (سطر «معرّفك») وحطه هنا بين علامتي التنصيص
+const OWNER_UID = "";
+let gdoc = {};
+const generalRoom = () => ({ id: "general", name: "عام", emoji: "🌐", color: "#5b6b78", ...gdoc, id: "general", by: OWNER_UID });
+const curR = () => room === "general" ? generalRoom() : rooms.find(x => x.id === room);
 const ownerOf = r => !!r && r.by === myId;
 const adminOf = r => !!r && (r.by === myId || (r.admins || []).includes(myId));
 const AU = v => FV().arrayUnion(v), AR = v => FV().arrayRemove(v);
@@ -729,14 +818,12 @@ function swRow(title, desc, on, fn) {
   const r = el("div", "ri-row"), t = el("div"); t.append(el("b", "", title), el("small", "", desc));
   const sw = el("button", "sw" + (on ? " on" : "")); sw.type = "button"; sw.setAttribute("aria-pressed", on ? "true" : "false"); sw.onclick = () => fn(!on); r.append(t, sw); return r;
 }
-function openInfo(id) { if (!id || id === "general") return; infoId = id; $("rinfo").hidden = false; renderInfo(); }
+function openInfo(id) { if (!id) return; infoId = id; $("rinfo").hidden = false; renderInfo(); }
 function closeInfo() { infoId = null; $("rinfo").hidden = true; }
 function addFriend(r, mem) {
   const c = $("mcard"); c.textContent = ""; c.append(el("div", "mprev", "＋ إضافة صديق"));
   const box = el("div", "acts"); box.style.cssText = "display:flex;flex-direction:column;gap:6px;max-height:55vh;overflow-y:auto";
-  const others = Object.keys(profiles).filter(u => !mem.includes(u) && !(r.banned || []).includes(u));
-  if (!others.length) box.append(el("div", "note", "كل اللي فتحوا التطبيق موجودين في الغرفة"));
-  others.forEach(u => { const b = el("button", "rrow"); b.append(avatar(profiles[u]), el("b", "", profiles[u].name)); b.onclick = () => { $("msheet").hidden = true; upd({ members: AU(u) }, r.id); }; box.append(b); });
+  box.append(friendFinder(mem, r.banned || [], u => { $("msheet").hidden = true; upd({ members: AU(u) }, r.id); setStatus("✓ تمت إضافته للغرفة"); setTimeout(() => setStatus(""), 2500); }));
   c.append(box); $("msheet").hidden = false;
 }
 function memberMenu(r, u) {
@@ -750,13 +837,13 @@ function memberMenu(r, u) {
   act("🔇", isMut ? "إلغاء الكتم" : "كتم", "linear-gradient(135deg,#a07cff,#6b46e0)", () => upd(isMut ? { muted: AR(u), ["mutedUntil." + u]: FV().delete() } : { muted: AU(u) }, r.id));
   if (!isMut) act("⏱️", "كتم ساعة", "linear-gradient(135deg,#8f7cff,#5b46e0)", () => upd({ ["mutedUntil." + u]: Date.now() + 3600000 }, r.id));
   act("🧽", "مسح رسايله", "linear-gradient(135deg,#6bd0c0,#2a9d8f)", async () => { try { const q = await db.collection("msgs").where("room", "==", r.id).where("uid", "==", u).get(); await Promise.allSettled(q.docs.map(d => d.ref.delete())); setStatus("✓ اتمسحت رسايل " + nameOf(u, r.id)); } catch (e) { setStatus(errMsg(e)); } });
-  act("🚪", "طرد", "linear-gradient(135deg,#ffb347,#e08a2f)", () => upd(gone({}), r.id));
+  if (r.id !== "general") act("🚪", "طرد", "linear-gradient(135deg,#ffb347,#e08a2f)", () => upd(gone({}), r.id));
   act("⛔", "حظر", "linear-gradient(135deg,#ff7a7a,#d64545)", () => upd(gone({ banned: AU(u) }), r.id));
   acts.style.gridTemplateColumns = "repeat(" + (acts.children.length <= 4 ? acts.children.length : 3) + ",1fr)"; c.append(acts); $("msheet").hidden = false;
 }
 function renderInfo() {
-  const r = rooms.find(x => x.id === infoId), box = $("riBody");
-  if (!r || !canSee(r)) { closeInfo(); return; }
+  const G = infoId === "general", r = G ? generalRoom() : rooms.find(x => x.id === infoId), box = $("riBody");
+  if (!r || (!G && !canSee(r))) { closeInfo(); return; }
   box.textContent = "";
   const owner = ownerOf(r), admin = adminOf(r), mem = [...new Set([...(r.members || []), ...(r.by ? [r.by] : [])])];
   const card = title => { const c = el("div", "ri-card"); if (title) c.append(el("h3", "", title)); box.append(c); return c; };
@@ -766,24 +853,26 @@ function renderInfo() {
   const chips = el("div", "ri-chips"), canCode = !!r.code && (admin || !r.lockInvite);
   const chipCopy = (lb, val, done) => { const b = el("button", "ri-chip", lb); b.onclick = async () => { b.textContent = (await copyText(val)) ? done : "ماقدرتش أنسخ"; setTimeout(() => { b.textContent = lb; }, 1500); }; return b; };
   if (canCode) chips.append(chipCopy("🔑 " + r.code, r.code, "✓ اتنسخ الكود"), chipCopy("🔗 نسخ الرابط", PAGE_URL + "#r-" + r.code, "✓ اتنسخ الرابط"));
-  chips.append(el("span", "ri-chip", "👥 " + mem.length), el("span", "ri-chip", r.private ? "🔒 خاصة" : "🌐 عامة")); hero.append(chips); box.append(hero);
+  if (G) chips.append(el("span", "ri-chip", "🌐 مفتوحة لكل المستخدمين")); else chips.append(el("span", "ri-chip", "👥 " + mem.length), el("span", "ri-chip", r.private ? "🔒 خاصة" : "🌐 عامة")); hero.append(chips); box.append(hero);
   const q = el("div", "ri-quick"), qa = (ico, lb, fn) => { const b = el("button", "ri-q"); b.append(el("i", "", ico), el("span", "", lb)); b.onclick = fn; q.append(b); };
   if (canCode && (admin || !r.private)) qa("📤", "دعوة", () => shareInvite(r));
-  qa("🎭", "شخصيتي", () => openSheet("persona", r.id));
+  qa("🎭", G ? "بروفايلي" : "شخصيتي", () => G ? openSheet("me") : openSheet("persona", r.id));
   if (owner) qa("✏️", "تعديل", () => openSheet("editroom", r.id));
   box.append(q);
   if (owner) {
     const S = (c, t, d, k) => c.append(swRow(t, d, !!r[k], v => upd({ [k]: v }, r.id)));
-    const c = card("🔐 الخصوصية والدعوة");
+    const c = card(G ? "🔐 الخصوصية" : "🔐 الخصوصية والدعوة");
+    if (!G) {
     S(c, "🔒 غرفة خاصة", "مش بتظهر في البحث، بالكود أو الرابط بس", "private");
     S(c, "✋ الانضمام بموافقتك", "اللي عايز ينضم يبعت طلب وإنت توافق", "approval");
     S(c, "🙈 إخفاء الكود والرابط عن الأعضاء", "المشرفين بس يشوفوا الكود ويدعوا", "lockInvite");
     S(c, "👥 إخفاء قائمة الأعضاء", "الأعضاء العاديين مايشوفوش مين في الغرفة", "hideMembers");
+    }
     S(c, "👁 إخفاء «شوهدت بواسطة»", "المشرفين بس يشوفوا مين قرا الرسالة", "hideSeen");
     S(c, "🚫 منع النسخ والتحويل", "الأعضاء مايقدروش ينسخوا أو يحوّلوا الرسايل", "noFwd");
     const rg = el("button", "ghost", r.code ? "🔄 تجديد كود ورابط الدعوة (القديم يبطل)" : "🔗 إنشاء كود ورابط دعوة");
     rg.onclick = () => { if (r.code && !rg.dataset.ok) { rg.dataset.ok = "1"; rg.textContent = "اضغط تاني للتأكيد"; return; } upd({ code: newCode() }, r.id); };
-    c.append(rg);
+    if (!G) c.append(rg);
     const c2 = card("💬 التحكم في المحادثة");
     S(c2, "✍️ الكتابة للمشرفين فقط", "الأعضاء يقروا بس ومايقدروش يكتبوا", "onlyAdmins");
     S(c2, "🔗 منع الروابط", "الأعضاء مايقدروش يبعتوا روابط", "noLinks");
@@ -803,7 +892,7 @@ function renderInfo() {
       row.append(avatar(profileFor(u)), el("b", "", nameOf(u)), ok, no); c.append(row);
     });
   }
-  const mc = card("👥 الأعضاء (" + mem.length + ")");
+  const mc = G ? el("div") : card("👥 الأعضاء (" + mem.length + ")");
   if (admin) { const add = el("button", "ghost", "＋ إضافة صديق"); add.onclick = () => addFriend(r, mem); mc.append(add); }
   if (!admin && r.hideMembers) mc.append(el("div", "note", "🙈 المالك أخفى قائمة الأعضاء"));
   (admin || !r.hideMembers ? mem : [myId]).forEach(u => {
@@ -817,6 +906,21 @@ function renderInfo() {
     const c = card("⛔ المحظورون");
     r.banned.forEach(u => { const row = el("div", "ri-mem"), b = el("button", "ghost", "إلغاء الحظر"); b.onclick = () => upd({ banned: AR(u) }, r.id); row.append(avatar(profileFor(u)), el("b", "", nameOf(u)), b); c.append(row); });
   }
+  if (G && admin) {
+    const sc = card("🛡️ المشرفين");
+    const staff = [...new Set([...(r.by ? [r.by] : []), ...(r.admins || [])])];
+    staff.forEach(u => {
+      const row = el("div", "ri-mem"); row.append(avatar(profileFor(u, "general")), el("b", "", nameOf(u, "general") + (u === myId ? " (أنت)" : "")), el("span", "ri-tag", u === r.by ? " 👑" : " 🛡️"));
+      if (owner && u !== r.by) { const x = el("button", "ghost", "إزالة"); x.onclick = () => upd({ admins: AR(u) }, "general"); row.append(x); }
+      sc.append(row);
+    });
+    if (owner) sc.append(friendFinder(staff, r.banned || [], u => upd({ admins: AU(u) }, "general")));
+    sc.append(el("div", "note", "علشان تكتم أو تحظر حد: اضغط مطوّلاً على رسالته ← إدارة العضو."));
+    if ((r.muted || []).length) {
+      const mc2 = card("🔇 المكتومين");
+      r.muted.forEach(u => { const row = el("div", "ri-mem"), b = el("button", "ghost", "إلغاء الكتم"); b.onclick = () => upd({ muted: AR(u), ["mutedUntil." + u]: FV().delete() }, "general"); row.append(avatar(profileFor(u, "general")), el("b", "", nameOf(u, "general")), b); mc2.append(row); });
+    }
+  }
   const dc = card();
   if (!owner && (r.members || []).includes(myId)) {
     const lv = el("button", "ri-danger", "🚪 مغادرة الغرفة");
@@ -827,6 +931,7 @@ function renderInfo() {
     const cl = el("button", "ri-danger", "🧹 مسح كل الرسايل");
     cl.onclick = async () => { if (!cl.dataset.ok) { cl.dataset.ok = "1"; cl.textContent = "اضغط تاني للتأكيد"; return; } cl.disabled = true; try { const qq = await db.collection("msgs").where("room", "==", r.id).get(); await Promise.allSettled(qq.docs.map(d => d.ref.delete())); cl.textContent = "✓ اتمسحت"; } catch (e) { setStatus(errMsg(e)); } };
     dc.append(cl);
+    if (!G) {
     const dl = el("button", "ri-danger", "🗑 حذف الغرفة");
     dl.onclick = async () => {
       if (!dl.dataset.ok) { dl.dataset.ok = "1"; dl.textContent = "اضغط تاني للتأكيد (هتتمسح الرسايل كمان)"; return; }
@@ -837,6 +942,7 @@ function renderInfo() {
       } catch (e) { setStatus(errMsg(e)); }
     };
     dc.append(dl);
+    }
   }
   if (!dc.children.length) dc.remove();
 }
@@ -882,12 +988,13 @@ function openRoom(id) {
     s => { clearTimeout(timer); render(s.docs.map(d => ({ ...d.data(), id: d.id })).sort((a, b) => (a.ts - b.ts) || a.id.localeCompare(b.id)).slice(-150)); },
     e => { clearTimeout(timer); setStatus(errMsg(e)); });
   maybePersona();
+  if (window.syncHistory) syncHistory();
 }
 
 // ───── البروفايل ─────
 function perr(t) { $("pErr").textContent = t; $("pErr").hidden = !t; }
 function paintDraft() {
-  const pv = $("pvAv"); pv.replaceChildren(...avatar(draft).childNodes); pv.style.background = draft.photo ? "var(--line)" : draft.color;
+  const pv = $("pvAv"); pv._photo = draft.photo || ""; pv.dataset.name = draft.name || ""; pv.replaceChildren(...avatar(draft).childNodes); pv.style.background = draft.photo ? "var(--line)" : draft.color;
   document.querySelectorAll("#emojis .opt").forEach(o => o.classList.toggle("on", o.textContent === draft.emoji));
   document.querySelectorAll("#colors .opt").forEach(o => o.classList.toggle("on", o.dataset.c === draft.color));
   $("rmPhoto").hidden = !draft.photo;
@@ -897,17 +1004,17 @@ function roomName(id) { const r = rooms.find(x => x.id === id); return r ? r.nam
 function profileFor(uid, rid) { rid = rid || room; const rp = (rprofiles[uid] || {})[rid]; return (rid !== "general" && rp && !rp.skip && rp) || profiles[uid]; }
 function refreshMe() {
   const p = profileFor(myId); setAvatar($("meAv"), p);
-  const r = room === "general" ? { name: "عام", emoji: "🌐", color: "#5b6b78" } : (rooms.find(x => x.id === room) || { name: "غرفة" });
+  const r = room === "general" ? generalRoom() : (rooms.find(x => x.id === room) || { name: "غرفة" });
   const box = $("hRoom"); box.textContent = "";
   const ra = avatar(r.id === undefined && room === "general" ? r : (r.emoji || r.photo ? r : { emoji: "💬", color: "#5b6b78" }));
   const t = document.createElement("div"); const nm = document.createElement("b"); nm.textContent = r.name;
-  const sb = document.createElement("small"); sb.textContent = "أنت: " + ((p && p.name) || "—") + (ownerOf(r) ? "  👑" : adminOf(r) ? "  🛡️" : "") + (room === "general" ? "  ✏️" : "  ⚙️");
+  const sb = document.createElement("small"); sb.textContent = "أنت: " + ((p && p.name) || "—") + (ownerOf(r) ? "  👑" : adminOf(r) ? "  🛡️" : "") + "  ⚙️";
   t.append(nm, sb); box.append(ra, t); renderPin(); updateComposer();
 }
 function openSheet(mode, rid) {
   sheetMode = mode; sheetRoom = rid || null;
   const g = profiles[myId] || {};
-  const base = mode === "me" ? g : mode === "persona" ? ((rprofiles[myId] || {})[rid] || {}) : mode === "editroom" ? (rooms.find(x => x.id === rid) || {}) : {};
+  const base = mode === "me" ? g : mode === "persona" ? ((rprofiles[myId] || {})[rid] || {}) : mode === "editroom" ? (rid === "general" ? generalRoom() : (rooms.find(x => x.id === rid) || {})) : {};
   const src = (mode === "persona" && (!base.name || base.skip)) ? g : base;
   draft = { name: mode === "room" ? "" : (src.name || (mode === "me" ? gName() : "")), emoji: src.emoji || (mode === "room" || mode === "editroom" ? "💬" : "😀"), color: src.color || COLORS[0], photo: src.photo || "" };
   $("shTitle").textContent = mode === "me" ? "بروفايلك" : mode === "room" ? "غرفة جديدة" : mode === "editroom" ? "تعديل الغرفة" : "شخصيتك في غرفة " + roomName(rid);
@@ -915,14 +1022,19 @@ function openSheet(mode, rid) {
   $("nameIn").maxLength = mode === "room" || mode === "editroom" ? 30 : 20;
   $("saveBtn").textContent = mode === "room" ? "إنشاء الغرفة" : mode === "editroom" ? "حفظ التعديلات" : "حفظ";
   $("skipBtn").hidden = mode !== "persona"; $("cancelSheet").hidden = (mode === "me" && !g.name);
-  $("accSec").hidden = mode !== "me"; if (mode === "me") accUI();
-  $("privRow").hidden = !(mode === "room" || mode === "editroom"); $("descIn").hidden = !(mode === "room" || mode === "editroom"); $("descIn").value = mode === "editroom" ? ((src && src.desc) || "") : ""; $("privCk").checked = !!(src && src.private);
+  $("accSec").hidden = mode !== "me"; if (mode === "me") accUI(); $("codeSec").hidden = mode !== "me"; paintMyCode();
+  $("privRow").hidden = !(mode === "room" || (mode === "editroom" && rid !== "general")); $("descIn").hidden = !(mode === "room" || mode === "editroom"); $("descIn").value = mode === "editroom" ? ((src && src.desc) || "") : ""; $("privCk").checked = !!(src && src.private);
   $("nameIn").value = draft.name; $("sheet").hidden = false; perr(""); paintDraft();
 }
 function openProfile() { openSheet("me"); }
 function maybePersona() {}
 EMOJIS.forEach(e => { const b = document.createElement("button"); b.className = "opt"; b.textContent = e; b.onclick = () => { draft.emoji = e; draft.photo = ""; paintDraft(); }; $("emojis").appendChild(b); });
 COLORS.forEach(c => { const b = document.createElement("button"); b.className = "opt col"; b.dataset.c = c; b.style.background = c; b.onclick = () => { draft.color = c; paintDraft(); }; $("colors").appendChild(b); });
+$("copyCode").onclick = async () => {
+  const c = fmtFCode((profiles[myId] || {}).fcode); if (!c) return;
+  try { await navigator.clipboard.writeText(c); } catch (e) { const t = document.createElement("textarea"); t.value = c; document.body.appendChild(t); t.select(); try { document.execCommand("copy"); } catch (x) {} t.remove(); }
+  $("copyCode").textContent = "✓ اتنسخ"; setTimeout(() => { $("copyCode").textContent = "📋 نسخ"; }, 1500);
+};
 $("rmPhoto").onclick = () => { draft.photo = ""; paintDraft(); };
 Object.keys(EMO).forEach(k => {
   const b = document.createElement("button"); b.className = "opt sv"; b.title = EMO[k].n; b.innerHTML = EMO[k].s;
@@ -935,9 +1047,9 @@ $("file").onchange = e => {
   fr.onload = () => {
     const img = new Image();
     img.onload = () => {
-      const s = Math.min(img.width, img.height), o = Math.min(s, 360), c = document.createElement("canvas"); c.width = c.height = o;
+      const s = Math.min(img.width, img.height), o = Math.min(s, 640), c = document.createElement("canvas"); c.width = c.height = o;
       c.getContext("2d").drawImage(img, (img.width - s) / 2, (img.height - s) / 2, s, s, 0, 0, o, o);
-      draft.photo = c.toDataURL("image/jpeg", 0.85); paintDraft(); perr("✓ الصورة جاهزة، اضغط حفظ");
+      draft.photo = c.toDataURL("image/jpeg", 0.82); paintDraft(); perr("✓ الصورة جاهزة، اضغط حفظ");
     };
     img.onerror = () => perr("الصورة دي مش مدعومة، جرّب صورة تانية (JPG أو PNG).");
     img.src = fr.result;
@@ -946,20 +1058,25 @@ $("file").onchange = e => {
   perr("⏳ جاري معالجة الصورة…");
   fr.readAsDataURL(f); e.target.value = "";
 };
+let saving = false;
 $("saveBtn").onclick = async () => {
+  if (saving) return;
   const name = $("nameIn").value.trim(); if (!name) { $("nameIn").focus(); return; }
+  saving = true; $("saveBtn").disabled = true;
   const data = { name, emoji: draft.emoji, color: draft.color, photo: draft.photo };
   try {
-    if (sheetMode === "me") await db.doc("profiles/" + myId).set(data);
+    if (sheetMode === "me") await db.doc("profiles/" + myId).set({ ...data, fcode: (profiles[myId] || {}).fcode || await uniqueFCode() });
     else if (sheetMode === "persona") await db.doc("rprofiles/" + myId).set({ ...(rprofiles[myId] || {}), [sheetRoom]: data });
     else if (sheetMode === "editroom") {
-      const cur0 = rooms.find(x => x.id === sheetRoom) || {}, patch = { ...data, name: name.slice(0, 30), private: $("privCk").checked, desc: $("descIn").value.trim() };
+      const cur0 = sheetRoom === "general" ? generalRoom() : (rooms.find(x => x.id === sheetRoom) || {}), patch = { ...data, name: name.slice(0, 30), private: $("privCk").checked, desc: $("descIn").value.trim() };
       if (!cur0.by) { patch.by = myId; patch.members = [...new Set([...(cur0.members || []), myId])]; }
-      await db.collection("rooms").doc(sheetRoom).update(patch);
+      if (sheetRoom === "general") { delete patch.private; await db.collection("rooms").doc("general").set(patch, { merge: true }); }
+      else await db.collection("rooms").doc(sheetRoom).update(patch);
     }
-    else { const priv = $("privCk").checked, nr = { ...data, name: name.slice(0, 30), by: myId, private: priv, members: [myId], code: newCode(), desc: $("descIn").value.trim() }; const r = await db.collection("rooms").add(nr); $("sheet").hidden = true; rooms = [...rooms, { ...nr, id: r.id }]; buildChips(); openRoom(r.id); return; }
+    else { const priv = $("privCk").checked, nr = { ...data, name: name.slice(0, 30), by: myId, private: priv, members: [myId], code: newCode(), desc: $("descIn").value.trim() }; const r = await db.collection("rooms").add(nr); $("sheet").hidden = true; if (!rooms.some(x => x.id === r.id)) rooms = [...rooms, { ...nr, id: r.id }]; buildChips(); openRoom(r.id); return; }
     $("sheet").hidden = true;
   } catch (e) { perr("ماقدرتش أحفظ: " + errMsg(e) + (e && e.code ? " [" + e.code + "]" : "")); }
+  finally { saving = false; $("saveBtn").disabled = false; }
 };
 $("skipBtn").onclick = async () => {
   try { await db.doc("rprofiles/" + myId).set({ ...(rprofiles[myId] || {}), [sheetRoom]: { skip: true } }); } catch (e) {}
@@ -969,6 +1086,74 @@ $("cancelSheet").onclick = () => { $("sheet").hidden = true; };
 $("meBtn").onclick = () => { if (db) { if (room === "general") openSheet("me"); else openSheet("persona", room); } };
 
 // ───── الإرسال ─────
+
+// ───── رسائل صوتية ─────
+const fmtDur = t => Math.floor(t / 60) + ":" + String(Math.floor(t % 60)).padStart(2, "0");
+const AUD = new Map(); let curAudio = null;
+function audioPlayer(m) {
+  const w = el("div", "vp"), btn = el("button", "vpb", "▶"), bar = el("div", "vpt"), fill = el("i"), tm = el("span", "vpd", fmtDur(m.dur || 0));
+  btn.type = "button"; bar.append(fill); w.append(btn, bar, tm);
+  let a = AUD.get(m.id); if (!a) { a = new Audio(m.audio); a.preload = "metadata"; AUD.set(m.id, a); }
+  const sync = () => { btn.textContent = a.paused ? "▶" : "⏸"; const d = a.duration || m.dur || 0; fill.style.width = d && a.currentTime ? Math.min(100, a.currentTime / d * 100) + "%" : "0"; tm.textContent = fmtDur(a.paused && !a.currentTime ? (m.dur || 0) : a.currentTime); };
+  a.ontimeupdate = sync; a.onplay = sync; a.onpause = sync; a.onended = () => { a.currentTime = 0; sync(); };
+  sync();
+  btn.onclick = e => { e.stopPropagation(); if (selMode) return; if (a.paused) { if (curAudio && curAudio !== a) curAudio.pause(); curAudio = a; a.play().catch(() => setStatus("ماقدرتش أشغّل الصوت.")); } else a.pause(); };
+  return w;
+}
+const MAX_REC = 40; let rec = null;
+function showRec(on) { $("recBar").hidden = !on; $("inp").hidden = on; $("emoBtn").hidden = on; $("sendBtn").hidden = on; $("micBtn").hidden = false; $("micBtn").textContent = on ? "➤" : "🎤"; }
+async function startRec() {
+  if (rec || !db) return;
+  const why = writeBlock(curR()); if (why) { setStatus(why); return; }
+  if (!navigator.mediaDevices || !window.MediaRecorder) { setStatus("المتصفح ده مش بيدعم تسجيل الصوت."); return; }
+  let stream; try { stream = await navigator.mediaDevices.getUserMedia({ audio: true }); } catch (e) { setStatus("لازم تسمح للمتصفح يستخدم الميكروفون."); return; }
+  const mt = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4", "audio/ogg;codecs=opus"].find(t => MediaRecorder.isTypeSupported(t)) || "";
+  let mr; try { mr = new MediaRecorder(stream, mt ? { mimeType: mt, audioBitsPerSecond: 16000 } : { audioBitsPerSecond: 16000 }); } catch (e) { mr = new MediaRecorder(stream); }
+  const r = rec = { mr, stream, chunks: [], t0: Date.now(), cancel: false, room };
+  mr.ondataavailable = e => { if (e.data && e.data.size) r.chunks.push(e.data); };
+  mr.onstop = () => finishRec(r);
+  mr.start(); showRec(true); $("recTime").textContent = "0:00";
+  r.timer = setInterval(() => { const t = (Date.now() - r.t0) / 1000; $("recTime").textContent = fmtDur(t); if (t >= MAX_REC) stopRec(true); }, 200);
+}
+function stopRec(send) { if (!rec) return; rec.cancel = !send; clearInterval(rec.timer); if (rec.mr.state !== "inactive") rec.mr.stop(); }
+async function finishRec(r) {
+  clearInterval(r.timer); r.stream.getTracks().forEach(t => t.stop()); if (rec === r) rec = null; showRec(false);
+  if (r.cancel) return;
+  const dur = Math.round((Date.now() - r.t0) / 1000); if (dur < 1) { setStatus("الرسالة قصيرة جدًا."); return; }
+  const cr = curR(), wait = cr && !adminOf(cr) && cr.slow ? cr.slow - (Date.now() - (lastSent[r.room] || 0)) / 1000 : 0;
+  if (wait > 0) { setStatus("🐢 وضع بطيء: استنى " + Math.ceil(wait) + " ثانية"); return; }
+  const url = await new Promise(res => { const fr = new FileReader(); fr.onload = () => res(fr.result); fr.onerror = () => res(null); fr.readAsDataURL(new Blob(r.chunks, { type: r.mr.mimeType || "audio/webm" })); });
+  if (!url) { setStatus("ماقدرتش أجهّز التسجيل."); return; }
+  if (url.length > 900000) { setStatus("التسجيل كبير، سجّل رسالة أقصر."); return; }
+  lastSent[r.room] = Date.now();
+  const doc = { room: r.room, text: "", audio: url, dur, uid: myId, ts: Date.now() }; if (replyTo) { doc.reply = replyTo; clearReply(); }
+  try { await db.collection("msgs").add(doc); } catch (e) { setStatus("الرسالة الصوتية ماتبعتتش."); }
+}
+$("micBtn").onclick = () => { if (rec) stopRec(true); else startRec(); };
+$("recCancel").onclick = () => stopRec(false);
+setInterval(() => {
+  if (rec) return;
+  const has = !!$("inp").value.trim() || !!editingId;
+  $("micBtn").hidden = has; $("sendBtn").hidden = !has; $("micBtn").disabled = !db || !!writeBlock(curR());
+}, 250);
+
+// ───── لوحة الإيموجي ─────
+const EMO_CATS = [
+  ["😀", "😀 😃 😄 😁 😆 😅 😂 🤣 🥲 ☺️ 😊 😇 🙂 🙃 😉 😌 😍 🥰 😘 😗 😙 😚 😋 😛 😝 😜 🤪 🤨 🧐 🤓 😎 🥸 🤩 🥳 😏 😒 😞 😔 😟 😕 🙁 😣 😖 😫 😩 🥺 😢 😭 😤 😠 😡 🤬 🤯 😳 🥵 🥶 😱 😨 😰 😥 😓 🤗 🤔 🫣 🤭 🫢 🤫 🫠 🤥 😶 😐 😑 😬 🫨 🙄 😯 😦 😧 😮 😲 🥱 😴 🤤 😪 😵 🤐 🥴 🤢 🤮 🤧 😷 🤒 🤕"],
+  ["👍", "👍 👎 👌 🤌 🤏 ✌️ 🤞 🫰 🤟 🤘 🤙 👈 👉 👆 👇 ☝️ ✋ 🤚 🖐️ 🖖 👋 🤝 👏 🙌 🫶 👐 🤲 🙏 ✍️ 💪 🦾 🫵 👀 👁️ 👅 👄 🧠 🫀 🦷 🦴"],
+  ["❤️", "❤️ 🧡 💛 💚 💙 💜 🖤 🤍 🤎 💔 ❤️‍🔥 💕 💞 💓 💗 💖 💘 💝 💟 ✨ 💫 ⭐ 🌟 🔥 💥 💯 ✅ ❌ ❗ ❓ 💤 🎉 🎊 🎁 🏆 🥇 👑 💎"],
+  ["🐱", "🐶 🐱 🐭 🐹 🐰 🦊 🐻 🐼 🐨 🐯 🦁 🐮 🐷 🐸 🐵 🙈 🙉 🙊 🐔 🐧 🐦 🦅 🦉 🦇 🐺 🐴 🦄 🐝 🦋 🐢 🐍 🐙 🐬 🐳 🦈 🌹 🌸 🌻 🌴 🌵 🍀 🌍 🌙 ☀️ ⛅ 🌈 ⚡ ❄️"],
+  ["🍕", "🍏 🍎 🍉 🍇 🍓 🍒 🍑 🥭 🍍 🥥 🥝 🍅 🥑 🌽 🌶️ 🥔 🍞 🧀 🍳 🥞 🍔 🍟 🌭 🍕 🌮 🌯 🥙 🍗 🍖 🍣 🍜 🍝 🍰 🎂 🍩 🍪 🍫 🍿 🍦 ☕ 🍵 🥤 🍹 🍺"],
+  ["⚽", "⚽ 🏀 🏈 ⚾ 🎾 🏐 🏓 🥊 🎮 🕹️ 🎯 🎲 🎧 🎤 🎸 🎹 🥁 🎬 📷 📱 💻 ⌚ 💡 🔋 🚗 🚕 🏍️ ✈️ 🚀 🛸 🏠 🏝️ 🕌 🕋 ⏰ 💰 📚 ✏️ 🔒 🔑"]
+];
+let emoCat = 0;
+function drawEmo() {
+  const tabs = $("emoTabs"), grid = $("emoGrid"); tabs.textContent = ""; grid.textContent = "";
+  EMO_CATS.forEach((c, i) => { const b = el("button", i === emoCat ? "on" : "", c[0]); b.type = "button"; b.onclick = () => { emoCat = i; drawEmo(); }; tabs.append(b); });
+  EMO_CATS[emoCat][1].split(" ").forEach(e => { const b = el("button", "", e); b.type = "button"; b.onclick = () => { const i = $("inp"); const a = i.selectionStart == null ? i.value.length : i.selectionStart, z = i.selectionEnd == null ? a : i.selectionEnd; i.value = i.value.slice(0, a) + e + i.value.slice(z); i.focus(); try { i.setSelectionRange(a + e.length, a + e.length); } catch (x) {} }; grid.append(b); });
+}
+$("emoBtn").onclick = () => { const p = $("emoPanel"); p.hidden = !p.hidden; if (!p.hidden) drawEmo(); };
+
 $("f").onsubmit = async e => {
   e.preventDefault();
   const text = $("inp").value.trim(); if (!text || !db) return;
@@ -1009,18 +1194,47 @@ function askLogin() {
   });
 }
 function showPic(av, name) {
-  const pic = $("lbPic"); pic.textContent = ""; pic.style.background = "";
-  const im = av.querySelector("img");
-  if (im) { const i = new Image(); i.src = im.src; i.alt = ""; i.style.cssText = "width:100%;height:100%;object-fit:cover"; pic.append(i); }
-  else { pic.style.background = av.style.background || "var(--line)"; pic.textContent = av.textContent; }
-  $("lbName").textContent = name || ""; $("lb").hidden = false;
+  const pic = $("lbPic"); pic.textContent = ""; pic.style.background = ""; pic.classList.remove("emo");
+  const src = av._photo || (av.querySelector("img") && av.querySelector("img").src);
+  if (src) { const i = new Image(); i.alt = ""; i.src = src; pic.append(i); }
+  else { pic.classList.add("emo"); pic.style.background = av.style.background || "var(--line)"; pic.textContent = av.textContent; }
+  $("lbName").textContent = name || av.dataset.name || ""; $("lb").hidden = false;
 }
-$("lb").onclick = () => { $("lb").hidden = true; };
+const closePic = () => { $("lb").hidden = true; };
+$("lb").onclick = closePic;
+document.addEventListener("keydown", e => { if (e.key === "Escape") closePic(); });
 document.addEventListener("click", e => {
-  const av = e.target.closest(".row .av, .ri-mem .av, .ri-av"); if (!av || selMode) return;
-  const nm = (av.closest(".ri-mem") && av.closest(".ri-mem").querySelector("b")) || (av.closest(".row") && av.closest(".row").querySelector(".n")) || document.querySelector(".ri-hero h2");
-  showPic(av, nm ? nm.textContent : "");
-});
+  const av = e.target.closest(".av"); if (!av || selMode) return;
+  if (av.id === "meAv" || av.closest("#dlist, #hRoom, .chip, #lb")) return;
+  if (av.closest("button") && av.id !== "pvAv") return;
+  const nm = (av.closest(".ri-mem") && av.closest(".ri-mem").querySelector("b")) || (av.closest(".row") && av.closest(".row").querySelector(".n"));
+  showPic(av, av.dataset.name || (nm ? nm.textContent : (av.classList.contains("ri-av") && document.querySelector(".ri-hero h2") ? document.querySelector(".ri-hero h2").textContent : "")));
+}, true);
+
+// ───── زرار الرجوع: يقفل اللي مفتوح بدل ما يطلع من التطبيق ─────
+(function () {
+  const ids = ["lb", "msheet", "sheet", "drawer", "rinfo", "selBar", "emoPanel"];
+  const open = id => { const e = $(id); return !!e && !e.hidden; };
+  const forced = () => open("sheet") && sheetMode === "me" && !$("cancelSheet").offsetParent;
+  const closers = { lb: () => { $("lb").hidden = true; }, msheet: () => { $("msheet").hidden = true; }, sheet: () => { $("sheet").hidden = true; }, drawer: () => closeDrawer(), rinfo: () => closeInfo(), selBar: () => exitSel(), emoPanel: () => { $("emoPanel").hidden = true; } };
+  let pushed = 0, skip = 0;
+  const count = () => ids.filter(open).length + (room !== "general" ? 1 : 0);
+  window.syncHistory = function () {
+    const n = count();
+    while (pushed < n) { history.pushState({ vc: 1 }, ""); pushed++; }
+    if (pushed > n) { const k = pushed - n; pushed = n; skip++; history.go(-k); }
+  };
+  window.addEventListener("popstate", () => {
+    if (skip > 0) { skip--; return; }
+    if (pushed > 0) pushed--;
+    const top = ids.find(open);
+    if (top) { if (top === "sheet" && forced()) { history.pushState({ vc: 1 }, ""); pushed++; return; } closers[top](); }
+    else if (room !== "general") openRoom("general");
+    syncHistory();
+  });
+  const mo = new MutationObserver(() => syncHistory());
+  ids.forEach(id => { const e = $(id); if (e) mo.observe(e, { attributes: true, attributeFilter: ["hidden"] }); });
+})();
 let started = false, starting = false;
 async function start() {
   if (started || starting) return; starting = true;
@@ -1035,7 +1249,7 @@ async function start() {
   started = true; starting = false; $("sendBtn").disabled = false;
   db.collection("profiles").onSnapshot(s => {
     profiles = {}; s.docs.forEach(d => profiles[d.id] = d.data());
-    refreshMe();
+    refreshMe(); ensureMyCode(); paintMyCode();
     if (!loaded) { loaded = true; if (!profiles[myId]) openProfile(); }
     if (lastList.length) render(lastList);
   }, () => { loaded = true; });
@@ -1057,7 +1271,9 @@ async function start() {
   }, () => {});
   db.collection("rooms").onSnapshot(s => {
     const had = rooms.some(r => r.id === room);
-    rooms = s.docs.map(d => ({ ...d.data(), id: d.id })).sort((a, b) => (a.name || "").localeCompare(b.name || "", "ar"));
+    const gd = s.docs.find(d => d.id === "general"); gdoc = gd ? gd.data() : {};
+    if (OWNER_UID && myId === OWNER_UID && !gd) db.collection("rooms").doc("general").set({ admins: [] }, { merge: true }).catch(() => {});
+    rooms = s.docs.filter(d => d.id !== "general").map(d => ({ ...d.data(), id: d.id })).sort((a, b) => (a.name || "").localeCompare(b.name || "", "ar"));
     buildChips();
     if (room !== "general" && had && !rooms.some(r => r.id === room && canSee(r))) openRoom("general");
     tryJoin(); if (infoId) renderInfo(); refreshMe();
