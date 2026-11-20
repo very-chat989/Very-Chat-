@@ -221,6 +221,12 @@ button.ri-chip{cursor:pointer}
 #lbPic{width:min(94vw,640px);height:min(94vw,640px,72vh);border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:min(40vw,200px);overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.5);background:transparent}
 #lbPic.emo{width:min(70vw,320px);height:min(70vw,320px);border-radius:50%;box-shadow:0 0 0 4px rgba(255,255,255,.25),0 20px 60px rgba(0,0,0,.5)}
 #lbPic img{width:100%;height:100%;object-fit:contain;display:block}
+.codebox{display:flex;gap:8px;align-items:stretch}
+#myCode{flex:1;display:flex;align-items:center;justify-content:center;background:var(--card);border:1.5px dashed var(--pri);border-radius:14px;font-weight:800;letter-spacing:3px;font-size:20px;padding:12px 8px;user-select:all}
+#copyCode{flex:none;padding:0 16px;white-space:nowrap;border-radius:14px}
+.uidbox{margin-top:8px;font-size:12px;color:var(--mute);text-align:center}
+.uidbox summary{cursor:pointer;list-style:none}
+#myUidRow{margin-top:6px;font-size:11px;word-break:break-all;user-select:all;background:var(--card);border-radius:10px;padding:8px}
 .vp{display:flex;align-items:center;gap:8px;min-width:190px}
 .vpb{flex:none;width:36px;height:36px;border-radius:50%;border:0;background:var(--pri);color:var(--onpri);font-size:14px;cursor:pointer;padding:0}
 .vpt{flex:1;height:5px;border-radius:3px;background:rgba(127,127,127,.35);overflow:hidden;direction:ltr}
@@ -299,7 +305,11 @@ button.ri-chip{cursor:pointer}
       <input type="text" id="nameIn" placeholder="اسمك" maxlength="20" autocomplete="off">
       <input type="text" id="descIn" placeholder="وصف الغرفة (اختياري)" maxlength="120" autocomplete="off" hidden>
     </div>
-    <div class="sec" id="codeSec" hidden><label>كودك (شاركه مع صحابك علشان يضيفوك)</label><div class="grid"><div class="note" id="myUidRow" dir="ltr" style="grid-column:1/-1;font-size:11px;user-select:all;word-break:break-all">—</div><div class="ghost" id="myCode" dir="ltr" style="font-weight:800;letter-spacing:2px;font-size:18px;text-align:center;cursor:default">—</div><button class="ghost" id="copyCode" type="button">📋 نسخ</button></div></div>
+    <div class="sec" id="codeSec" hidden>
+      <label>كودك (شاركه مع صحابك علشان يضيفوك)</label>
+      <div class="codebox"><div id="myCode" dir="ltr">—</div><button class="ghost" id="copyCode" type="button">📋 نسخ</button></div>
+      <details class="uidbox"><summary>معرّف الحساب التقني</summary><div id="myUidRow" dir="ltr">—</div></details>
+    </div>
     <div class="sec" id="accSec" hidden><label>حسابك</label><div class="note" id="accNote"></div><button class="ghost" id="accBtn"></button></div>
     <label class="sec" id="privRow" hidden style="flex-direction:row;align-items:center;gap:10px;cursor:pointer"><input type="checkbox" id="privCk"><span>🔒 غرفة خاصة (الأعضاء اللي تضيفهم بس يشوفوها)</span></label>
     <div class="sec"><label>شخصيات الشلة</label><div class="grid" id="shalla"></div></div>
@@ -649,7 +659,7 @@ async function ensureMyCode() {
   codeBusy = false;
 }
 function paintMyCode() { const u = $("myUidRow"); if (u) u.textContent = "معرّفك: " + (myId || "—"); const e = $("myCode"); if (e) e.textContent = fmtFCode((profiles[myId] || {}).fcode) || "جاري إنشاء الكود…"; }
-function friendFinder(mem, banned, onAdd) {
+function friendFinder(mem, banned, onAdd, btnLabel, memLabel) {
   const w = el("div", "ffind"); w.style.cssText = "display:flex;flex-direction:column;gap:8px";
   w.append(el("div", "note", "اكتب كود صديقك (8 حروف وأرقام) وهيظهرلك هو بالظبط. كل واحد ليه كود مختلف، فمفيش لخبطة في الأسامي."));
   const inp = document.createElement("input"); inp.placeholder = "مثال: K7M2-9QXA"; inp.maxLength = 12; inp.dir = "ltr"; inp.autocomplete = "off"; inp.autocapitalize = "characters"; inp.spellcheck = false;
@@ -670,9 +680,9 @@ function friendFinder(mem, banned, onAdd) {
     if (!uid) { out.append(el("div", "note", "مفيش حد بالكود ده، اتأكد منه.")); return; }
     const row = el("div", "rrow"); row.style.cursor = "default"; row.append(avatar(data), el("b", "", data.name || "مجهول"));
     if (uid === myId) row.append(el("span", "note", "ده كودك أنت"));
-    else if (mem.includes(uid)) row.append(el("span", "note", "موجود في الغرفة"));
+    else if (mem.includes(uid)) row.append(el("span", "note", memLabel || "موجود في الغرفة"));
     else if (banned.includes(uid)) row.append(el("span", "note", "محظور"));
-    else { const b = el("button", "send", "＋ إضافة"); b.type = "button"; b.style.cssText += ";margin-inline-start:auto;padding:8px 16px"; b.onclick = () => { b.disabled = true; onAdd(uid); }; row.append(b); }
+    else { const b = el("button", "send", btnLabel || "＋ إضافة"); b.type = "button"; b.style.cssText += ";margin-inline-start:auto;padding:8px 16px"; b.onclick = () => { b.disabled = true; onAdd(uid); }; row.append(b); }
     out.append(row);
   };
   go.onclick = run; inp.onkeydown = e => { if (e.key === "Enter") { e.preventDefault(); run(); } };
@@ -784,7 +794,7 @@ $("dNotif").onclick = async () => { try { await Notification.requestPermission()
 function registerSW() { if ("serviceWorker" in navigator && /^https?:/.test(location.protocol)) navigator.serviceWorker.register("sw.js").catch(() => {}); }
 
 // معرّف مالك الدردشة العامة: انسخه من بروفايلك (سطر «معرّفك») وحطه هنا بين علامتي التنصيص
-const OWNER_UID = "";
+const OWNER_UID = "t2zZ3ijMhDPVsjGxQlunfmLHf122";
 let gdoc = {};
 const generalRoom = () => ({ id: "general", name: "عام", emoji: "🌐", color: "#5b6b78", ...gdoc, id: "general", by: OWNER_UID });
 const curR = () => room === "general" ? generalRoom() : rooms.find(x => x.id === room);
@@ -805,6 +815,7 @@ function writeBlock(r) {
 function updateComposer() {
   const why = writeBlock(curR());
   $("inp").disabled = !!why; $("sendBtn").disabled = !!why || !db;
+  { const c0 = curR(); $("inp").maxLength = c0 && c0.maxLen && !adminOf(c0) ? c0.maxLen : 1000; }
   $("inp").placeholder = why ? "🔒 " + why : "اكتب رسالة…";
 }
 function renderPin() {
@@ -882,7 +893,26 @@ function renderInfo() {
     const sl = el("div", "ri-row"), t = el("div"); t.append(el("b", "", "🐢 الوضع البطيء"), el("small", "", "الفاصل بين رسالة ورسالة للأعضاء"));
     const seg = el("div", "seg"); [[0, "بدون"], [10, "١٠ث"], [30, "٣٠ث"], [60, "دقيقة"], [300, "٥د"]].forEach(([v, lb]) => { const b = el("button", (r.slow || 0) === v ? "on" : "", lb); b.onclick = () => upd({ slow: v }, r.id); seg.append(b); });
     sl.append(t, seg); c2.append(sl);
+    S(c2, "🎤 منع الرسائل الصوتية", "الأعضاء العاديين مايبعتوش صوت", "noVoice");
+    const ml = el("div", "ri-row"), t2 = el("div"); t2.append(el("b", "", "📏 أقصى طول للرسالة"), el("small", "", "للأعضاء العاديين"));
+    const seg2 = el("div", "seg"); [[0, "عادي"], [100, "١٠٠"], [300, "٣٠٠"], [600, "٦٠٠"]].forEach(([v, lb]) => { const b = el("button", (r.maxLen || 0) === v ? "on" : "", lb); b.onclick = () => upd({ maxLen: v }, r.id); seg2.append(b); });
+    ml.append(t2, seg2); c2.append(ml);
+    const taStyle = "width:100%;padding:10px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font:inherit;resize:vertical";
+    const bc = card("🚫 كلمات ممنوعة");
+    bc.append(el("div", "note", "الأعضاء العاديين مش هيقدروا يبعتوا رسالة فيها أي كلمة من دي. افصل بين الكلمات بفاصلة."));
+    const ta = document.createElement("textarea"); ta.rows = 3; ta.value = (r.badWords || []).join("، "); ta.style.cssText = taStyle; ta.dir = "auto";
+    const sv = el("button", "ghost", "💾 حفظ الكلمات"); sv.type = "button";
+    sv.onclick = () => { const arr = [...new Set(ta.value.split(/[,،\n]/).map(x => x.trim().toLowerCase()).filter(Boolean))].slice(0, 100); upd({ badWords: arr }, r.id); sv.textContent = "✓ اتحفظ"; setTimeout(() => { sv.textContent = "💾 حفظ الكلمات"; }, 1500); };
+    bc.append(ta, sv);
+    const rc = card("📜 قواعد الدردشة");
+    rc.append(el("div", "note", "بتظهر لكل الأعضاء في صفحة المعلومات."));
+    const ra = document.createElement("textarea"); ra.rows = 4; ra.maxLength = 600; ra.value = r.rules || ""; ra.style.cssText = taStyle; ra.dir = "auto";
+    const rs = el("button", "ghost", "💾 حفظ القواعد"); rs.type = "button";
+    rs.onclick = () => { upd({ rules: ra.value.trim() }, r.id); rs.textContent = "✓ اتحفظت"; setTimeout(() => { rs.textContent = "💾 حفظ القواعد"; }, 1500); };
+    rc.append(ra, rs);
   }
+  if (!owner && r.rules) { const rc2 = card("📜 قواعد الدردشة"), rt = el("div", "", r.rules); rt.style.cssText = "white-space:pre-wrap;line-height:1.6"; rt.dir = "auto"; rc2.append(rt); }
+  if (G && admin && !owner) { const qc = card("⚡ تحكم سريع"); qc.append(swRow("🔒 قفل الدردشة", "الكتابة للمشرفين بس لحد ما تفتحها", !!r.onlyAdmins, v => upd({ onlyAdmins: v }, "general"))); }
   const reqs = r.requests || [];
   if (admin && reqs.length) {
     const c = card("✋ طلبات الانضمام (" + reqs.length + ")");
@@ -916,6 +946,8 @@ function renderInfo() {
     });
     if (owner) sc.append(friendFinder(staff, r.banned || [], u => upd({ admins: AU(u) }, "general")));
     sc.append(el("div", "note", "علشان تكتم أو تحظر حد: اضغط مطوّلاً على رسالته ← إدارة العضو."));
+    const bn = card("⛔ حظر بالكود");
+    bn.append(friendFinder(staff, r.banned || [], u => upd({ banned: AU(u) }, "general"), "⛔ حظر", "مشرف، مينفعش"));
     if ((r.muted || []).length) {
       const mc2 = card("🔇 المكتومين");
       r.muted.forEach(u => { const row = el("div", "ri-mem"), b = el("button", "ghost", "إلغاء الكتم"); b.onclick = () => upd({ muted: AR(u), ["mutedUntil." + u]: FV().delete() }, "general"); row.append(avatar(profileFor(u, "general")), el("b", "", nameOf(u, "general")), b); mc2.append(row); });
@@ -1105,6 +1137,7 @@ function showRec(on) { $("recBar").hidden = !on; $("inp").hidden = on; $("emoBtn
 async function startRec() {
   if (rec || !db) return;
   const why = writeBlock(curR()); if (why) { setStatus(why); return; }
+  { const cv = curR(); if (cv && cv.noVoice && !adminOf(cv)) { setStatus("🎤 الرسائل الصوتية متوقفة هنا"); return; } }
   if (!navigator.mediaDevices || !window.MediaRecorder) { setStatus("المتصفح ده مش بيدعم تسجيل الصوت."); return; }
   let stream; try { stream = await navigator.mediaDevices.getUserMedia({ audio: true }); } catch (e) { setStatus("لازم تسمح للمتصفح يستخدم الميكروفون."); return; }
   const mt = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4", "audio/ogg;codecs=opus"].find(t => MediaRecorder.isTypeSupported(t)) || "";
@@ -1158,6 +1191,7 @@ $("f").onsubmit = async e => {
   e.preventDefault();
   const text = $("inp").value.trim(); if (!text || !db) return;
   { const c0 = curR(), w0 = writeBlock(c0) || (c0 && c0.noLinks && !adminOf(c0) && LINK_RE.test(text) ? "🔗 المالك منع الروابط في الغرفة دي" : ""); if (w0) { setStatus(w0); return; } }
+  { const c1 = curR(); if (c1 && !adminOf(c1)) { const low = text.toLowerCase(); if (c1.maxLen && text.length > c1.maxLen) { setStatus("📏 الرسالة أطول من المسموح (" + c1.maxLen + " حرف)"); return; } if ((c1.badWords || []).some(w => w && low.includes(w))) { setStatus("🚫 الرسالة فيها كلمة ممنوعة في الغرفة دي"); return; } } }
   if (!editingId) {
     const cr = curR();
     const wait = cr && !adminOf(cr) && cr.slow ? cr.slow - (Date.now() - (lastSent[room] || 0)) / 1000 : 0;
