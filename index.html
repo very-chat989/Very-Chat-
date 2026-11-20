@@ -568,8 +568,10 @@ const msgCol = rid => db.collection(isDM(rid) ? "dmsgs" : "msgs");
 const mBase = rid => isDM(rid) ? { room: rid, members: dmMembers(rid) } : { room: rid };
 const dmRoom = id => { const p = profiles[dmPeerOf(id)] || {}; return { id, dm: true, name: p.name || "مجهول", emoji: p.emoji, color: p.color, photo: p.photo, blocked: (dms[id] || {}).blockedBy || [] }; };
 function flash(t) { setStatus(t); setTimeout(() => { if ($("status").textContent === t) setStatus(""); }, 3500); }
+const dmEstablished = d => !!d && (!!d.acc || (!!d.last && !d.req));
 async function sendDoc(doc) {
   if (!isDM(doc.room)) return db.collection("msgs").add(doc);
+  { const g = dms[doc.room]; if (!dmEstablished(g) && !(g && g.req && g.req !== myId)) { const x = new Error("⏳ مينفعش تبعت رسايل لحد ما يوافق على طلب المحادثة"); x.custom = true; throw x; } }
   const r = await db.collection("dmsgs").add(doc), d0 = dms[doc.room], ex = !d0 && !dmFirst ? { req: myId } : d0 && d0.req && d0.req !== myId && !d0.acc ? { acc: true } : {};
   db.collection("dms").doc(doc.room).set({ members: doc.members, ...ex, last: { uid: myId, ts: doc.ts, text: mtext(doc).slice(0, 60) }, unread: { [dmPeerOf(doc.room)]: FV().increment(1) } }, { merge: true }).catch(() => {});
   return r;
@@ -581,7 +583,18 @@ function peerTap(u, rid) {
   if (!canDMFrom(u, rid)) { flash("🎭 ده بشخصية مستعارة في الغرفة دي، مينفعش تكلمه خاص من هنا"); return; }
   openPeer(u);
 }
-function openDM(u) { if (!db || !u || u === myId) return; closeDrawer(); closeInfo(); $("msheet").hidden = true; openRoom(dmKey(myId, u)); }
+async function openDM(u) {
+  if (!db || !u || u === myId) return; closeDrawer(); closeInfo(); $("msheet").hidden = true;
+  const key = dmKey(myId, u), d = dms[key];
+  if (dmEstablished(d)) { openRoom(key); return; }
+  if (dmFirst) { flash("استنى لحظة وجرّب تاني"); return; }
+  if (pendingIn(d)) { openReqs(); return; }
+  if (d && d.req === myId && !d.acc && d.last && ((d.cleared || {})[u] || 0) < d.last.ts) { flash("⏳ طلبك لسه معلّق، استنى موافقته"); return; }
+  try {
+    await db.collection("dms").doc(key).set({ members: [myId, u].sort(), req: myId, last: { uid: myId, ts: Date.now(), text: "👋 طلب محادثة" } }, { merge: true });
+    flash("✓ اتبعت طلب المحادثة، هيوصلك إشعار أول ما يوافق");
+  } catch (e) { flash(errMsg(e)); }
+}
 function openPeer(u) {
   if (!u || u === myId) return;
   const p = profiles[u] || {}, key = dmKey(myId, u), blocked = ((dms[key] || {}).blockedBy || []).includes(myId), c = $("mcard"); c.textContent = "";
@@ -1970,7 +1983,7 @@ $("f").onsubmit = async e => {
   }
   const doc = { ...mBase(room), text, uid: myId, ts: Date.now() }; if (replyTo) { doc.reply = replyTo; clearReply(); }
   try { await sendDoc(doc); }
-  catch (err) { setStatus("الرسالة ماتبعتتش. غالباً مفيش صلاحية كتابة، اتأكد من النت ومن قواعد Firebase."); }
+  catch (err) { if (err && err.custom) { setStatus(err.message); return; } setStatus("الرسالة ماتبعتتش. غالباً مفيش صلاحية كتابة، اتأكد من النت ومن قواعد Firebase."); }
 };
 
 const lerr = t => { $("lErr").textContent = t; $("lErr").hidden = !t; };
@@ -2147,7 +2160,7 @@ async function decideInvite(r, ok) {
   } catch (e) { flash(errMsg(e)); }
 }
 async function decideDM(d, ok) {
-  try { await db.collection("dms").doc(d.id).update(ok ? { acc: true } : { ["cleared." + myId]: Math.max(Date.now(), d.last.ts + 1), ["unread." + myId]: 0 }); flash(ok ? "✓ اتقبلت المحادثة" : "✕ اترفض الطلب"); }
+  try { await db.collection("dms").doc(d.id).update(ok ? { acc: true } : { ["cleared." + myId]: Math.max(Date.now(), d.last.ts + 1), ["unread." + myId]: 0 }); notifyUser(dmPeerOf(d.id), { id: d.id, name: "" }, ok ? "dm_ok" : "dm_no"); flash(ok ? "✓ اتقبلت المحادثة" : "✕ اترفض الطلب"); }
   catch (e) { flash(errMsg(e)); }
 }
 const reqSeen = {};
@@ -2230,7 +2243,7 @@ function logJoin(r, kind) {
   const owner = r.id === "general" ? OWNER_UID : r.by; if (!owner || owner === myId) return;
   db.collection("joins").add({ owner, uid: myId, name: (profiles[myId] || {}).name || gName() || "مجهول", room: r.id, roomName: r.name || "عام", kind, ts: Date.now() }).catch(() => {});
 }
-const joinText = j => j.kind === "request" ? "✋ " + j.name + " طلب الانضمام لغرفة «" + j.roomName + "»" : j.kind === "invite" ? "📨 " + j.name + " دعاك لغرفة «" + j.roomName + "»" : j.kind === "inv_ok" ? "✅ " + j.name + " قبل دعوتك لغرفة «" + j.roomName + "»" : j.kind === "inv_no" ? "❌ " + j.name + " رفض دعوتك لغرفة «" + j.roomName + "»" : j.kind === "approved" ? "✅ اتقبل طلب انضمامك لغرفة «" + j.roomName + "»" : j.kind === "declined" ? "❌ طلب انضمامك لغرفة «" + j.roomName + "» اترفض" : j.room === "general" ? "👋 " + j.name + " انضم للدردشة العامة" : "👋 " + j.name + " انضم لغرفة «" + j.roomName + "»";
+const joinText = j => j.kind === "dm_ok" ? "✅ " + j.name + " قبل طلب محادثتك، تقدر تراسله دلوقتي" : j.kind === "dm_no" ? "❌ " + j.name + " رفض طلب محادثتك" : j.kind === "request" ? "✋ " + j.name + " طلب الانضمام لغرفة «" + j.roomName + "»" : j.kind === "invite" ? "📨 " + j.name + " دعاك لغرفة «" + j.roomName + "»" : j.kind === "inv_ok" ? "✅ " + j.name + " قبل دعوتك لغرفة «" + j.roomName + "»" : j.kind === "inv_no" ? "❌ " + j.name + " رفض دعوتك لغرفة «" + j.roomName + "»" : j.kind === "approved" ? "✅ اتقبل طلب انضمامك لغرفة «" + j.roomName + "»" : j.kind === "declined" ? "❌ طلب انضمامك لغرفة «" + j.roomName + "» اترفض" : j.room === "general" ? "👋 " + j.name + " انضم للدردشة العامة" : "👋 " + j.name + " انضم لغرفة «" + j.roomName + "»";
 function presenceStart() {
   if (presOn) return; presOn = true;
   db.collection("presence").onSnapshot(s => { presence = {}; s.docs.forEach(d => { presence[d.id] = d.data(); }); paintHSub(); }, () => {});

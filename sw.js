@@ -1,5 +1,5 @@
 // Very Chat service worker: network-first (always the newest page), cached copy only when offline
-const CACHE = "verychat-v8", SHELL = ["./", "index.html", "manifest.webmanifest", "icon-192.png"];
+const CACHE = "verychat-v9", SHELL = ["./", "index.html", "manifest.webmanifest", "icon-192.png"];
 self.addEventListener("install", e => {
   e.waitUntil(caches.open(CACHE).then(c => Promise.allSettled(SHELL.map(u => c.add(u)))).then(() => self.skipWaiting()));
 });
