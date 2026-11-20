@@ -410,7 +410,13 @@ form.bar:focus-within{box-shadow:0 0 0 2px var(--pri),var(--sh2)}
 /* ───── صندوق الطلبات ───── */
 #reqView{position:fixed;inset:0;z-index:4;background:var(--bg);display:flex;flex-direction:column;animation:up .25s ease both}
 #reqBody{flex:1;overflow-y:auto;padding-bottom:calc(24px + env(safe-area-inset-bottom,0px))}
-.rq-empty{text-align:center;color:var(--mute);padding:70px 20px;line-height:1.9;font-size:15px}.rq-empty i{display:block;font-style:normal;font-size:54px}
+.rq-empty{text-align:center;color:var(--mute);padding:70px 24px;line-height:1.8;font-size:14px}.rq-empty i{display:block;font-style:normal;font-size:54px}
+.rq-empty b{display:block;color:var(--ink);font-size:17px;margin-top:6px}.rq-empty small{display:block;font-size:13px;margin-top:2px}
+.rq-tabs{display:flex;background:var(--card);border-bottom:1px solid var(--line);padding:0 8px;flex:none}
+.rq-tab{flex:1;border:0;background:none;color:var(--mute);padding:13px 6px;font-weight:700;font-size:14px;cursor:pointer;border-bottom:3px solid transparent;display:flex;align-items:center;justify-content:center;gap:6px}
+.rq-tab.on{color:var(--pri);border-bottom-color:var(--pri)}
+.rq-n{background:var(--pri);color:var(--onpri);border-radius:11px;min-width:22px;height:22px;padding:0 7px;display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:700}
+.rq-h span:first-child{flex:1}
 .rq-all,.rq-wait{border:1px solid var(--line);background:var(--bg);color:var(--pri);font-weight:700;border-radius:12px;padding:7px 12px;cursor:pointer;font-size:12.5px}
 .rq-wait{color:var(--ink);font-weight:500;margin-inline-start:auto}
 .ri-ok:disabled,.ri-no:disabled,.rq-all:disabled,.rq-wait:disabled{opacity:.45}
@@ -458,6 +464,7 @@ form.bar:focus-within{box-shadow:0 0 0 2px var(--pri),var(--sh2)}
 
 <div id="reqView" hidden>
   <div class="ri-top"><button id="reqBack" aria-label="رجوع">→</button><b>📥 الطلبات</b></div>
+  <div class="rq-tabs" id="reqTabs" role="tablist"></div>
   <div id="reqBody"></div>
 </div>
 
@@ -2111,31 +2118,38 @@ function reqToast(d, id) {
   const t = "📩 " + nameOf(dmPeerOf(id)) + " بعتلك طلب محادثة"; toast(t); $("toast").onclick = () => { $("toast").hidden = true; openReqs(); };
   if (document.hidden && "Notification" in window && Notification.permission === "granted") pushLocal("Very Chat", t, "req");
 }
-function openReqs() { closeDrawer(); closeInfo(); $("reqView").hidden = false; renderReqs(); }
+function openReqs() { closeDrawer(); closeInfo(); rqTab = reqCount() || !(myWaiting().length + sentInvites().length + sentDMs().length) ? "in" : "out"; $("reqView").hidden = false; renderReqs(); $("reqBody").scrollTop = 0; }
+let rqTab = "in";
+const sentInvites = () => rooms.filter(adminOf).flatMap(r => (r.invites || []).filter(u => !(r.members || []).includes(u)).map(u => ({ r, u })));
+const sentDMs = () => Object.values(dms).filter(d => d.req === myId && !d.acc && d.last && ((d.cleared || {})[dmPeerOf(d.id)] || 0) < d.last.ts).sort((a, b) => b.last.ts - a.last.ts);
 function renderReqs() {
-  const box = $("reqBody"); if ($("reqView").hidden) return; box.textContent = "";
-  const J = joinReqs(), D = dmReqs(), W = myWaiting();
-  const I = myInvites();
-  if (!J.length && !D.length && !W.length && !I.length) { const e = el("div", "rq-empty"); e.append(el("i", "", "🎉"), document.createTextNode("مفيش طلبات دلوقتي")); box.append(e); return; }
-  const card = t => { const c = el("div", "ri-card"); c.append(el("h3", "", t)); box.append(c); return c; };
-  const btn = (cls, t, fn) => { const b = el("button", cls, t); b.type = "button"; b.onclick = async () => { b.disabled = true; try { await fn(); } finally { b.disabled = false; } }; return b; };
-  if (I.length) {
-    const c = card("📨 دعوات للانضمام (" + I.length + ")");
-    I.forEach(r => { const row = el("div", "ri-mem"), mi = el("div", "mi"); mi.append(el("b", "", r.name), el("small", "", "دعوة من " + nameOf(r.by))); row.append(avatar(r.emoji || r.photo ? r : { emoji: "💬", color: "#5b6b78" }), mi, btn("ri-ok", "✓", () => decideInvite(r, true)), btn("ri-no", "✕", () => decideInvite(r, false))); c.append(row); });
-  }
-  J.forEach(({ r, us }) => {
-    const c = card("✋ طلبات الانضمام لـ «" + r.name + "» (" + us.length + ")");
-    if (us.length > 1) c.append(btn("rq-all", "✓ قبول الكل", async () => { for (const u of us) await decideJoin(r, u, true); }));
-    us.forEach(u => { const row = el("div", "ri-mem"); row.append(avatar(profileFor(u)), el("b", "", nameOf(u)), btn("ri-ok", "✓", () => decideJoin(r, u, true)), btn("ri-no", "✕", () => decideJoin(r, u, false))); c.append(row); });
+  if ($("reqView").hidden) return;
+  const box = $("reqBody"), top = box.scrollTop, tabs = $("reqTabs"); box.textContent = ""; tabs.textContent = "";
+  const J = joinReqs(), D = dmReqs(), I = myInvites(), W = myWaiting(), SI = sentInvites(), SD = sentDMs();
+  const jn = J.reduce((n, x) => n + x.us.length, 0), nIn = jn + D.length + I.length, nOut = W.length + SI.length + SD.length;
+  [["in", "📥 الواردة", nIn], ["out", "📤 الصادرة", nOut]].forEach(([k, t, n]) => {
+    const b = el("button", "rq-tab" + (rqTab === k ? " on" : ""), t); b.type = "button"; b.setAttribute("role", "tab"); b.setAttribute("aria-selected", String(rqTab === k));
+    if (n) b.append(el("span", "rq-n", String(n))); b.onclick = () => { rqTab = k; renderReqs(); $("reqBody").scrollTop = 0; }; tabs.append(b);
   });
-  if (D.length) {
-    const c = card("💬 طلبات المحادثة الخاصة (" + D.length + ")");
-    D.forEach(d => { const u = dmPeerOf(d.id), row = el("div", "ri-mem"), mi = el("div", "mi"), sm = el("small", "", d.last.text); sm.dir = "auto"; mi.append(el("b", "", nameOf(u)), sm); row.append(avatar(profiles[u]), mi, btn("ri-ok", "✓", () => decideDM(d, true)), btn("ri-no", "✕", () => decideDM(d, false))); c.append(row); });
+  const btn = (cls, t, fn) => { const b = el("button", cls, t); b.type = "button"; b.onclick = async () => { b.disabled = true; try { await fn(); } finally { b.disabled = false; } }; return b; };
+  const sec = (ico, title, n, color, all) => { const c = el("div", "ri-card"), h = el("h3", "rq-h"); c.style.borderInlineStartColor = color; h.append(el("span", "", ico + " " + title), el("span", "rq-n", String(n))); if (all && n > 1) h.append(btn("rq-all", "✓ قبول الكل", all)); c.append(h); box.append(c); return c; };
+  const row = (av, name, sub, ...acts) => { const r = el("div", "ri-mem"), mi = el("div", "mi"), b = el("b", "", name), sm = el("small", "", sub); b.dir = sm.dir = "auto"; mi.append(b, sm); r.append(av, mi, ...acts); return r; };
+  const rav = r => avatar(r.emoji || r.photo ? r : { emoji: "💬", color: "#5b6b78" });
+  const yes = fn => btn("ri-ok", "✓", fn), no = fn => btn("ri-no", "✕", fn);
+  const empty = (i, t, sub) => { const e = el("div", "rq-empty"); e.append(el("i", "", i), el("b", "", t), el("small", "", sub)); box.append(e); };
+  if (rqTab === "in") {
+    if (!nIn) empty("🎉", "مفيش طلبات واردة", "أي دعوة أو طلب انضمام أو محادثة جديدة هتظهر هنا");
+    if (I.length) { const c = sec("📨", "دعوات ليك", I.length, "#2f90d9", async () => { for (const r of I) await decideInvite(r, true); }); I.forEach(r => c.append(row(rav(r), r.name, "دعوة من " + nameOf(r.by), yes(() => decideInvite(r, true)), no(() => decideInvite(r, false))))); }
+    if (jn) { const c = sec("✋", "طلبات الانضمام لغرفك", jn, "var(--pri)", async () => { for (const { r, us } of J) for (const u of us) await decideJoin(r, u, true); }); J.forEach(({ r, us }) => us.forEach(u => c.append(row(avatar(profileFor(u)), nameOf(u), "يطلب دخول «" + r.name + "»", yes(() => decideJoin(r, u, true)), no(() => decideJoin(r, u, false)))))); }
+    if (D.length) { const c = sec("💬", "طلبات محادثة خاصة", D.length, "#8a4fe0", async () => { for (const d of D) await decideDM(d, true); }); D.forEach(d => c.append(row(avatar(profiles[dmPeerOf(d.id)]), nameOf(dmPeerOf(d.id)), d.last.text, yes(() => decideDM(d, true)), no(() => decideDM(d, false))))); }
+  } else {
+    if (!nOut) empty("📤", "مفيش طلبات صادرة", "طلبات الانضمام والدعوات اللي بعتّها هتظهر هنا لحد ما يتردّ عليها");
+    const upd1 = (r, patch) => async () => { try { await db.collection("rooms").doc(r.id).update(patch); } catch (e) { flash(errMsg(e)); } };
+    if (W.length) { const c = sec("⏳", "طلبات انضمام بعتّها", W.length, "#e08a2f"); W.forEach(r => c.append(row(rav(r), r.name, "بانتظار موافقة المالك", btn("rq-wait", "إلغاء", upd1(r, { requests: AR(myId) }))))); }
+    if (SI.length) { const c = sec("📨", "دعوات بعتّها", SI.length, "#2f90d9"); SI.forEach(({ r, u }) => c.append(row(avatar(profileFor(u)), nameOf(u), "دعوة لغرفة «" + r.name + "» · بانتظار الرد", btn("rq-wait", "إلغاء", upd1(r, { invites: AR(u) }))))); }
+    if (SD.length) { const c = sec("💬", "طلبات محادثة بعتّها", SD.length, "#8a4fe0"); SD.forEach(d => { const u = dmPeerOf(d.id); c.append(row(avatar(profiles[u]), nameOf(u), "بانتظار قبول طلب المحادثة")); }); }
   }
-  if (W.length) {
-    const c = card("⏳ طلباتي المعلّقة (" + W.length + ")");
-    W.forEach(r => { const row = el("div", "ri-mem"), mi = el("div", "mi"); mi.append(el("b", "", r.name), el("small", "", "بانتظار موافقة المالك")); row.append(avatar(r.emoji || r.photo ? r : { emoji: "💬", color: "#5b6b78" }), mi, btn("rq-wait", "إلغاء الطلب", async () => { try { await db.collection("rooms").doc(r.id).update({ requests: AR(myId) }); } catch (e) { flash(errMsg(e)); } })); c.append(row); });
-  }
+  box.scrollTop = top;
 }
 $("dReq").onclick = openReqs; $("reqBack").onclick = () => { $("reqView").hidden = true; };
 if (navigator.serviceWorker) navigator.serviceWorker.addEventListener("message", e => { const t = e.data && e.data.tag; if (t === "join" || t === "req") openReqs(); });
