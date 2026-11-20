@@ -131,6 +131,8 @@ header{gap:10px;padding:8px 12px}
 #hRoom>div:last-child{min-width:0}
 #hRoom b{display:block;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #hRoom small{display:block;color:var(--mute);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#hRoom small.typing{color:var(--pri);font-weight:700}
+#toast{position:fixed;top:calc(env(safe-area-inset-top,0px) + 70px);left:50%;transform:translateX(-50%);max-width:92%;z-index:30;background:var(--pri);color:var(--onpri);padding:10px 16px;border-radius:14px;font-weight:700;font-size:14px;box-shadow:0 6px 20px rgba(0,0,0,.35);text-align:center;cursor:pointer}
 #selBar{position:absolute;inset:0;z-index:3;padding:0 14px}
 #drawer{position:fixed;inset:0;z-index:4;background:rgba(6,12,11,.5);-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)}
 .dpanel{position:absolute;top:0;bottom:0;inset-inline-start:0;width:min(86%,330px);background:var(--card);display:flex;flex-direction:column;gap:12px;padding:calc(16px + env(safe-area-inset-top,0px)) 14px calc(16px + env(safe-area-inset-bottom,0px));animation:slide .28s ease both;box-shadow:0 0 40px rgba(0,0,0,.35)}
@@ -791,10 +793,10 @@ async function joinRoom(r) {
   if (!canSee(r)) {
     $("msheet").hidden = true; closeDrawer();
     if (r.approval) {
-      if (!(r.requests || []).includes(myId)) await db.collection("rooms").doc(r.id).update({ requests: AU(myId) });
+      if (!(r.requests || []).includes(myId)) await db.collection("rooms").doc(r.id).update({ requests: AU(myId) }); logJoin(r, "request");
       setStatus("✓ اتبعت طلب الانضمام، استنى موافقة المالك"); return;
     }
-    await db.collection("rooms").doc(r.id).update({ members: AU(myId) });
+    await db.collection("rooms").doc(r.id).update({ members: AU(myId) }); logJoin(r, "join");
   }
   $("msheet").hidden = true; closeDrawer(); openRoom(r.id); setStatus("✓ انضميت لغرفة " + r.name);
 }
@@ -1137,7 +1139,7 @@ function renderInfo() {
   const chips = el("div", "ri-chips"), canCode = !!r.code && (admin || !r.lockInvite);
   const chipCopy = (lb, val, done) => { const b = el("button", "ri-chip", lb); b.onclick = async () => { b.textContent = (await copyText(val)) ? done : "ماقدرتش أنسخ"; setTimeout(() => { b.textContent = lb; }, 1500); }; return b; };
   if (canCode) chips.append(chipCopy("🔑 " + r.code, r.code, "✓ اتنسخ الكود"), chipCopy("🔗 نسخ الرابط", PAGE_URL + "#r-" + r.code, "✓ اتنسخ الرابط"));
-  if (G) chips.append(el("span", "ri-chip", "🌐 مفتوحة لكل المستخدمين")); else chips.append(el("span", "ri-chip", "👥 " + mem.length), el("span", "ri-chip", r.private ? "🔒 خاصة" : "🌐 عامة")); hero.append(chips); box.append(hero);
+  if (G) chips.append(el("span", "ri-chip", "🌐 مفتوحة لكل المستخدمين")); else chips.append(el("span", "ri-chip", "👥 " + mem.length), el("span", "ri-chip", r.private ? "🔒 خاصة" : "🌐 عامة")); { const pp = profileFor(myId, r.id) || {}; chips.prepend(el("span", "ri-chip", "🙋 أنت: " + (pp.name || "—") + (owner ? " 👑" : admin ? " 🛡️" : ""))); } hero.append(chips); box.append(hero);
   const q = el("div", "ri-quick"), qa = (ico, lb, fn) => { const b = el("button", "ri-q"); b.append(el("i", "", ico), el("span", "", lb)); b.onclick = fn; q.append(b); };
   if (canCode && (admin || !r.private)) qa("📤", "دعوة", () => shareInvite(r));
   qa("🎭", G ? "بروفايلي" : "شخصيتي", () => G ? openSheet("me") : openSheet("persona", r.id));
@@ -1320,8 +1322,8 @@ function refreshMe() {
   const box = $("hRoom"); box.textContent = "";
   const ra = avatar(r.id === undefined && room === "general" ? r : (r.emoji || r.photo ? r : { emoji: "💬", color: "#5b6b78" }));
   const t = document.createElement("div"); const nm = document.createElement("b"); nm.textContent = r.name;
-  const sb = document.createElement("small"); sb.textContent = r.dm ? "💬 دردشة خاصة" + ((r.blocked || []).length ? "  🚫" : "") : "أنت: " + ((p && p.name) || "—") + (ownerOf(r) ? "  👑" : adminOf(r) ? "  🛡️" : "") + "  ⚙️";
-  t.append(nm, sb); box.append(ra, t); renderPin(); updateComposer();
+  const sb = document.createElement("small"); sb.id = "hSub";
+  t.append(nm, sb); box.append(ra, t); renderPin(); updateComposer(); try { paintHSub(); } catch (e) {}
 }
 function openSheet(mode, rid) {
   sheetMode = mode; sheetRoom = rid || null;
@@ -1846,8 +1848,79 @@ async function start() {
     s.docChanges().forEach(ch => { const d = ch.doc.data(); if (!dmFirst && ch.type !== "removed" && d.last && d.last.uid !== myId && d.last.ts >= T0 - 2000 && d.last.ts > (dmDone[ch.doc.id] || 0) && !s.metadata.hasPendingWrites) { dmDone[ch.doc.id] = d.last.ts; notifyDM({ ...d, id: ch.doc.id }); } });
     { const wasFirst = dmFirst, nc = isDM(room) ? dmClearedAt(dms[room]) : 0; dmFirst = false; buildChips(); updateTotal(); if (isDM(room)) { refreshMe(); if (nc !== prevClr || (wasFirst && nc)) openRoom(room); } }
   }, () => {});
-  buildChips(); openRoom(room);
+  buildChips(); openRoom(room); presenceStart();
 }
+// ═══ المتصلين / بيكتب / إشعار الانضمام للمالك ═══
+const PRES_TTL = 90000, PRES_BEAT = 30000, TYPE_TTL = 5000;
+let presence = {}, presOn = false, typingSent = 0, typingActive = false;
+const isOnline = p => !!p && p.online !== false && Date.now() - (p.ts || 0) < PRES_TTL;
+function presWrite(extra) {
+  if (!db || !myId) return;
+  db.collection("presence").doc(myId).set({ ts: Date.now(), online: !document.hidden, room: room || "general", ...(extra || {}) }, { merge: true }).catch(() => {});
+}
+function lastSeenText(p) {
+  if (!p || !p.ts) return "";
+  const d = new Date(p.ts), t = d.toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit" });
+  return "آخر ظهور " + (d.toDateString() === new Date().toDateString() ? "اليوم " : d.toLocaleDateString("ar-EG", { day: "numeric", month: "short" }) + " ") + t;
+}
+function presenceInfo() {
+  const r = curR(); if (!r) return { text: "", typing: false };
+  const now = Date.now(), dm = isDM(room), other = dm ? room.slice(3).split("_").find(u => u !== myId) : null;
+  const typers = Object.keys(presence).filter(u => u !== myId && presence[u].typing === room && now - (presence[u].tts || 0) < TYPE_TTL && isOnline(presence[u]) && (!dm || u === other));
+  if (typers.length) {
+    const nm = typers.map(u => nameOf(u, room));
+    return { typing: true, text: "✍️ " + (typers.length === 1 ? nm[0] + " بيكتب…" : typers.length === 2 ? nm[0] + " و" + nm[1] + " بيكتبوا…" : typers.length + " بيكتبوا…") };
+  }
+  if (dm) { const p = presence[other]; return { typing: false, text: isOnline(p) ? "🟢 متصل" : (lastSeenText(p) || "💬 دردشة خاصة") }; }
+  const gen = room === "general", mem = !gen && r.members ? new Set([...r.members, r.by].filter(Boolean)) : null;
+  const on = new Set(Object.keys(presence).filter(u => isOnline(presence[u]) && (gen || (mem ? mem.has(u) : presence[u].room === room))));
+  if (!document.hidden) on.add(myId);
+  const total = gen ? Object.keys(profiles).length : mem ? mem.size : 0;
+  return { typing: false, text: "🟢 " + on.size + " متصل" + (total > on.size ? " من " + total : "") };
+}
+function paintHSub() { const e = $("hSub"); if (!e) return; const x = presenceInfo(); e.textContent = x.text; e.classList.toggle("typing", x.typing); }
+function stopTyping() { if (typingActive) { typingActive = false; typingSent = 0; presWrite({ typing: "", tts: 0 }); } }
+function toast(t) {
+  let e = $("toast"); if (!e) { e = el("div"); e.id = "toast"; document.body.append(e); e.onclick = () => { e.hidden = true; }; }
+  e.textContent = t; e.hidden = false; clearTimeout(e._t); e._t = setTimeout(() => { e.hidden = true; }, 7000);
+}
+function logJoin(r, kind) {
+  if (!db || !myId || !r) return;
+  const owner = r.id === "general" ? OWNER_UID : r.by; if (!owner || owner === myId) return;
+  db.collection("joins").add({ owner, uid: myId, name: (profiles[myId] || {}).name || gName() || "مجهول", room: r.id, roomName: r.name || "عام", kind, ts: Date.now() }).catch(() => {});
+}
+const joinText = j => j.kind === "request" ? "✋ " + j.name + " طلب الانضمام لغرفة «" + j.roomName + "»" : j.room === "general" ? "👋 " + j.name + " انضم للدردشة العامة" : "👋 " + j.name + " انضم لغرفة «" + j.roomName + "»";
+function presenceStart() {
+  if (presOn) return; presOn = true;
+  db.collection("presence").onSnapshot(s => { presence = {}; s.docs.forEach(d => { presence[d.id] = d.data(); }); paintHSub(); }, () => {});
+  presWrite({ typing: "", tts: 0 });
+  setInterval(() => { if (!document.hidden) presWrite(); }, PRES_BEAT);
+  setInterval(paintHSub, 8000);
+  document.addEventListener("visibilitychange", () => { presWrite(document.hidden ? { typing: "", tts: 0 } : null); paintHSub(); });
+  window.addEventListener("pagehide", () => presWrite({ online: false, typing: "", tts: 0 }));
+  window.addEventListener("online", () => presWrite());
+  const inp = $("inp");
+  inp.addEventListener("input", () => { if (!inp.value.trim()) { stopTyping(); return; } const n = Date.now(); if (n - typingSent > 2500) { typingSent = n; typingActive = true; presWrite({ typing: room, tts: n }); } });
+  inp.addEventListener("blur", stopTyping); $("f").addEventListener("submit", stopTyping);
+  // إشعار المالك بالانضمام (للمالك بس)
+  let seen = 0; try { seen = +localStorage.getItem("vc_joins_seen") || 0; } catch (e) {}
+  db.collection("joins").where("owner", "==", myId).onSnapshot(s => {
+    const all = s.docs.map(d => d.data()).filter(j => j.uid !== myId);
+    if (!seen) { seen = Date.now(); try { localStorage.setItem("vc_joins_seen", seen); } catch (e) {} return; }
+    const fresh = all.filter(j => j.ts > seen).sort((a, b) => a.ts - b.ts); if (!fresh.length) return;
+    seen = fresh[fresh.length - 1].ts; try { localStorage.setItem("vc_joins_seen", seen); } catch (e) {}
+    const txt = fresh.length === 1 ? joinText(fresh[0]) : "👋 " + fresh.length + " انضموا: " + fresh.slice(-3).map(j => j.name).join("، ");
+    toast(txt); if (document.hidden && "Notification" in window && Notification.permission === "granted") pushLocal("Very Chat", txt, "join");
+  }, () => {});
+  // انضمام عضو جديد للدردشة العامة = أول مرة يحفظ بروفايله
+  let noProfile = false, gLogged = false;
+  db.collection("profiles").doc(myId).onSnapshot(d => {
+    if (!d.exists && !d.metadata.fromCache) noProfile = true;
+    else if (d.exists && noProfile && !gLogged) { gLogged = true; logJoin({ id: "general", name: "عام" }, "join"); }
+  }, () => {});
+}
+{ const _open = openRoom; openRoom = function (id) { _open(id); stopTyping(); if (started) { presWrite({ typing: "", tts: 0 }); paintHSub(); } }; }
+
 const vv = window.visualViewport;
 function fit() {
   if (!vv) return;
