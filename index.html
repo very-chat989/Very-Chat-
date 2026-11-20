@@ -377,7 +377,7 @@ const FIREBASE_CONFIG = {
 const $ = id => document.getElementById(id);
 const logo = id => `<svg viewBox='0 0 100 100'><defs><linearGradient id='${id}' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='#2cc4a9'/><stop offset='1' stop-color='#0f8f7a'/></linearGradient></defs><rect width='100' height='100' rx='26' fill='url(#${id})'/><path d='M50 18c-18 0-32 12-32 28 0 8 4 15 10 20l-3 14 15-7c3 1 6 1 10 1 18 0 32-12 32-28S68 18 50 18z' fill='#fff'/><path d='M36 38l14 22 14-22' fill='none' stroke='#0f8f7a' stroke-width='8' stroke-linecap='round' stroke-linejoin='round'/></svg>`;
 $("sLogo").innerHTML = logo("lgS"); $("dLogo").innerHTML = logo("lgD");
-setTimeout(() => { $("splash").classList.add("out"); setTimeout(() => $("splash").remove(), 450); }, 1700);
+setTimeout(() => { $("splash").classList.add("out"); setTimeout(() => $("splash").remove(), 450); }, 900);
 const EMOJIS = ["😀","😎","🤓","🥳","😍","🤩","😂","🥹","😴","🤠","👻","🤖","👽","💀","🐱","🐶","🦁","🐼","🦊","🐯","🐸","🐵","🦄","🐧","🦅","🐢","🐬","🦋","🚀","⚽","🏀","🎮","🎧","🎸","🌶️","🍕","🍔","🔥","⭐","👑","💎","❤️","🌹","🌙"];
 const COLORS = ["#0f8f7a","#2f6fed","#8a4fe0","#e0507a","#e08a2f","#c9a400","#3f8f3f","#5b6b78"];
 let confirmDel = false;
@@ -587,7 +587,7 @@ function openMsg(m) {
   $("msheet").hidden = false;
 }
 
-const PAGE_URL = location.href.split("#")[0];
+const PAGE_URL = location.href.split(/[?#]/)[0];
 const el = (t, c, x) => { const e = document.createElement(t); if (c) e.className = c; if (x !== undefined) e.textContent = x; return e; };
 const canSee = r => !(r.banned || []).includes(myId) && (r.by === myId || (r.members || []).includes(myId) || (!r.private && !r.members));
 const isOwner = r => !r.by || r.by === myId;
@@ -1400,28 +1400,53 @@ async function stoUI() {
     box.style.whiteSpace = "pre-line"; box.textContent = parts.join("\n");
   } catch (err) { box.textContent = "ماقدرتش أحسب الحجم."; }
 }
+const withTimeout = (p, ms) => Promise.race([Promise.resolve(p).catch(() => {}), new Promise(r => setTimeout(r, ms))]);
+// بيتنفذ في أول تشغيل قبل Firebase: بيمسح قواعد البيانات المحلية بدون ما يعلّق
+async function preWipe() {
+  let flag = ""; try { flag = localStorage.getItem("vc_wipe") || ""; localStorage.removeItem("vc_wipe"); } catch (e) {}
+  if (!flag) return;
+  try {
+    if (indexedDB.databases) {
+      const dbs = await withTimeout(indexedDB.databases(), 1500) || [];
+      await Promise.all(dbs.filter(d => d.name && (d.name.startsWith("firestore/") || (flag === "all" && d.name.startsWith("firebase")))).map(d => withTimeout(new Promise(r => { const q = indexedDB.deleteDatabase(d.name); q.onsuccess = q.onerror = q.onblocked = r; }), 2000)));
+    }
+  } catch (e) {}
+  if (flag === "all") { try { localStorage.clear(); sessionStorage.clear(); } catch (e) {} }
+}
 async function wipeStorage(everything) {
   MEDIA.clear(); MEDIA_P.clear();
-  try { if (window.caches) await Promise.all((await caches.keys()).map(k => caches.delete(k))); } catch (e) {}
-  try { if (db) { await db.terminate(); await db.clearPersistence(); } } catch (e) {}
-  if (everything) {
-    try { const rs = await navigator.serviceWorker.getRegistrations(); await Promise.all(rs.map(r => r.unregister())); } catch (e) {}
-    try { localStorage.clear(); sessionStorage.clear(); } catch (e) {}
-    try { await firebase.auth().signOut(); } catch (e) {}
-    try { if (indexedDB.databases) for (const d of await indexedDB.databases()) if (d.name) indexedDB.deleteDatabase(d.name); } catch (e) {}
-  }
+  try { localStorage.setItem("vc_wipe", everything ? "all" : "cache"); } catch (e) {}
+  await withTimeout((async () => { if (window.caches) await Promise.all((await caches.keys()).map(k => caches.delete(k))); })(), 1500);
+  if (everything) await withTimeout((async () => { const rs = await navigator.serviceWorker.getRegistrations(); await Promise.all(rs.map(r => r.unregister())); })(), 1500);
+  try { db && db.terminate(); } catch (e) {}
 }
 $("stoClear").onclick = async () => {
   const b = $("stoClear"); b.disabled = true; b.textContent = "جاري المسح…";
-  await wipeStorage(false); b.textContent = "✓ اتمسح، جاري إعادة التحميل…"; setTimeout(() => location.reload(), 600);
+  await wipeStorage(false); b.textContent = "✓ اتمسح، جاري إعادة التحميل…"; setTimeout(() => location.reload(), 300);
 };
 let stoArm = 0;
 $("stoAll").onclick = async () => {
   const b = $("stoAll");
   if (!stoArm) { stoArm = setTimeout(() => { stoArm = 0; b.textContent = "🗑 مسح كل بيانات التطبيق وتسجيل الخروج"; }, 4000); b.textContent = "⚠️ اضغط تاني للتأكيد (هيسجّل خروجك)"; return; }
   clearTimeout(stoArm); b.disabled = true; b.textContent = "جاري المسح…";
-  await wipeStorage(true); setTimeout(() => location.reload(), 600);
+  await wipeStorage(true); setTimeout(() => location.reload(), 300);
 };
+
+// ───── تحديث تلقائي: لو في نسخة أحدث على الموقع بتتحمّل لوحدها (من غير تسجيل خروج) ─────
+const BUILD = "20261120-4";
+let updating = false;
+async function checkUpdate() {
+  if (updating || !/^https?:/.test(location.protocol) || !navigator.onLine) return;
+  try {
+    const r = await withTimeout(fetch(PAGE_URL + "?_=" + Date.now(), { cache: "no-store" }), 6000); if (!r || !r.ok) return;
+    const m = (await r.text()).match(/const BUILD = "([^"]+)"/); if (!m || m[1] === BUILD) return;
+    updating = true; setStatus("🔄 فيه تحديث جديد، جاري التحميل…");
+    await withTimeout((async () => { if (window.caches) await Promise.all((await caches.keys()).map(k => caches.delete(k))); const rs = await navigator.serviceWorker.getRegistrations(); await Promise.all(rs.map(x => x.update().catch(() => {}))); })(), 2500);
+    location.replace(PAGE_URL + "?v=" + m[1] + location.hash);
+  } catch (e) {}
+}
+setTimeout(checkUpdate, 1500); setInterval(checkUpdate, 120000);
+document.addEventListener("visibilitychange", () => { if (!document.hidden) checkUpdate(); });
 
 // ───── لوحة الإيموجي ─────
 const EMO_CATS = [
@@ -1526,6 +1551,7 @@ async function start() {
   if (started || starting) return; starting = true;
   if (!FIREBASE_CONFIG.apiKey || FIREBASE_CONFIG.apiKey.startsWith("PASTE")) { setStatus("لازم تحط إعدادات Firebase في أول ملف الصفحة (FIREBASE_CONFIG)."); $("sendBtn").disabled = true; return; }
   try {
+    await preWipe();
     if (!(firebase.apps || []).length) firebase.initializeApp(FIREBASE_CONFIG);
     const au = firebase.auth(); au.getRedirectResult().catch(e => lerr(authMsg(e)));
     let user = await new Promise(res => { const un = au.onAuthStateChanged(u => { un(); res(u); }); });
