@@ -553,7 +553,7 @@ async function delRoom() {
   try {
     const s = await db.collection("msgs").where("room", "==", id).get();
     await Promise.all(s.docs.map(d => db.collection("msgs").doc(d.id).delete()));
-    await db.collection("rooms").doc(id).delete();
+    await dropCode(rooms.find(x => x.id === id)); await db.collection("rooms").doc(id).delete();
     openRoom("general");
   } catch (e) { setStatus("ماقدرتش أحذف الغرفة."); }
 }
@@ -942,23 +942,23 @@ let joinId = (location.hash.match(/^#r-([A-Za-z0-9-]+)$/) || [])[1] || null;
 const FV = () => firebase.firestore.FieldValue;
 const findByCode = code => rooms.find(x => String(x.code || "").toLowerCase() === String(code || "").trim().toLowerCase());
 async function joinRoom(r) {
+  const known = rooms.find(x => x.id === r.id); if (known) r = known;
   if ((r.banned || []).includes(myId)) { const e = new Error("أنت محظور من الغرفة دي"); e.custom = true; throw e; }
-  if (!canSee(r)) {
+  if (r.stub || !canSee(r)) {
     $("msheet").hidden = true; closeDrawer();
-    if (needApproval(r)) {
-      if ((r.requests || []).includes(myId)) { flash("⏳ طلبك لسه معلّق، استنى موافقة المالك"); return; }
-      await db.collection("rooms").doc(r.id).update({ requests: AU(myId) }); logJoin(r, "request");
-      flash("✓ اتبعت طلب الانضمام، هيوصلك إشعار أول ما يوافق المالك"); return;
-    }
-    await db.collection("rooms").doc(r.id).update({ members: AU(myId) }); logJoin(r, "join");
+    if ((r.invites || []).includes(myId)) { await decideInvite(r, true); return; }
+    if ((r.requests || []).includes(myId)) { flash("⏳ طلبك لسه معلّق، استنى موافقة المالك"); return; }
+    try { await db.collection("rooms").doc(r.id).update({ requests: AU(myId) }); }
+    catch (e) { const x = new Error(e && e.code === "not-found" ? "الغرفة دي مش موجودة أو اتمسحت" : "ماقدرتش أبعت الطلب (ممكن تكون محظور من الغرفة)"); x.custom = true; throw x; }
+    logJoin(r, "request"); flash("✓ اتبعت طلب الانضمام، هيوصلك إشعار أول ما يوافق المالك"); return;
   }
   $("msheet").hidden = true; closeDrawer(); openRoom(r.id); flash("✓ " + r.name);
 }
-function tryJoin() {
+async function tryJoin() {
   if (!joinId || !db) return;
-  const r = findByCode(joinId); if (!r) return;
-  joinId = null;
-  joinRoom(r).catch(e => setStatus("ماقدرتش أدخل الغرفة: " + errMsg(e)));
+  const code = joinId; joinId = null;
+  const r = await lookupCode(code); if (!r) { flash("كود الغرفة غلط أو اتلغى"); return; }
+  joinRoom(r).catch(e => flash("ماقدرتش أدخل الغرفة: " + errMsg(e)));
 }
 async function shareText(text) {
   if (navigator.share) { try { await navigator.share({ title: "Very Chat", text }); return "shared"; } catch (e) { if (e && e.name === "AbortError") return "shared"; } }
@@ -976,7 +976,7 @@ function openDiscover() {
   cin.style.cssText = "padding:12px 14px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--ink);text-align:center;width:100%";
   const go = el("button", "send", "انضمام"); go.style.padding = "0 18px"; const msg = el("div", "note");
   go.onclick = async () => {
-    if (!cin.value.trim()) return; const r = findByCode(cin.value);
+    if (!cin.value.trim()) return; go.disabled = true; msg.textContent = ""; const r = await lookupCode(cin.value); go.disabled = false;
     if (!r) {
       const pc = normFCode(cin.value), pu = pc.length === 8 && Object.keys(profiles).find(u => profiles[u] && profiles[u].fcode === pc);
       if (pu === myId) { msg.textContent = "ده كودك أنت 🙂"; return; }
@@ -1118,6 +1118,7 @@ function errMsg(e) {
   if (e && e.custom) return e.message;
   const c = (e && e.code) || "";
   if (c === "permission-denied") return "مفيش صلاحية. اتأكد من قواعد Firebase (Rules).";
+  if (c === "not-found") return "الغرفة دي مش موجودة أو اتمسحت.";
   if (c === "unavailable") return "السيرفر مش متاح دلوقتي، اتأكد من النت.";
   if (c === "failed-precondition") return "فيه إعداد ناقص في Firebase: " + ((e && e.message) || "");
   return "حصلت مشكلة: " + ((e && e.message) || c || "غير معروفة");
@@ -1338,13 +1339,13 @@ function renderInfo() {
     c.append(swRow("🛡️ قائمة الأعضاء للمالك فقط", "حماية وأمان: إنت بس اللي تشوف الأعضاء وتبحث عنهم بالاسم أو الكود، وباقي الناس (حتى المشرفين) يشوفوا نفسهم بس", r.ownerOnlyMem !== false, v => upd({ ownerOnlyMem: v }, r.id)));
     if (!G) {
     S(c, "🔒 غرفة خاصة", "مش بتظهر في البحث، بالكود أو الرابط بس", "private");
-    c.append(swRow("✋ الانضمام بموافقتك", "أي حد يطلب الدخول لازم تقبله من قسم «📥 الطلبات»", needApproval(r), v => upd({ approval: v }, r.id)));
+    c.append(el("div", "note", "✋ الانضمام بموافقتك دايمًا: محدش يدخل الغرفة غير لما تقبله من «📥 الطلبات»"));
     S(c, "🙈 إخفاء الكود والرابط عن الأعضاء", "المشرفين بس يشوفوا الكود ويدعوا", "lockInvite");
     }
     S(c, "👁 إخفاء «شوهدت بواسطة»", "المشرفين بس يشوفوا مين قرا الرسالة", "hideSeen");
     S(c, "🚫 منع النسخ والتحويل", "الأعضاء مايقدروش ينسخوا أو يحوّلوا الرسايل", "noFwd");
     const rg = el("button", "ghost", r.code ? "🔄 تجديد كود ورابط الدعوة (القديم يبطل)" : "🔗 إنشاء كود ورابط دعوة");
-    rg.onclick = () => { if (r.code && !rg.dataset.ok) { rg.dataset.ok = "1"; rg.textContent = "اضغط تاني للتأكيد"; return; } upd({ code: newCode() }, r.id); };
+    rg.onclick = () => { if (r.code && !rg.dataset.ok) { rg.dataset.ok = "1"; rg.textContent = "اضغط تاني للتأكيد"; return; } regenCode(r); };
     if (!G) c.append(rg);
     const c2 = card("💬 التحكم في المحادثة");
     S(c2, "✍️ الكتابة للمشرفين فقط", "الأعضاء يقروا بس ومايقدروش يكتبوا", "onlyAdmins");
@@ -1473,7 +1474,7 @@ function renderInfo() {
       try {
         busy("جاري الحذف…");
         await wipeRoomMsgs(r.id);
-        await db.collection("rooms").doc(r.id).delete(); closeInfo(); openRoom("general");
+        await dropCode(r); await db.collection("rooms").doc(r.id).delete(); closeInfo(); openRoom("general");
       } catch (e) { setStatus(errMsg(e)); }
       idle();
     });
@@ -1502,7 +1503,7 @@ function openRoomMenu(r) {
     close();
     try {
       await wipeRoomMsgs(r.id);
-      await db.collection("rooms").doc(r.id).delete();
+      await dropCode(r); await db.collection("rooms").doc(r.id).delete();
       if (room === r.id) openRoom("general");
     } catch (e) { setStatus("ماقدرتش أحذف الغرفة."); }
   });
@@ -1826,7 +1827,7 @@ function roomCard(sh) {
   c.append(avatar({ emoji: sh.emoji || "💬", color: sh.color || "#5b6b78", photo: sh.photo || "" }));
   const t = el("div", "rt"); t.append(el("b", "", sh.name || "غرفة"), el("small", "", "غرفة على Very Chat")); c.append(t);
   const b = el("button", "", r && canSee(r) ? "فتح" : "انضمام"); b.type = "button";
-  b.onclick = async e => { e.stopPropagation(); if (selMode) return; const rr = rooms.find(x => x.id === sh.id) || (sh.id === "general" ? generalRoom() : null); if (!rr) { setStatus("الغرفة دي مش موجودة."); return; } try { await joinRoom(rr); } catch (er) { setStatus(errMsg(er)); } };
+  b.onclick = async e => { e.stopPropagation(); if (selMode) return; const rr = rooms.find(x => x.id === sh.id) || (sh.id === "general" ? generalRoom() : { stub: true, id: sh.id, name: sh.name || "غرفة" }); if (!rr) { setStatus("الغرفة دي مش موجودة."); return; } try { await joinRoom(rr); } catch (er) { setStatus(errMsg(er)); } };
   c.append(b); return c;
 }
 // الكارت بيشاور على الـ uid بس، والاسم والكود بيتقروا من البروفايل الحقيقي (علشان محدش يزوّر كارت)
@@ -2056,26 +2057,14 @@ async function start() {
     refreshMe(); if (!rpLoaded) { rpLoaded = true; maybePersona(); }
     if (lastList.length) render(lastList);
   }, () => { rpLoaded = true; });
-  db.collection("msgs").orderBy("ts", "desc").limit(400).onSnapshot(s => {
-    recent = s.docs.map(d => ({ ...d.data(), id: d.id }));
-    if (!firstRecent && !s.metadata.hasPendingWrites) s.docChanges().forEach(ch => { const m = ch.doc.data(); if (ch.type === "added" && m.ts >= T0 - 2000) { soundMsg(m); notifyMsg(m); } });
-    firstRecent = false; updateTotal(); if (!$("drawer").hidden) buildChips();
-  }, e => setStatus(errMsg(e)));
+  syncRecent();
   document.addEventListener("visibilitychange", () => { if (!document.hidden && lastList.length) render(lastList); });
   db.collection("reads").onSnapshot(s => {
     reads = {}; s.docs.forEach(d => { reads[d.id] = d.data(); });
     if (!readsLoaded) { readsLoaded = true; myReads = { ...(reads[myId] || {}) }; }
     if (lastList.length) render(lastList);
   }, () => {});
-  db.collection("rooms").onSnapshot(s => {
-    const had = rooms.some(r => r.id === room);
-    const gd = s.docs.find(d => d.id === "general"); gdoc = gd ? gd.data() : {};
-    if (OWNER_UID && myId === OWNER_UID && !gd) db.collection("rooms").doc("general").set({ admins: [] }, { merge: true }).catch(() => {});
-    rooms = s.docs.filter(d => d.id !== "general").map(d => ({ ...d.data(), id: d.id })).sort((a, b) => (a.name || "").localeCompare(b.name || "", "ar"));
-    buildChips();
-    if (room !== "general" && had && !rooms.some(r => r.id === room && canSee(r))) openRoom("general");
-    tryJoin(); if (infoId) { const sg = JSON.stringify(infoId === "general" ? gdoc : (rooms.find(x => x.id === infoId) || null)); if (sg !== infoSig) { infoSig = sg; renderInfo(); } } refreshMe();
-  }, () => {});
+  watchRooms();
   db.collection("dms").where("members", "array-contains", myId).onSnapshot(s => {
     const prevClr = dmClearedAt(dms[room]); dms = {}; s.docs.forEach(d => { dms[d.id] = { ...d.data(), id: d.id }; });
     s.docChanges().forEach(ch => { const d = ch.doc.data(); if (!dmFirst && ch.type !== "removed" && d.last && d.last.uid !== myId && d.last.ts >= T0 - 2000 && d.last.ts > (dmDone[ch.doc.id] || 0) && !s.metadata.hasPendingWrites) { dmDone[ch.doc.id] = d.last.ts; pendingIn(d) ? reqToast(d, ch.doc.id) : notifyDM({ ...d, id: ch.doc.id }); } });
@@ -2083,8 +2072,57 @@ async function start() {
   }, () => {});
   buildChips(); openRoom(room); presenceStart();
 }
+// ═══ 🔒 الغرف والرسايل بحسب العضوية ═══
+// الغرف: بنسمع بس للي أنا عضو فيها / مالكها / مدعو ليها / طالب انضمامها. الأكواد في مجموعة codes (قراءة بالكود بس، مفيش list).
+const roomSlices = {}, codeSig = {};
+const codeRef = c => db.collection("codes").doc(String(c).toUpperCase());
+function syncCode(r) { if (db && r && r.code && r.by === myId) codeRef(r.code).set({ room: r.id, by: myId, name: r.name || "", emoji: r.emoji || "", color: r.color || "" }).catch(() => {}); }
+async function dropCode(r) { if (r && r.code) { try { await codeRef(r.code).delete(); } catch (e) {} } }
+async function regenCode(r) { await dropCode(r); upd({ code: newCode() }, r.id); }
+async function lookupCode(code) {
+  const c = String(code || "").trim().toUpperCase(); if (!/^[A-Z0-9-]{4,12}$/.test(c)) return null;
+  const mine = findByCode(c); if (mine) return mine;
+  try { const d = await codeRef(c).get(); if (!d.exists) return null; const v = d.data(); return { stub: true, id: v.room, name: v.name || "غرفة", emoji: v.emoji, color: v.color, by: v.by, code: c }; } catch (e) { return null; }
+}
+function applyRooms() {
+  const had = rooms.some(r => r.id === room), map = new Map();
+  Object.values(roomSlices).forEach(a => a.forEach(r => map.set(r.id, r)));
+  rooms = [...map.values()].filter(r => r.id !== "general").sort((a, b) => (a.name || "").localeCompare(b.name || "", "ar"));
+  rooms.filter(r => r.by === myId && r.code).forEach(r => { const sg = [r.code, r.name, r.emoji, r.color].join("|"); if (codeSig[r.id] !== sg) { codeSig[r.id] = sg; syncCode(r); } });
+  buildChips();
+  if (room !== "general" && had && !rooms.some(r => r.id === room && canSee(r))) openRoom("general");
+  syncRecent(); tryJoin();
+  if (infoId) { const sg = JSON.stringify(infoId === "general" ? gdoc : (rooms.find(x => x.id === infoId) || null)); if (sg !== infoSig) { infoSig = sg; renderInfo(); } } refreshMe();
+}
+function watchRooms() {
+  const col = db.collection("rooms"), none = () => {};
+  col.doc("general").onSnapshot(d => {
+    gdoc = d.exists ? d.data() : {};
+    if (OWNER_UID && myId === OWNER_UID && !d.exists) col.doc("general").set({ admins: [] }, { merge: true }).catch(none);
+    applyRooms();
+  }, none);
+  [["m", col.where("members", "array-contains", myId)], ["o", col.where("by", "==", myId)], ["i", col.where("invites", "array-contains", myId)], ["q", col.where("requests", "array-contains", myId)]]
+    .forEach(([k, q]) => q.onSnapshot(sn => { roomSlices[k] = sn.docs.map(d => ({ ...d.data(), id: d.id })); applyRooms(); }, none));
+}
+// آخر الرسايل: مستمع لكل غرفة أنا فيها (والعام) بدل استعلام واحد على كل الغرف. محتاج Index: msgs (room ↑، ts ↓)
+const recentBy = {}, recUnsub = {};
+function rebuildRecent() { recent = Object.values(recentBy).flat().sort((a, b) => (b.ts || 0) - (a.ts || 0)); updateTotal(); if (!$("drawer").hidden) buildChips(); }
+function watchRecent(id, ordered) {
+  const q0 = db.collection("msgs").where("room", "==", id), q = ordered ? q0.orderBy("ts", "desc").limit(60) : q0; let first = true;
+  recUnsub[id] = q.onSnapshot(sn => {
+    recentBy[id] = sn.docs.map(d => ({ ...d.data(), id: d.id })).sort((a, b) => (b.ts || 0) - (a.ts || 0)).slice(0, 60);
+    if (!first && !sn.metadata.hasPendingWrites) sn.docChanges().forEach(ch => { const m = ch.doc.data(); if (ch.type === "added" && m.ts >= T0 - 2000) { soundMsg(m); notifyMsg(m); } });
+    first = false; rebuildRecent();
+  }, e => { if (ordered && e && e.code === "failed-precondition") { watchRecent(id, false); } });
+}
+function syncRecent() {
+  if (!db) return;
+  const want = new Set(["general", ...rooms.filter(canSee).map(r => r.id)]);
+  Object.keys(recUnsub).forEach(id => { if (!want.has(id)) { try { recUnsub[id](); } catch (e) {} delete recUnsub[id]; delete recentBy[id]; rebuildRecent(); } });
+  want.forEach(id => { if (!recUnsub[id]) watchRecent(id, true); });
+}
 // ═══ 📥 صندوق الطلبات: انضمام الغرف + طلبات المحادثة الخاصة + طلباتي المعلّقة ═══
-const needApproval = r => r.approval !== false;
+const needApproval = () => true;
 const pendingIn = d => !!d && !!d.req && d.req !== myId && !d.acc && !(d.blockedBy || []).includes(myId) && !!d.last && d.last.ts > dmClearedAt(d);
 const myName = () => (profiles[myId] || {}).name || gName() || "مجهول";
 const joinReqs = () => rooms.filter(adminOf).map(r => ({ r, us: (r.requests || []).filter(u => u !== myId && !(r.banned || []).includes(u) && !(r.members || []).includes(u)) })).filter(x => x.us.length);
