@@ -295,6 +295,15 @@ button.ri-chip{cursor:pointer}
 .dfoot{display:grid;grid-template-columns:1fr 1fr;gap:8px;flex:none}
 .dfoot .ghost{padding:11px 6px;font-size:13px;width:100%}
 .dfoot #dNotif{grid-column:1/-1}
+
+/* ───── طي/فتح أقسام الخاص والغرف ───── */
+.dsub.tg{cursor:pointer;user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent;border-radius:10px;padding:10px 8px 6px;min-height:34px}
+.dsub.tg:active{background:rgba(255,255,255,.05)}
+.dsub.tg .chev{display:inline-block;width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:6px solid var(--mute);transition:transform .2s ease,border-top-color .2s;margin:0 2px}
+.dsub.tg.fold .chev{transform:rotate(90deg)}
+.dsub.tg:hover .chev{border-top-color:var(--ink)}
+.dsub.tg .cnt{font-size:11px;font-weight:700;color:var(--mute);background:rgba(255,255,255,.07);border-radius:9px;padding:0 7px;line-height:18px;display:none}
+.dsub.tg.fold .cnt{display:inline-block}
 </style>
 </head>
 <body>
@@ -340,9 +349,9 @@ button.ri-chip{cursor:pointer}
     <div class="dhead"><div id="dLogo"></div><b>Very Chat</b></div>
     <div id="dpin"></div>
     <input class="dsearch" id="dSearch" type="search" placeholder="🔎 ابحث بالاسم أو بالكود…" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="search">
-    <div class="dsub" id="dmSub" hidden>💬 الخاص <small>· اضغط مطوّلاً للخيارات</small></div>
+    <div class="dsub tg" id="dmSub" data-k="dm" role="button" tabindex="0" aria-expanded="true" hidden><span>💬 الخاص</span><i class="chev"></i><span class="cnt"></span><small>· اضغط مطوّلاً للخيارات</small></div>
     <div id="dmList" style="flex:none;max-height:34%;overflow-y:auto;display:flex;flex-direction:column;gap:2px"></div>
-    <div class="dsub">🏠 الغرف <small>· اضغط مطوّلاً للتعديل</small></div>
+    <div class="dsub tg" id="rmSub" data-k="rooms" role="button" tabindex="0" aria-expanded="true"><span>🏠 الغرف</span><i class="chev"></i><span class="cnt"></span><small>· اضغط مطوّلاً للتعديل</small></div>
     <div id="dlist"></div>
     <div class="dfoot">
       <button class="ghost" id="dFind">🔑 انضم بكود</button>
@@ -573,8 +582,32 @@ function buildChips() {
     const fb = document.createElement("button"); fb.className = "ghost"; fb.type = "button"; fb.textContent = "🔑 انضم بكود";
     fb.onclick = () => { closeDrawer(); openDiscover(); }; nn.append(document.createElement("br"), fb); box.appendChild(nn);
   }
-  refreshMe(); updateTotal();
+  refreshMe(); updateTotal(); applyFold();
 }
+
+// ───── طي/فتح قسمي الخاص والغرف (الحالة بتتحفظ) ─────
+let foldSt = { dm: false, rooms: false };
+try { foldSt = Object.assign(foldSt, JSON.parse(localStorage.getItem("vc_fold") || "{}")); } catch (e) {}
+function applyFold() {
+  const q = $("dSearch").value.trim();
+  [["dm", "dmSub", "dmList", "flex"], ["rooms", "rmSub", "dlist", ""]].forEach(([k, sid, lid, disp]) => {
+    const f = !!foldSt[k] && !q, h = $(sid), l = $(lid);   // أثناء البحث الأقسام بتتفتح تلقائيًا
+    h.classList.toggle("fold", f); h.setAttribute("aria-expanded", String(!f));
+    l.style.display = f ? "none" : disp;
+    const n = k === "dm" ? $("dmList").children.length : rooms.filter(canSee).length;
+    h.querySelector(".cnt").textContent = n || "";
+  });
+}
+function toggleFold(k) {
+  foldSt[k] = !foldSt[k];
+  try { localStorage.setItem("vc_fold", JSON.stringify(foldSt)); } catch (e) {}
+  applyFold();
+}
+["dmSub", "rmSub"].forEach(id => {
+  const h = $(id);
+  h.addEventListener("click", () => toggleFold(h.dataset.k));
+  h.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggleFold(h.dataset.k); } });
+});
 $("dSearch").addEventListener("input", buildChips);
 $("menuBtn").onclick = () => { $("dSearch").value = ""; buildChips(); $("dNotif").hidden = !("Notification" in window) || Notification.permission !== "default"; $("drawer").hidden = false; };
 $("drawer").onclick = e => { if (e.target === $("drawer")) closeDrawer(); };
