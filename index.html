@@ -591,9 +591,8 @@ async function openDM(u) {
   if (dmFirst) { flash("استنى لحظة وجرّب تاني"); return; }
   if (pendingIn(d)) { openReqs(); return; }
   if (d && d.req === myId && !d.acc && d.last && ((d.cleared || {})[u] || 0) < d.last.ts) { flash("⏳ طلبك لسه معلّق، استنى موافقته"); return; }
-  if (d && d.req === myId && !d.acc && ((d.cleared || {})[u] || 0) && Date.now() - (d.cleared || {})[u] < 864e5) { flash("مينفعش تبعت طلب تاني دلوقتي، جرّب بعد فترة"); return; }
   try {
-    await db.collection("dms").doc(key).set({ members: [myId, u].sort(), req: myId, last: { uid: myId, ts: Date.now(), text: "👋 طلب محادثة" } }, { merge: true });
+    await db.collection("dms").doc(key).set({ members: [myId, u].sort(), req: myId, last: { uid: myId, ts: Date.now(), text: "👋 طلب محادثة" }, unread: { [u]: FV().increment(1) } }, { merge: true });
     flash("✓ اتبعت طلب المحادثة، هيوصلك إشعار أول ما يوافق");
   } catch (e) { flash(errMsg(e)); }
 }
