@@ -372,7 +372,7 @@ form.bar:focus-within{box-shadow:0 0 0 2px var(--pri),var(--sh2)}
 .bdg{background-image:linear-gradient(135deg,#ff7aa2,#e0507a);color:#fff;box-shadow:0 2px 8px rgba(224,80,122,.4)}
 #dAdd{border-radius:18px;background-image:linear-gradient(135deg,var(--pri2),var(--pri));box-shadow:0 8px 20px rgba(15,143,122,.35)}
 .dfoot .ghost{border-radius:16px}
-.dfoot #dSound{grid-column:1/-1}
+.dfoot #dSound,.dfoot #dReqMute{grid-column:1/-1}
 /* الشيتات والأزرار */
 .card{border-radius:30px 30px 0 0;box-shadow:0 -12px 44px rgba(0,0,0,.25)}
 .sec{border-radius:22px}
@@ -482,6 +482,7 @@ form.bar:focus-within{box-shadow:0 0 0 2px var(--pri),var(--sh2)}
       <button class="ghost" id="dFind">🔑 انضم بكود</button>
       <button class="ghost" id="dInvite">👋 دعوة صديق</button>
       <button class="ghost" id="dSound">🔊 الأصوات: شغالة</button>
+      <button class="ghost" id="dReqMute">🔔 إشعارات الطلبات: شغالة</button>
       <button class="ghost" id="dNotif" hidden>🔔 تفعيل الإشعارات</button>
     </div>
     <button class="send" id="dAdd" style="padding:13px">＋ غرفة جديدة</button>
@@ -590,6 +591,7 @@ async function openDM(u) {
   if (dmFirst) { flash("استنى لحظة وجرّب تاني"); return; }
   if (pendingIn(d)) { openReqs(); return; }
   if (d && d.req === myId && !d.acc && d.last && ((d.cleared || {})[u] || 0) < d.last.ts) { flash("⏳ طلبك لسه معلّق، استنى موافقته"); return; }
+  if (d && d.req === myId && !d.acc && ((d.cleared || {})[u] || 0) && Date.now() - (d.cleared || {})[u] < 864e5) { flash("مينفعش تبعت طلب تاني دلوقتي، جرّب بعد فترة"); return; }
   try {
     await db.collection("dms").doc(key).set({ members: [myId, u].sort(), req: myId, last: { uid: myId, ts: Date.now(), text: "👋 طلب محادثة" } }, { merge: true });
     flash("✓ اتبعت طلب المحادثة، هيوصلك إشعار أول ما يوافق");
@@ -2164,10 +2166,18 @@ async function decideDM(d, ok) {
   catch (e) { flash(errMsg(e)); }
 }
 const reqSeen = {};
+let reqBatch = [], reqTimer = null, lastReqPush = 0;
 function reqToast(d, id) {
   if (reqSeen[id]) return; reqSeen[id] = 1;
-  const t = "📩 " + nameOf(dmPeerOf(id)) + " بعتلك طلب محادثة"; toast(t); $("toast").onclick = () => { $("toast").hidden = true; openReqs(); };
-  if (document.hidden && "Notification" in window && Notification.permission === "granted") pushLocal("Very Chat", t, "req");
+  if (reqMute) return; // مكتومة: الرقم على «الطلبات» بس
+  reqBatch.push(id); clearTimeout(reqTimer);
+  reqTimer = setTimeout(() => {
+    const ids = reqBatch; reqBatch = [];
+    const t = ids.length === 1 ? "📩 " + nameOf(dmPeerOf(ids[0])) + " بعتلك طلب محادثة" : "📩 وصلك " + ids.length + " طلبات محادثة جديدة";
+    toast(t, true); $("toast").onclick = () => { $("toast").hidden = true; openReqs(); };
+    // إشعار الموبايل: مرة كل ٣٠ دقيقة بالكتير، والباقي بهدوء على الرقم
+    if (document.hidden && "Notification" in window && Notification.permission === "granted" && Date.now() - lastReqPush > 18e5) { lastReqPush = Date.now(); pushLocal("Very Chat", t, "req"); }
+  }, 3000);
 }
 function openReqs() { closeDrawer(); closeInfo(); rqTab = reqCount() || !(myWaiting().length + sentInvites().length + sentDMs().length) ? "in" : "out"; $("reqView").hidden = false; renderReqs(); $("reqBody").scrollTop = 0; }
 let rqTab = "in";
@@ -2183,7 +2193,8 @@ function renderReqs() {
     if (n) b.append(el("span", "rq-n", String(n))); b.onclick = () => { rqTab = k; renderReqs(); $("reqBody").scrollTop = 0; }; tabs.append(b);
   });
   const btn = (cls, t, fn) => { const b = el("button", cls, t); b.type = "button"; b.onclick = async () => { b.disabled = true; try { await fn(); } finally { b.disabled = false; } }; return b; };
-  const sec = (ico, title, n, color, all) => { const c = el("div", "ri-card"), h = el("h3", "rq-h"); c.style.borderInlineStartColor = color; h.append(el("span", "", ico + " " + title), el("span", "rq-n", String(n))); if (all && n > 1) h.append(btn("rq-all", "✓ قبول الكل", all)); c.append(h); box.append(c); return c; };
+  const ago = ts => { const m = Math.max(0, Math.round((Date.now() - ts) / 6e4)); return m < 1 ? "دلوقتي" : m < 60 ? "من " + m + " دقيقة" : m < 1440 ? "من " + Math.round(m / 60) + " ساعة" : "من " + Math.round(m / 1440) + " يوم"; };
+  const sec = (ico, title, n, color, all, rej) => { const c = el("div", "ri-card"), h = el("h3", "rq-h"); c.style.borderInlineStartColor = color; h.append(el("span", "", ico + " " + title), el("span", "rq-n", String(n))); if (rej && n > 1) h.append(btn("rq-wait", "✕ رفض الكل", rej)); if (all && n > 1) h.append(btn("rq-all", "✓ قبول الكل", all)); c.append(h); box.append(c); return c; };
   const row = (av, name, sub, ...acts) => { const r = el("div", "ri-mem"), mi = el("div", "mi"), b = el("b", "", name), sm = el("small", "", sub); b.dir = sm.dir = "auto"; mi.append(b, sm); r.append(av, mi, ...acts); return r; };
   const rav = r => avatar(r.emoji || r.photo ? r : { emoji: "💬", color: "#5b6b78" });
   const yes = fn => btn("ri-ok", "✓", fn), no = fn => btn("ri-no", "✕", fn);
@@ -2192,13 +2203,13 @@ function renderReqs() {
     if (!nIn) empty("🎉", "مفيش طلبات واردة", "أي دعوة أو طلب انضمام أو محادثة جديدة هتظهر هنا");
     if (I.length) { const c = sec("📨", "دعوات ليك", I.length, "#2f90d9", async () => { for (const r of I) await decideInvite(r, true); }); I.forEach(r => c.append(row(rav(r), r.name, "دعوة من " + nameOf(r.by), yes(() => decideInvite(r, true)), no(() => decideInvite(r, false))))); }
     if (jn) { const c = sec("✋", "طلبات الانضمام لغرفك", jn, "var(--pri)", async () => { for (const { r, us } of J) for (const u of us) await decideJoin(r, u, true); }); J.forEach(({ r, us }) => us.forEach(u => c.append(row(avatar(profileFor(u)), nameOf(u), "يطلب دخول «" + r.name + "»", yes(() => decideJoin(r, u, true)), no(() => decideJoin(r, u, false)))))); }
-    if (D.length) { const c = sec("💬", "طلبات محادثة خاصة", D.length, "#8a4fe0", async () => { for (const d of D) await decideDM(d, true); }); D.forEach(d => c.append(row(avatar(profiles[dmPeerOf(d.id)]), nameOf(dmPeerOf(d.id)), d.last.text, yes(() => decideDM(d, true)), no(() => decideDM(d, false))))); }
+    if (D.length) { const c = sec("💬", "طلبات محادثة خاصة", D.length, "#8a4fe0", async () => { for (const d of D) await decideDM(d, true); }, async () => { for (const d of D) await decideDM(d, false); }); D.forEach(d => c.append(row(avatar(profiles[dmPeerOf(d.id)]), nameOf(dmPeerOf(d.id)), "طلب محادثة · " + ago(d.last.ts), yes(() => decideDM(d, true)), no(() => decideDM(d, false))))); }
   } else {
     if (!nOut) empty("📤", "مفيش طلبات صادرة", "طلبات الانضمام والدعوات اللي بعتّها هتظهر هنا لحد ما يتردّ عليها");
     const upd1 = (r, patch) => async () => { try { await db.collection("rooms").doc(r.id).update(patch); } catch (e) { flash(errMsg(e)); } };
     if (W.length) { const c = sec("⏳", "طلبات انضمام بعتّها", W.length, "#e08a2f"); W.forEach(r => c.append(row(rav(r), r.name, "بانتظار موافقة المالك", btn("rq-wait", "إلغاء", upd1(r, { requests: AR(myId) }))))); }
     if (SI.length) { const c = sec("📨", "دعوات بعتّها", SI.length, "#2f90d9"); SI.forEach(({ r, u }) => c.append(row(avatar(profileFor(u)), nameOf(u), "دعوة لغرفة «" + r.name + "» · بانتظار الرد", btn("rq-wait", "إلغاء", upd1(r, { invites: AR(u) }))))); }
-    if (SD.length) { const c = sec("💬", "طلبات محادثة بعتّها", SD.length, "#8a4fe0"); SD.forEach(d => { const u = dmPeerOf(d.id); c.append(row(avatar(profiles[u]), nameOf(u), "بانتظار قبول طلب المحادثة")); }); }
+    if (SD.length) { const c = sec("💬", "طلبات محادثة بعتّها", SD.length, "#8a4fe0"); SD.forEach(d => { const u = dmPeerOf(d.id); c.append(row(avatar(profiles[u]), nameOf(u), "بانتظار القبول · " + ago(d.last.ts), btn("rq-wait", "إلغاء", async () => { try { await db.collection("dms").doc(d.id).update({ last: FV().delete(), req: FV().delete() }); flash("✓ اتلغى الطلب"); } catch (e) { flash(errMsg(e)); } }))); }); }
   }
   box.scrollTop = top;
 }
@@ -2234,9 +2245,9 @@ function presenceInfo() {
 }
 function paintHSub() { try { if (window.__memPaint && !$("rinfo").hidden) window.__memPaint(); } catch (x0) {} const e = $("hSub"); if (!e) return; const x = presenceInfo(); e.textContent = x.text; e.classList.toggle("typing", x.typing); }
 function stopTyping() { if (typingActive) { typingActive = false; typingSent = 0; presWrite({ typing: "", tts: 0 }); } }
-function toast(t) {
+function toast(t, quiet) {
   let e = $("toast"); if (!e) { e = el("div"); e.id = "toast"; document.body.append(e); } e.onclick = () => { e.hidden = true; };
-  vcSnd("ping"); e.textContent = t; e.hidden = false; clearTimeout(e._t); e._t = setTimeout(() => { e.hidden = true; }, 7000);
+  if (!quiet) vcSnd("ping"); e.textContent = t; e.hidden = false; clearTimeout(e._t); e._t = setTimeout(() => { e.hidden = true; }, 7000);
 }
 function logJoin(r, kind) {
   if (!db || !myId || !r) return;
@@ -2316,6 +2327,10 @@ function vcSnd(k) {
   try { SND[k](c.currentTime + 0.005); } catch (e) {}
 }
 function soundMsg(m) { if (m.uid === myId) return; if (m.room !== "general" && !rooms.some(r => r.id === m.room && canSee(r))) return; vcSnd(m.room === room ? "in" : "ping"); }
+let reqMute = false; try { reqMute = localStorage.getItem("vc_reqmute") === "1"; } catch (e) {}
+function paintReqMute() { $("dReqMute").textContent = reqMute ? "🔕 إشعارات الطلبات: مكتومة (الرقم بس)" : "🔔 إشعارات الطلبات: شغالة"; }
+$("dReqMute").onclick = () => { reqMute = !reqMute; try { localStorage.setItem("vc_reqmute", reqMute ? "1" : "0"); } catch (e) {} paintReqMute(); };
+paintReqMute();
 function paintSnd() { $("dSound").textContent = sndOn ? "🔊 الأصوات: شغالة" : "🔇 الأصوات: مقفولة"; }
 $("dSound").onclick = () => { sndOn = !sndOn; try { localStorage.setItem("vc_snd", sndOn ? "1" : "0"); } catch (e) {} paintSnd(); if (sndOn) { sndCtx(); setTimeout(() => vcSnd("ping"), 80); } };
 paintSnd();
