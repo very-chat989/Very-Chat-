@@ -321,9 +321,11 @@ button.ri-chip{cursor:pointer}
     <div class="dhead"><div id="dLogo"></div><b>Very Chat</b></div>
     <div id="dpin"></div>
     <input class="dsearch" id="dSearch" type="search" placeholder="🔎 ابحث بالاسم أو بالكود…" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="search">
+    <div class="dsub" id="dmSub" hidden>💬 الخاص</div>
+    <div id="dmList" style="flex:none;max-height:34%;overflow-y:auto;display:flex;flex-direction:column;gap:6px"></div>
     <div class="dsub">الغرف · اضغط مطوّلاً على غرفتك للتعديل</div>
     <div id="dlist"></div>
-    <button class="ghost" id="dFind">🔎 اكتشاف غرف / الانضمام بكود</button>
+    <button class="ghost" id="dFind">🔑 غرفة أو صديق بالكود</button>
     <button class="ghost" id="dNotif" hidden>🔔 تفعيل الإشعارات</button>
     <button class="ghost" id="dInvite">👋 دعوة صديق للتطبيق</button>
     <button class="send" id="dAdd" style="padding:13px">＋ غرفة جديدة</button>
@@ -400,6 +402,68 @@ async function delRoom() {
   } catch (e) { setStatus("ماقدرتش أحذف الغرفة."); }
 }
 let db = null, myId = null, room = "general", rooms = [], profiles = {}, unsub = null, creating = false, lastList = [], draft = null, loaded = false;
+// ───── الدردشة الخاصة (DM): كل اتنين ليهم محادثة واحدة id ثابت، وبيستخدموا بروفايلهم الحقيقي ─────
+let dms = {}, dmFirst = true; const dmDone = {};
+const isDM = id => typeof id === "string" && id.startsWith("dm_");
+const dmKey = (a, b) => "dm_" + [a, b].sort().join("_");
+const dmMembers = id => id.slice(3).split("_");
+const dmPeerOf = id => dmMembers(id).find(u => u !== myId) || null;
+const msgCol = rid => db.collection(isDM(rid) ? "dmsgs" : "msgs");
+const mBase = rid => isDM(rid) ? { room: rid, members: dmMembers(rid) } : { room: rid };
+const dmRoom = id => { const p = profiles[dmPeerOf(id)] || {}; return { id, dm: true, name: p.name || "مجهول", emoji: p.emoji, color: p.color, photo: p.photo, blocked: (dms[id] || {}).blockedBy || [] }; };
+function flash(t) { setStatus(t); setTimeout(() => { if ($("status").textContent === t) setStatus(""); }, 3500); }
+async function sendDoc(doc) {
+  if (!isDM(doc.room)) return db.collection("msgs").add(doc);
+  const r = await db.collection("dmsgs").add(doc);
+  db.collection("dms").doc(doc.room).set({ members: doc.members, last: { uid: myId, ts: doc.ts, text: mtext(doc).slice(0, 60) }, unread: { [dmPeerOf(doc.room)]: FV().increment(1) } }, { merge: true }).catch(() => {});
+  return r;
+}
+// في الغرف اللي فيها شخصيات مستعارة مينفعش نكشف الهوية الحقيقية؛ العام والخاص بس
+const canDMFrom = (u, rid) => { rid = rid || room; if (rid === "general" || isDM(rid)) return true; const rp = (rprofiles[u] || {})[rid]; return !(rp && !rp.skip); };
+function peerTap(u, rid) {
+  if (!u || u === myId || selMode) return;
+  if (!canDMFrom(u, rid)) { flash("🎭 ده بشخصية مستعارة في الغرفة دي، مينفعش تكلمه خاص من هنا"); return; }
+  openPeer(u);
+}
+function openDM(u) { if (!db || !u || u === myId) return; closeDrawer(); closeInfo(); $("msheet").hidden = true; openRoom(dmKey(myId, u)); }
+function openPeer(u) {
+  if (!u || u === myId) return;
+  const p = profiles[u] || {}, key = dmKey(myId, u), blocked = ((dms[key] || {}).blockedBy || []).includes(myId), c = $("mcard"); c.textContent = "";
+  const head = el("div", "mprev"); head.style.cssText += ";display:flex;align-items:center;gap:12px";
+  const a = avatar(p); a.style.cssText += ";width:56px;height:56px;font-size:28px";
+  const t = el("div"), nm = el("b", "", p.name || "مجهول"); nm.style.display = "block"; t.append(nm, el("small", "", p.fcode ? "🆔 " + fmtFCode(p.fcode) : "")); head.append(a, t); c.append(head);
+  const go = el("button", "send", "💬 دردشة خاصة"); go.type = "button"; go.style.padding = "13px"; go.onclick = () => openDM(u);
+  const bl = el("button", "ghost", blocked ? "✅ إلغاء الحظر" : "🚫 حظر (مايقدرش يكلمك خاص)"); bl.type = "button";
+  bl.onclick = async () => {
+    if (!blocked && !bl.dataset.ok) { bl.dataset.ok = "1"; bl.textContent = "اضغط تاني للتأكيد"; return; }
+    try { await db.collection("dms").doc(key).set({ members: [myId, u].sort(), blockedBy: blocked ? AR(myId) : AU(myId) }, { merge: true }); $("msheet").hidden = true; flash(blocked ? "✓ اتلغى الحظر" : "🚫 اتحظر"); } catch (e) { flash(errMsg(e)); }
+  };
+  c.append(go, bl); $("msheet").hidden = false;
+}
+function dmRow(d) {
+  const u = dmPeerOf(d.id), p = profiles[u] || {}, row = el("button", "rrow" + (d.id === room ? " on" : "")); row.type = "button"; row.style.setProperty("--rc", p.color || "#5b6b78");
+  const tx = el("div", "rt"), sb = el("small"); sb.dir = "auto";
+  sb.textContent = ((d.blockedBy || []).length ? "🚫 " : "") + (d.last ? (d.last.uid === myId ? "أنت: " : "") + d.last.text : "");
+  tx.append(el("b", "", p.name || "مجهول"), sb); row.append(avatar(p), tx);
+  const un = unreadOf(d.id); if (un) row.append(el("span", "bdg", un > 99 ? "99+" : String(un)));
+  row.onclick = () => openDM(u); return row;
+}
+function buildDMs(q) {
+  const box = $("dmList"), sub = $("dmSub"), qn = nzq(q), qc = normFCode(q); box.textContent = "";
+  const list = Object.values(dms).filter(d => d.last).sort((a, b) => b.last.ts - a.last.ts).filter(d => { if (!q) return true; const p = profiles[dmPeerOf(d.id)] || {}; return nzq(p.name).includes(qn) || (qc.length >= 2 && String(p.fcode || "").includes(qc)); });
+  list.forEach(d => box.appendChild(dmRow(d)));
+  const pu = qc.length === 8 ? Object.keys(profiles).find(u => u !== myId && profiles[u] && profiles[u].fcode === qc) : null;
+  if (pu && !list.some(d => dmPeerOf(d.id) === pu)) {
+    const p = profiles[pu], row = el("button", "rrow"), tx = el("div", "rt"); row.type = "button";
+    tx.append(el("b", "", p.name || "مجهول"), el("small", "", "🆔 " + fmtFCode(qc) + " · اضغط للمراسلة")); row.append(avatar(p), tx);
+    row.onclick = () => { closeDrawer(); openPeer(pu); }; box.appendChild(row);
+  }
+  sub.hidden = !box.children.length;
+}
+function notifyDM(d) {
+  if (!document.hidden || !("Notification" in window) || Notification.permission !== "granted") return;
+  pushLocal("💬 " + ((profiles[dmPeerOf(d.id)] || {}).name || "رسالة خاصة"), d.last.text, d.id);
+}
 
 function setStatus(t) { $("status").textContent = t; $("status").hidden = !t; }
 function avatar(p, big) {
@@ -442,12 +506,12 @@ function roomRow(r) {
 function buildChips() {
   const box = $("dlist"), pin = $("dpin"), q = $("dSearch").value.trim();
   box.textContent = ""; pin.textContent = "";
-  pin.appendChild(roomRow(generalRoom()));
+  pin.appendChild(roomRow(generalRoom())); buildDMs(q);
   const list = rooms.filter(canSee).filter(r => roomMatches(r, q));
   list.forEach(r => box.appendChild(roomRow(r)));
-  if (q && !list.length) {
+  if (q && !list.length && !$("dmList").children.length) {
     const nn = document.createElement("div"); nn.className = "dnone"; nn.textContent = "مفيش غرفة بالاسم أو الكود ده في غرفك.";
-    const fb = document.createElement("button"); fb.className = "ghost"; fb.type = "button"; fb.textContent = "🔎 دوّر في كل الغرف / انضم بكود";
+    const fb = document.createElement("button"); fb.className = "ghost"; fb.type = "button"; fb.textContent = "🔑 انضم بكود";
     fb.onclick = () => { closeDrawer(); openDiscover(); }; nn.append(document.createElement("br"), fb); box.appendChild(nn);
   }
   refreshMe(); updateTotal();
@@ -456,7 +520,7 @@ $("dSearch").addEventListener("input", buildChips);
 $("menuBtn").onclick = () => { $("dSearch").value = ""; buildChips(); $("dNotif").hidden = !("Notification" in window) || Notification.permission !== "default"; $("drawer").hidden = false; };
 $("drawer").onclick = e => { if (e.target === $("drawer")) closeDrawer(); };
 $("dAdd").onclick = () => { closeDrawer(); openSheet("room"); };
-$("hRoom").onclick = () => { if (curR()) openInfo(room); else $("meBtn").click(); };
+$("hRoom").onclick = () => { if (isDM(room)) openPeer(dmPeerOf(room)); else if (curR()) openInfo(room); else $("meBtn").click(); };
 
 function render(list) {
   lastList = list;
@@ -471,9 +535,9 @@ function render(list) {
     if (newDay) { const dv = document.createElement("div"), d0 = new Date(m.ts); dv.className = "day"; dv.textContent = d0.toDateString() === new Date().toDateString() ? "اليوم" : d0.toLocaleDateString("ar-EG", { day: "numeric", month: "long" }); box.appendChild(dv); }
     const first = newDay || prev.uid !== m.uid || m.ts - prev.ts > 300000;
     const row = document.createElement("div"); row.className = "row" + (mine ? " me" : "") + (first ? " first" : "") + (sel.has(m.id) ? " sel" : "");
-    if (first) row.appendChild(avatar(p)); else { const s = document.createElement("div"); s.className = "sp"; row.appendChild(s); }
+    row.dataset.uid = m.uid; if (first) row.appendChild(avatar(p)); else { const s = document.createElement("div"); s.className = "sp"; row.appendChild(s); }
     const b = document.createElement("div"); b.className = "b";
-    if (first && !mine) { const n = document.createElement("div"); n.className = "n"; n.dir = "auto"; n.textContent = (p && p.name) || "مجهول"; b.appendChild(n); }
+    if (first && !mine) { const n = document.createElement("div"); n.className = "n"; n.dir = "auto"; n.textContent = (p && p.name) || "مجهول"; n.style.cursor = "pointer"; n.onclick = e => { e.stopPropagation(); if (Date.now() - (b._f || 0) > 800) peerTap(m.uid, m.room || room); }; b.appendChild(n); }
     if (m.fwd) b.appendChild(el("div", "fw", "↪️ محوّلة من " + m.fwd));
     if (m.reply) { const q = el("div", "qt"); q.dir = "auto"; q.append(el("b", "", m.reply.name || "مجهول"), document.createTextNode(m.reply.text || "")); b.appendChild(q); }
     const tx = document.createElement("div"); tx.className = "tx"; tx.dir = "auto";
@@ -481,8 +545,9 @@ function render(list) {
     else {
       if (m.mid || m.img || m.vid) b.appendChild(mediaBox(m));
       if (m.share) b.appendChild(roomCard(m.share));
+      if (m.ucard) b.appendChild(userCard(m.ucard));
       if (m.text) { linkify(tx, m.text); if (m.mid || m.img || m.vid) tx.classList.add("mcap"); b.appendChild(tx); }
-      else if (!m.mid && !m.img && !m.vid && !m.share) { linkify(tx, m.text || ""); b.appendChild(tx); }
+      else if (!m.mid && !m.img && !m.vid && !m.share && !m.ucard) { linkify(tx, m.text || ""); b.appendChild(tx); }
     }
     const rc = {}; Object.values(m.reacts || {}).forEach(k => { if (EMO[k]) rc[k] = (rc[k] || 0) + 1; });
     if (Object.keys(rc).length) {
@@ -503,7 +568,7 @@ function render(list) {
   setStatus(list.length ? "" : "مفيش رسايل لسه. ابدأ إنت!");
 }
 
-const mtext = m => m.audio ? "🎤 رسالة صوتية" : (m.mid ? m.mk === "vid" : false) || m.vid ? "🎥 فيديو" + (m.text ? " · " + m.text : "") : m.mid || m.img ? "🖼 صورة" + (m.text ? " · " + m.text : "") : m.share ? "🏠 غرفة: " + (m.share.name || "") : (m.text || "");
+const mtext = m => m.audio ? "🎤 رسالة صوتية" : (m.mid ? m.mk === "vid" : false) || m.vid ? "🎥 فيديو" + (m.text ? " · " + m.text : "") : m.mid || m.img ? "🖼 صورة" + (m.text ? " · " + m.text : "") : m.ucard ? "🆔 كارت تعريف" : m.share ? "🏠 غرفة: " + (m.share.name || "") : (m.text || "");
 const EMO = {
   fol: { n: "فل", s: `<svg viewBox='0 0 40 40'><g fill='#fff' stroke='#e7a8c8' stroke-width='1.5'><circle cx='20' cy='9' r='7'/><circle cx='31' cy='17' r='7'/><circle cx='27' cy='30' r='7'/><circle cx='13' cy='30' r='7'/><circle cx='9' cy='17' r='7'/></g><circle cx='20' cy='20' r='9' fill='#ffd34d'/><circle cx='17' cy='19' r='1.4' fill='#4a3200'/><circle cx='23' cy='19' r='1.4' fill='#4a3200'/><path d='M16 23q4 4 8 0' fill='none' stroke='#4a3200' stroke-width='1.6' stroke-linecap='round'/></svg>` },
   nar: { n: "نار", s: `<svg viewBox='0 0 40 40'><path d='M20 3c2 7 11 11 11 21a11 11 0 0 1-22 0c0-5 3-8 5-11 1 3 2 4 4 4 0-5 0-8 2-14z' fill='#ff7a2f'/><path d='M20 17c1 4 6 6 6 11a6 6 0 0 1-12 0c0-3 2-5 3-7 1 2 2 2 3 2z' fill='#ffd34d'/><rect x='12' y='22' width='7' height='5' rx='2' fill='#1b1b1b'/><rect x='21' y='22' width='7' height='5' rx='2' fill='#1b1b1b'/><path d='M19 24h2' stroke='#1b1b1b' stroke-width='1.5'/></svg>` },
@@ -520,7 +585,7 @@ function toggleReact(m, k) {
   if (selMode) return;
   const cr = curR(); if (cr && cr.noReact && !adminOf(cr)) { setStatus("التفاعلات متوقفة في الغرفة دي"); return; }
   const on = (m.reacts || {})[myId] === k;
-  db.collection("msgs").doc(m.id).update({ ["reacts." + myId]: on ? FV().delete() : k }).catch(() => setStatus("ماقدرتش أضيف التفاعل."));
+  msgCol(m.room || room).doc(m.id).update({ ["reacts." + myId]: on ? FV().delete() : k }).catch(() => setStatus("ماقدرتش أضيف التفاعل."));
 }
 let selMode = false, selDelArm = false; const sel = new Set();
 function updSel() { $("selBar").hidden = !selMode; $("selCopy").hidden = $("selFwd").hidden = fwdBlocked(); $("selCount").textContent = "تم تحديد " + sel.size; $("selDel").textContent = "🗑 حذف"; selDelArm = false; if (lastList.length) render(lastList); }
@@ -542,13 +607,19 @@ $("selDel").onclick = () => {
   const cr = curR(), mine = lastList.filter(x => sel.has(x.id) && ((x.uid === myId && (!cr || !cr.noDelOwn || adminOf(cr))) || adminOf(cr)));
   if (!mine.length) { setStatus("تقدر تحذف رسايلك إنت بس."); return; }
   if (!selDelArm) { selDelArm = true; $("selDel").textContent = "تأكيد حذف " + mine.length + "؟"; setTimeout(() => { if (selDelArm) { selDelArm = false; $("selDel").textContent = "🗑 حذف"; } }, 4000); return; }
-  Promise.all(mine.map(x => db.collection("msgs").doc(x.id).delete())).catch(() => setStatus("ماقدرتش أحذف بعض الرسايل."));
+  Promise.all(mine.map(x => msgCol(x.room || room).doc(x.id).delete())).catch(() => setStatus("ماقدرتش أحذف بعض الرسايل."));
   exitSel();
 };
 let editingId = null, reads = {}, myReads = {}, readsLoaded = false;
-function seenBy(m) { return Object.keys(reads).filter(u => u !== m.uid && ((reads[u] || {})[room] || 0) >= m.ts); }
+function seenBy(m) { if (isDM(room)) { const rd = (dms[room] || {}).read || {}; return Object.keys(rd).filter(u => u !== m.uid && rd[u] >= m.ts); } return Object.keys(reads).filter(u => u !== m.uid && ((reads[u] || {})[room] || 0) >= m.ts); }
 function markSeen(list) {
   if (!db || !readsLoaded || !list.length || document.hidden) return;
+  if (isDM(room)) {
+    const d = dms[room] || {}, lt = list[list.length - 1].ts;
+    if (!d.id || (((d.read || {})[myId] || 0) >= lt && !(d.unread || {})[myId])) return;
+    d.read = { ...(d.read || {}), [myId]: lt }; d.unread = { ...(d.unread || {}), [myId]: 0 };
+    db.collection("dms").doc(room).update({ ["read." + myId]: lt, ["unread." + myId]: 0 }).catch(() => {}); return;
+  }
   const last = list[list.length - 1].ts;
   if ((myReads[room] || 0) >= last) return;
   myReads[room] = last;
@@ -559,7 +630,7 @@ $("cancelEdit").onclick = cancelEdit;
 $("msheet").onclick = e => { if (e.target === $("msheet")) $("msheet").hidden = true; };
 function holdMenu(el, m) {
   let tm;
-  const go = () => { if (selMode) return; tm = setTimeout(() => openMsg(m), 500); }, stop = () => clearTimeout(tm);
+  const go = () => { if (selMode) return; tm = setTimeout(() => { el._f = Date.now(); openMsg(m); }, 500); }, stop = () => clearTimeout(tm);
   ["touchstart", "mousedown"].forEach(ev => el.addEventListener(ev, go, { passive: true }));
   ["touchmove", "touchend", "touchcancel", "mouseup", "mouseleave"].forEach(ev => el.addEventListener(ev, stop, { passive: true }));
   el.addEventListener("contextmenu", e => { e.preventDefault(); stop(); if (!selMode) openMsg(m); });
@@ -590,6 +661,7 @@ function openMsg(m) {
   act("☑️", "تحديد", "linear-gradient(135deg,#a07cff,#6b46e0)", () => { close(); enterSel(m.id); });
   if (!fb) act("↪️", "توجيه", "linear-gradient(135deg,#ffb347,#e08a2f)", () => openForward([m]));
   act("↩️", "رد", "linear-gradient(135deg,#4fc3f7,#2f90d9)", () => { close(); startReply(m); });
+  if (m.uid !== myId && !isDM(room) && canDMFrom(m.uid, m.room || room)) act("💬", "خاص", "linear-gradient(135deg,#2cc4a9,#0f8f7a)", () => { close(); openPeer(m.uid); });
   if (m.uid === myId && !m.audio && !writeBlock(cr0) && (!cr0 || !cr0.noEdit || adminOf(cr0))) {
     act("✏️", "تعديل", "linear-gradient(135deg,#5aa9ff,#2f6fed)", () => {
       close(); clearReply(); editingId = m.id; $("inp").value = m.text; $("editBar").hidden = false; $("sendBtn").textContent = "حفظ"; $("inp").focus();
@@ -600,7 +672,7 @@ function openMsg(m) {
   if (curRoom && adminOf(curRoom)) act("📌", "تثبيت", "linear-gradient(135deg,#f5c542,#d9a300)", () => { close(); upd({ pinned: { id: m.id, name: nameOf(m.uid), text: mtext(m).slice(0, 120) } }); });
   if ((m.uid === myId && (!curRoom || !curRoom.noDelOwn || adminOf(curRoom))) || (curRoom && adminOf(curRoom))) {
     act("🗑", "حذف", "linear-gradient(135deg,#ff7a7a,#d64545)", (b, s) => {
-      if (b.dataset.ok) { close(); db.collection("msgs").doc(m.id).delete().catch(() => setStatus("ماقدرتش أحذف الرسالة.")); }
+      if (b.dataset.ok) { close(); msgCol(m.room || room).doc(m.id).delete().catch(() => setStatus("ماقدرتش أحذف الرسالة.")); }
       else { b.dataset.ok = "1"; s.textContent = "تأكيد؟"; }
     });
   }
@@ -648,32 +720,25 @@ function shareInvite(r) {
   shareText("انضم لغرفة «" + r.name + "» على Very Chat\nالكود: " + r.code + "\nالرابط: " + PAGE_URL + "#r-" + r.code).then(x => { if (x !== "shared") setStatus(x === "copied" ? "✓ اتنسخت رسالة الدعوة" : "ماقدرتش أنسخ الدعوة"); });
 }
 function openDiscover() {
-  const c = $("mcard"); c.textContent = ""; c.append(el("div", "mprev", "🔎 اكتشاف الغرف"));
-  const box = el("div", "acts"); box.style.cssText = "display:flex;flex-direction:column;gap:10px;max-height:64vh;overflow-y:auto";
-  const inp = ph => { const i = el("input"); i.type = "text"; i.placeholder = ph; i.autocomplete = "off"; i.style.cssText = "padding:12px 14px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--ink);text-align:center;width:100%"; return i; };
-  box.append(el("div", "note", "عندك كود دعوة؟"));
+  const c = $("mcard"); c.textContent = ""; c.append(el("div", "mprev", "🔑 غرفة أو صديق بالكود"));
+  const box = el("div", "acts"); box.style.cssText = "display:flex;flex-direction:column;gap:10px";
+  box.append(el("div", "note", "اكتب كود غرفة (للانضمام) أو كود صاحبك (للمراسلة الخاصة)"));
   const row = el("div"); row.style.cssText = "display:flex;gap:8px";
-  const cin = inp("اكتب الكود"); cin.maxLength = 12; cin.autocapitalize = "characters";
+  const cin = el("input"); cin.type = "text"; cin.placeholder = "كود غرفة أو كود شخص"; cin.autocomplete = "off"; cin.maxLength = 12; cin.autocapitalize = "characters";
+  cin.style.cssText = "padding:12px 14px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--ink);text-align:center;width:100%";
   const go = el("button", "send", "انضمام"); go.style.padding = "0 18px"; const msg = el("div", "note");
   go.onclick = async () => {
     if (!cin.value.trim()) return; const r = findByCode(cin.value);
-    if (!r) { msg.textContent = "مفيش غرفة بالكود ده، اتأكد منه."; return; }
+    if (!r) {
+      const pc = normFCode(cin.value), pu = pc.length === 8 && Object.keys(profiles).find(u => profiles[u] && profiles[u].fcode === pc);
+      if (pu === myId) { msg.textContent = "ده كودك أنت 🙂"; return; }
+      if (pu) { openPeer(pu); return; }
+      msg.textContent = "مفيش غرفة أو شخص بالكود ده، اتأكد منه."; return;
+    }
     go.disabled = true; try { await joinRoom(r); } catch (e) { go.disabled = false; msg.textContent = errMsg(e); }
   };
-  row.append(cin, go); box.append(row, msg, el("div", "note", "أو دوّر على غرفة عامة"));
-  const sin = inp("ابحث بالاسم…"), res = el("div"); res.style.cssText = "display:flex;flex-direction:column;gap:6px";
-  const draw = () => {
-    const q = sin.value.trim().toLowerCase(); res.textContent = "";
-    const list = rooms.filter(r => !r.private && !canSee(r) && !(r.banned || []).includes(myId) && (!q || String(r.name || "").toLowerCase().includes(q))).sort((a, b) => (b.members || []).length - (a.members || []).length).slice(0, 50);
-    if (!list.length) { res.append(el("div", "note", q ? "مفيش نتايج بالاسم ده" : "مفيش غرف عامة جديدة دلوقتي")); return; }
-    list.forEach(r => {
-      const b = el("button", "rrow"), t = el("div", "rt"); t.append(el("b", "", r.name), el("small", "", "👥 " + (r.members || []).length + " عضو"));
-      b.append(avatar(r.emoji || r.photo ? r : { emoji: "💬", color: "#5b6b78" }), t, el("span", "bdg", r.approval ? ((r.requests || []).includes(myId) ? "تم الطلب" : "طلب انضمام") : "انضمام"));
-      b.onclick = async () => { try { await joinRoom(r); } catch (e) { msg.textContent = errMsg(e); } };
-      res.append(b);
-    });
-  };
-  sin.oninput = draw; draw(); box.append(sin, res); c.append(box); $("msheet").hidden = false;
+  cin.addEventListener("keydown", e => { if (e.key === "Enter") go.click(); });
+  row.append(cin, go); box.append(row, msg); c.append(box); $("msheet").hidden = false;
 }
 $("dFind").onclick = () => { closeDrawer(); openDiscover(); };
 window.addEventListener("online", () => { if (!started) start(); });
@@ -790,7 +855,7 @@ function openMembers(r) {
 function openInvite() {
   const c = $("mcard"); c.textContent = ""; c.append(el("div", "mprev", "👋 دعوة صديق للتطبيق"));
   const box = el("div", "acts"); box.style.cssText = "display:flex;flex-direction:column;gap:10px;line-height:1.7;font-size:14px";
-  ["١. ابعت رابط التطبيق لصاحبك (زرار المشاركة تحت).", "٢. يفتحه من موبايله ويضغط «إضافة إلى الشاشة الرئيسية» علشان يبقى تطبيق.", "٣. لو معاك كود غرفة: يكتبه من 🔎 اكتشاف الغرف. أو ابعتله رابط الغرفة من أعضاء الغرفة ← مشاركة الدعوة."].forEach(t => box.append(el("div", "", t)));
+  ["١. ابعت رابط التطبيق لصاحبك (زرار المشاركة تحت).", "٢. يفتحه من موبايله ويضغط «إضافة إلى الشاشة الرئيسية» علشان يبقى تطبيق.", "٣. لو معاك كود غرفة أو كود صاحبك: يكتبه من «🔑 غرفة أو صديق بالكود». وتقدر تبعتله كودك من ＋ ← 🆔 كودي."].forEach(t => box.append(el("div", "", t)));
   const sh = el("button", "send", "📤 مشاركة التطبيق");
   sh.onclick = async () => { const x = await shareText("جرّب Very Chat 💬\n" + PAGE_URL); if (x !== "shared") sh.textContent = x === "copied" ? "✓ اتنسخ الرابط" : "فشل النسخ"; };
   c.append(box, sh, copyBtn("🔗 نسخ رابط التطبيق", PAGE_URL));
@@ -811,9 +876,9 @@ function errMsg(e) {
 }
 function netUI() { $("net").hidden = navigator.onLine !== false; }
 window.addEventListener("online", netUI); window.addEventListener("offline", netUI);
-function unreadOf(rid) { return readsLoaded ? recent.filter(m => m.room === rid && m.uid !== myId && m.ts > (myReads[rid] || 0)).length : 0; }
+function unreadOf(rid) { if (isDM(rid)) return ((dms[rid] || {}).unread || {})[myId] || 0; return readsLoaded ? recent.filter(m => m.room === rid && m.uid !== myId && m.ts > (myReads[rid] || 0)).length : 0; }
 function updateTotal() {
-  let n = 0; ["general", ...rooms.filter(canSee).map(r => r.id)].forEach(id => { n += unreadOf(id); });
+  let n = 0; ["general", ...rooms.filter(canSee).map(r => r.id), ...Object.keys(dms)].forEach(id => { n += unreadOf(id); });
   $("menuBtn").classList.toggle("un", n > 0); document.title = (n ? "(" + n + ") " : "") + "Very Chat";
 }
 async function pushLocal(title, body, tag) {
@@ -868,7 +933,7 @@ function registerSW() {
 const OWNER_UID = "t2zZ3ijMhDPVsjGxQlunfmLHf122";
 let gdoc = {};
 const generalRoom = () => ({ id: "general", name: "عام", emoji: "🌐", color: "#5b6b78", ...gdoc, id: "general", by: OWNER_UID });
-const curR = () => room === "general" ? generalRoom() : rooms.find(x => x.id === room);
+const curR = () => room === "general" ? generalRoom() : isDM(room) ? dmRoom(room) : rooms.find(x => x.id === room);
 const ownerOf = r => !!r && r.by === myId;
 const adminOf = r => !!r && (r.by === myId || (r.admins || []).includes(myId));
 const AU = v => FV().arrayUnion(v), AR = v => FV().arrayRemove(v);
@@ -878,6 +943,7 @@ const fwdBlocked = () => { const r = curR(); return !!r && !!r.noFwd && !adminOf
 const seenOK = () => { const r = curR(); return !r || !r.hideSeen || adminOf(r); };
 function writeBlock(r) {
   if (!r) return "";
+  if (r.dm) return !(r.blocked || []).length ? "" : r.blocked.includes(myId) ? "🚫 أنت حاظر الشخص ده (ألغِ الحظر من بروفايله)" : "المحادثة دي مقفولة";
   if ((r.banned || []).includes(myId)) return "أنت محظور من الغرفة دي";
   if ((r.muted || []).includes(myId) || ((r.mutedUntil || {})[myId] || 0) > Date.now()) return "المالك كتمك في الغرفة دي";
   if (r.onlyAdmins && !adminOf(r)) return "الكتابة للمشرفين بس في الغرفة دي";
@@ -1041,7 +1107,7 @@ function renderInfo() {
   if (admin) { const add = el("button", "ghost", "＋ إضافة صديق"); add.onclick = () => addFriend(r, mem); mc.append(add); }
   if (!admin && r.hideMembers) mc.append(el("div", "note", "🙈 المالك أخفى قائمة الأعضاء"));
   (admin || !r.hideMembers ? mem : [myId]).forEach(u => {
-    const row = el("div", "ri-mem"), nm = el("b", "", nameOf(u, r.id) + (u === myId ? " (أنت)" : ""));
+    const row = el("div", "ri-mem"), nm = el("b", "", nameOf(u, r.id) + (u === myId ? " (أنت)" : "")); row.dataset.uid = u;
     const tag = (u === r.by ? " 👑" : "") + ((r.admins || []).includes(u) ? " 🛡️" : "") + ((r.muted || []).includes(u) || ((r.mutedUntil || {})[u] || 0) > Date.now() ? " 🔇" : "");
     row.append(avatar(profileFor(u, r.id)), nm, el("span", "ri-tag", tag));
     if (u !== myId && u !== r.by && (owner || (admin && !(r.admins || []).includes(u)))) { const d = el("button", "ri-dots", "⋮"); d.onclick = () => memberMenu(r, u); row.append(d); }
@@ -1138,7 +1204,7 @@ function openRoom(id) {
   if (unsub) unsub();
   setStatus("جاري تحميل الرسايل…");
   const timer = setTimeout(() => setStatus("مش قادر أوصل للرسايل دلوقتي، ممكن النت ضعيف."), 10000);
-  unsub = db.collection("msgs").where("room", "==", id).onSnapshot(
+  unsub = (isDM(id) ? db.collection("dmsgs").where("room", "==", id).where("members", "array-contains", myId) : db.collection("msgs").where("room", "==", id)).onSnapshot(
     s => { clearTimeout(timer); { const st = $("status").textContent; if (st.startsWith("جاري تحميل") || st.startsWith("مش قادر أوصل")) setStatus(""); } render(s.docs.map(d => ({ ...d.data(), id: d.id })).sort((a, b) => (a.ts - b.ts) || a.id.localeCompare(b.id)).slice(-150)); },
     e => { clearTimeout(timer); setStatus(errMsg(e)); });
   maybePersona();
@@ -1155,14 +1221,14 @@ function paintDraft() {
 }
 let sheetMode = "me", sheetRoom = null, rprofiles = {}, rpLoaded = false;
 function roomName(id) { const r = rooms.find(x => x.id === id); return r ? r.name : "الغرفة"; }
-function profileFor(uid, rid) { rid = rid || room; const rp = (rprofiles[uid] || {})[rid]; return (rid !== "general" && rp && !rp.skip && rp) || profiles[uid]; }
+function profileFor(uid, rid) { rid = rid || room; if (isDM(rid)) return profiles[uid]; const rp = (rprofiles[uid] || {})[rid]; return (rid !== "general" && rp && !rp.skip && rp) || profiles[uid]; }
 function refreshMe() {
   const p = profileFor(myId); setAvatar($("meAv"), p);
-  const r = room === "general" ? generalRoom() : (rooms.find(x => x.id === room) || { name: "غرفة" });
+  const r = room === "general" ? generalRoom() : isDM(room) ? dmRoom(room) : (rooms.find(x => x.id === room) || { name: "غرفة" });
   const box = $("hRoom"); box.textContent = "";
   const ra = avatar(r.id === undefined && room === "general" ? r : (r.emoji || r.photo ? r : { emoji: "💬", color: "#5b6b78" }));
   const t = document.createElement("div"); const nm = document.createElement("b"); nm.textContent = r.name;
-  const sb = document.createElement("small"); sb.textContent = "أنت: " + ((p && p.name) || "—") + (ownerOf(r) ? "  👑" : adminOf(r) ? "  🛡️" : "") + "  ⚙️";
+  const sb = document.createElement("small"); sb.textContent = r.dm ? "💬 دردشة خاصة" + ((r.blocked || []).length ? "  🚫" : "") : "أنت: " + ((p && p.name) || "—") + (ownerOf(r) ? "  👑" : adminOf(r) ? "  🛡️" : "") + "  ⚙️";
   t.append(nm, sb); box.append(ra, t); renderPin(); updateComposer();
 }
 function openSheet(mode, rid) {
@@ -1225,7 +1291,7 @@ $("saveBtn").onclick = async () => {
   saving = true; $("saveBtn").disabled = true;
   const data = { name, emoji: draft.emoji, color: draft.color, photo: draft.photo };
   try {
-    if (sheetMode === "me") await db.doc("profiles/" + myId).set({ ...data, fcode: (profiles[myId] || {}).fcode || await uniqueFCode() });
+    if (sheetMode === "me") await db.doc("profiles/" + myId).set({ ...data, fcode: (profiles[myId] || {}).fcode || await uniqueFCode() }, { merge: true });
     else if (sheetMode === "persona") await db.doc("rprofiles/" + myId).set({ ...(rprofiles[myId] || {}), [sheetRoom]: data });
     else if (sheetMode === "editroom") {
       const cur0 = sheetRoom === "general" ? generalRoom() : (rooms.find(x => x.id === sheetRoom) || {}), patch = { ...data, name: name.slice(0, 30), private: $("privCk").checked, desc: $("descIn").value.trim() };
@@ -1243,7 +1309,7 @@ $("skipBtn").onclick = async () => {
   $("sheet").hidden = true;
 };
 $("cancelSheet").onclick = () => { $("sheet").hidden = true; };
-$("meBtn").onclick = () => { if (db) { if (room === "general") openSheet("me"); else openSheet("persona", room); } };
+$("meBtn").onclick = () => { if (db) { if (room === "general" || isDM(room)) openSheet("me"); else openSheet("persona", room); } };
 
 // ───── الإرسال ─────
 
@@ -1287,8 +1353,8 @@ async function finishRec(r) {
   if (!url) { setStatus("ماقدرتش أجهّز التسجيل."); return; }
   if (url.length > 900000) { setStatus("التسجيل كبير، سجّل رسالة أقصر."); return; }
   lastSent[r.room] = Date.now();
-  const doc = { room: r.room, text: "", audio: url, dur, uid: myId, ts: Date.now() }; if (replyTo) { doc.reply = replyTo; clearReply(); }
-  try { await db.collection("msgs").add(doc); } catch (e) { setStatus("الرسالة الصوتية ماتبعتتش."); }
+  const doc = { ...mBase(r.room), text: "", audio: url, dur, uid: myId, ts: Date.now() }; if (replyTo) { doc.reply = replyTo; clearReply(); }
+  try { await sendDoc(doc); } catch (e) { setStatus("الرسالة الصوتية ماتبعتتش."); }
 }
 $("micBtn").onclick = () => { if (rec) stopRec(true); else startRec(); };
 $("recCancel").onclick = () => stopRec(false);
@@ -1311,10 +1377,10 @@ function mediaGuard() {
 }
 async function postMedia(extra, rid) {
   rid = rid || room;
-  const doc = { room: rid, text: "", uid: myId, ts: Date.now(), ...extra };
+  const doc = { ...mBase(rid), text: "", uid: myId, ts: Date.now(), ...extra };
   if (replyTo && rid === room) { doc.reply = replyTo; clearReply(); }
   lastSent[rid] = Date.now();
-  await db.collection("msgs").add(doc);
+  await sendDoc(doc);
 }
 const readURL = f => new Promise(res => { const fr = new FileReader(); fr.onload = () => res(fr.result); fr.onerror = () => res(null); fr.readAsDataURL(f); });
 // ───── تخزين الملفات مرة واحدة + تحميل تدريجي (زي تيليجرام) ─────
@@ -1437,6 +1503,19 @@ function roomCard(sh) {
   b.onclick = async e => { e.stopPropagation(); if (selMode) return; const rr = rooms.find(x => x.id === sh.id) || (sh.id === "general" ? generalRoom() : null); if (!rr) { setStatus("الغرفة دي مش موجودة."); return; } try { await joinRoom(rr); } catch (er) { setStatus(errMsg(er)); } };
   c.append(b); return c;
 }
+// الكارت بيشاور على الـ uid بس، والاسم والكود بيتقروا من البروفايل الحقيقي (علشان محدش يزوّر كارت)
+function userCard(u) {
+  const p = profiles[u && u.uid] || {}, c = el("div", "rcard"); c.append(avatar(p));
+  const t = el("div", "rt"); t.append(el("b", "", p.name || "مجهول"), el("small", "", p.fcode ? "🆔 " + fmtFCode(p.fcode) : "كارت تعريف")); c.append(t);
+  if (u && u.uid !== myId) { const b = el("button", "", "مراسلة"); b.type = "button"; b.onclick = e => { e.stopPropagation(); if (!selMode) openPeer(u.uid); }; c.append(b); }
+  return c;
+}
+async function sendMyCard() {
+  if (!mediaGuard()) return;
+  if (!canDMFrom(myId, room)) { flash("🎭 إنت بشخصية مستعارة هنا، مينفعش تبعت كودك الحقيقي"); return; }
+  if (!(profiles[myId] || {}).fcode) { flash("كودك لسه بيتجهز، جرّب كمان ثانية"); return; }
+  try { await postMedia({ ucard: { uid: myId } }); } catch (e) { flash("ماقدرتش أبعت الكارت."); }
+}
 function openSharePicker() {
   const c = $("mcard"); c.textContent = "";
   c.append(el("div", "mprev", "🏠 اختار غرفة تشاركها"));
@@ -1456,7 +1535,7 @@ function openSharePicker() {
 $("plusBtn").onclick = () => {
   const c = $("mcard"); c.textContent = ""; c.append(el("div", "mprev", "➕ إضافة"));
   const g = el("div", "acts");
-  [["🖼", "صورة", () => $("aImg").click()], ["🎥", "فيديو", () => $("aVid").click()], ["📸", "كاميرا", () => $("aCam").click()], ["🎬", "تصوير", () => $("aCamV").click()], ["🏠", "غرفة", openSharePicker]].forEach(([ic, t, fn]) => {
+  [["🖼", "صورة", () => $("aImg").click()], ["🎥", "فيديو", () => $("aVid").click()], ["📸", "كاميرا", () => $("aCam").click()], ["🎬", "تصوير", () => $("aCamV").click()], ["🏠", "غرفة", openSharePicker], ["🆔", "كودي", sendMyCard]].forEach(([ic, t, fn]) => {
     const b = el("button", "apick"); b.type = "button"; const i = el("i", "", ic); b.append(i, document.createTextNode(t));
     b.onclick = () => { $("msheet").hidden = true; fn(); }; g.append(b);
   });
@@ -1511,7 +1590,7 @@ $("stoAll").onclick = async () => {
 };
 
 // ───── تحديث تلقائي: لو في نسخة أحدث على الموقع بتتحمّل لوحدها (من غير تسجيل خروج) ─────
-const BUILD = "20261120-4";
+const BUILD = "20261120-5";
 let updating = false;
 async function checkUpdate() {
   if (updating || !/^https?:/.test(location.protocol) || !navigator.onLine) return;
@@ -1557,12 +1636,12 @@ $("f").onsubmit = async e => {
   $("inp").value = "";
   if (editingId) {
     const id = editingId; cancelEdit();
-    try { await db.collection("msgs").doc(id).update({ text, edited: true }); }
+    try { await msgCol(room).doc(id).update({ text, edited: true }); }
     catch (err) { setStatus("ماقدرتش أعدّل الرسالة."); }
     return;
   }
-  const doc = { room, text, uid: myId, ts: Date.now() }; if (replyTo) { doc.reply = replyTo; clearReply(); }
-  try { await db.collection("msgs").add(doc); }
+  const doc = { ...mBase(room), text, uid: myId, ts: Date.now() }; if (replyTo) { doc.reply = replyTo; clearReply(); }
+  try { await sendDoc(doc); }
   catch (err) { setStatus("الرسالة ماتبعتتش. غالباً مفيش صلاحية كتابة، اتأكد من النت ومن قواعد Firebase."); }
 };
 
@@ -1596,6 +1675,8 @@ document.addEventListener("click", e => {
   const av = e.target.closest(".av"); if (!av || selMode) return;
   if (av.id === "meAv" || av.closest("#dlist, #hRoom, .chip, #lb")) return;
   if (av.closest("button") && av.id !== "pvAv") return;
+  const ow = av.closest("[data-uid]");
+  if (ow && ow.dataset.uid !== myId) { const bb = ow.querySelector(".b"); if (bb && Date.now() - (bb._f || 0) < 800) return; e.stopPropagation(); e.preventDefault(); peerTap(ow.dataset.uid, av.closest("#rinfo") ? infoId : room); return; }
   const nm = (av.closest(".ri-mem") && av.closest(".ri-mem").querySelector("b")) || (av.closest(".row") && av.closest(".row").querySelector(".n"));
   showPic(av, av.dataset.name || (nm ? nm.textContent : (av.classList.contains("ri-av") && document.querySelector(".ri-hero h2") ? document.querySelector(".ri-hero h2").textContent : "")));
 }, true);
@@ -1667,6 +1748,11 @@ async function start() {
     buildChips();
     if (room !== "general" && had && !rooms.some(r => r.id === room && canSee(r))) openRoom("general");
     tryJoin(); if (infoId) { const sg = JSON.stringify(infoId === "general" ? gdoc : (rooms.find(x => x.id === infoId) || null)); if (sg !== infoSig) { infoSig = sg; renderInfo(); } } refreshMe();
+  }, () => {});
+  db.collection("dms").where("members", "array-contains", myId).onSnapshot(s => {
+    dms = {}; s.docs.forEach(d => { dms[d.id] = { ...d.data(), id: d.id }; });
+    s.docChanges().forEach(ch => { const d = ch.doc.data(); if (!dmFirst && ch.type !== "removed" && d.last && d.last.uid !== myId && d.last.ts >= T0 - 2000 && d.last.ts > (dmDone[ch.doc.id] || 0) && !s.metadata.hasPendingWrites) { dmDone[ch.doc.id] = d.last.ts; notifyDM({ ...d, id: ch.doc.id }); } });
+    dmFirst = false; buildChips(); updateTotal(); if (isDM(room)) refreshMe();
   }, () => {});
   buildChips(); openRoom(room);
 }
