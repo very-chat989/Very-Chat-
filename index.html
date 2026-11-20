@@ -336,6 +336,12 @@ button.ri-chip{cursor:pointer}
       <details class="uidbox"><summary>معرّف الحساب التقني</summary><div id="myUidRow" dir="ltr">—</div></details>
     </div>
     <div class="sec" id="accSec" hidden><label>حسابك</label><div class="note" id="accNote"></div><button class="ghost" id="accBtn"></button></div>
+    <div class="sec" id="stoSec" hidden>
+      <label>💾 التخزين والبيانات المحمّلة</label>
+      <div class="note" id="stoInfo">جاري الحساب…</div>
+      <button class="ghost" id="stoClear" type="button">🧹 مسح الملفات المؤقتة (الصور والفيديو)</button>
+      <button class="ghost" id="stoAll" type="button">🗑 مسح كل بيانات التطبيق وتسجيل الخروج</button>
+    </div>
     <label class="sec" id="privRow" hidden style="flex-direction:row;align-items:center;gap:10px;cursor:pointer"><input type="checkbox" id="privCk"><span>🔒 غرفة خاصة (الأعضاء اللي تضيفهم بس يشوفوها)</span></label>
     <div class="sec"><label>شخصيات الشلة</label><div class="grid" id="shalla"></div></div>
     <div class="sec"><label>إيموجي</label><div class="grid" id="emojis"></div></div>
@@ -825,7 +831,12 @@ $("accBtn").onclick = async () => {
   } catch (e) { perr("ماقدرتش أكمل (" + (e.code || e.message) + "). اتأكد إن تسجيل جوجل متفعل في Firebase."); }
 };
 $("dNotif").onclick = async () => { try { await Notification.requestPermission(); } catch (e) {} $("dNotif").hidden = !("Notification" in window) || Notification.permission !== "default"; };
-function registerSW() { if ("serviceWorker" in navigator && /^https?:/.test(location.protocol)) navigator.serviceWorker.register("sw.js").catch(() => {}); }
+function registerSW() {
+  if (!("serviceWorker" in navigator) || !/^https?:/.test(location.protocol)) return;
+  const had = !!navigator.serviceWorker.controller; let reloaded = false;
+  navigator.serviceWorker.addEventListener("controllerchange", () => { if (had && !reloaded) { reloaded = true; location.reload(); } });
+  navigator.serviceWorker.register("sw.js", { updateViaCache: "none" }).then(r => { r.update().catch(() => {}); document.addEventListener("visibilitychange", () => { if (!document.hidden) r.update().catch(() => {}); }); }).catch(() => {});
+}
 
 // معرّف مالك الدردشة العامة: انسخه من بروفايلك (سطر «معرّفك») وحطه هنا بين علامتي التنصيص
 const OWNER_UID = "t2zZ3ijMhDPVsjGxQlunfmLHf122";
@@ -1088,7 +1099,7 @@ function openSheet(mode, rid) {
   $("nameIn").maxLength = mode === "room" || mode === "editroom" ? 30 : 20;
   $("saveBtn").textContent = mode === "room" ? "إنشاء الغرفة" : mode === "editroom" ? "حفظ التعديلات" : "حفظ";
   $("skipBtn").hidden = mode !== "persona"; $("cancelSheet").hidden = (mode === "me" && !g.name);
-  $("accSec").hidden = mode !== "me"; if (mode === "me") accUI(); $("codeSec").hidden = mode !== "me"; paintMyCode();
+  $("accSec").hidden = mode !== "me"; $("stoSec").hidden = mode !== "me"; if (mode === "me") { accUI(); stoUI(); } $("codeSec").hidden = mode !== "me"; paintMyCode();
   $("privRow").hidden = !(mode === "room" || (mode === "editroom" && rid !== "general")); $("descIn").hidden = !(mode === "room" || mode === "editroom"); $("descIn").value = mode === "editroom" ? ((src && src.desc) || "") : ""; $("privCk").checked = !!(src && src.private);
   $("nameIn").value = draft.name; $("sheet").hidden = false; perr(""); paintDraft();
 }
@@ -1252,7 +1263,7 @@ async function saveMedia(kind, data, meta) {
 function getMedia(id) {
   if (MEDIA.has(id)) return Promise.resolve(MEDIA.get(id));
   if (MEDIA_P.has(id)) return MEDIA_P.get(id);
-  const p = db.collection("media").doc(id).get().then(d => { const v = d.exists ? d.data().data : null; if (v) MEDIA.set(id, v); MEDIA_P.delete(id); return v; }).catch(() => { MEDIA_P.delete(id); return null; });
+  const p = db.collection("media").doc(id).get().then(d => { const v = d.exists ? d.data().data : null; if (v) { MEDIA.set(id, v); while (MEDIA.size > 40) MEDIA.delete(MEDIA.keys().next().value); } MEDIA_P.delete(id); return v; }).catch(() => { MEDIA_P.delete(id); return null; });
   MEDIA_P.set(id, p); return p;
 }
 const MIO = "IntersectionObserver" in window ? new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { MIO.unobserve(e.target); if (e.target._load) e.target._load(); } }), { rootMargin: "400px" }) : null;
@@ -1375,6 +1386,42 @@ $("plusBtn").onclick = () => {
 };
 // تعطيل + لما الكتابة ممنوعة
 setInterval(() => { $("plusBtn").disabled = !db || !!writeBlock(curR()); }, 400);
+
+// ───── إدارة التخزين: عرض حجم البيانات المحمّلة ومسحها ─────
+const fmtSize = b => b >= 1048576 ? (b / 1048576).toFixed(1) + " ميجا" : Math.max(1, Math.round(b / 1024)) + " كيلو";
+async function stoUI() {
+  const box = $("stoInfo"); box.textContent = "جاري الحساب…";
+  try {
+    const e = navigator.storage && navigator.storage.estimate ? await navigator.storage.estimate() : null;
+    let mem = 0; MEDIA.forEach(v => { mem += (v || "").length; });
+    const parts = [];
+    if (e && e.usage != null) parts.push("المحفوظ على الجهاز: " + fmtSize(e.usage) + (e.quota ? " من " + fmtSize(e.quota) : ""));
+    parts.push("ملفات محمّلة في الجلسة: " + MEDIA.size + (mem ? " (" + fmtSize(mem) + ")" : ""));
+    box.style.whiteSpace = "pre-line"; box.textContent = parts.join("\n");
+  } catch (err) { box.textContent = "ماقدرتش أحسب الحجم."; }
+}
+async function wipeStorage(everything) {
+  MEDIA.clear(); MEDIA_P.clear();
+  try { if (window.caches) await Promise.all((await caches.keys()).map(k => caches.delete(k))); } catch (e) {}
+  try { if (db) { await db.terminate(); await db.clearPersistence(); } } catch (e) {}
+  if (everything) {
+    try { const rs = await navigator.serviceWorker.getRegistrations(); await Promise.all(rs.map(r => r.unregister())); } catch (e) {}
+    try { localStorage.clear(); sessionStorage.clear(); } catch (e) {}
+    try { await firebase.auth().signOut(); } catch (e) {}
+    try { if (indexedDB.databases) for (const d of await indexedDB.databases()) if (d.name) indexedDB.deleteDatabase(d.name); } catch (e) {}
+  }
+}
+$("stoClear").onclick = async () => {
+  const b = $("stoClear"); b.disabled = true; b.textContent = "جاري المسح…";
+  await wipeStorage(false); b.textContent = "✓ اتمسح، جاري إعادة التحميل…"; setTimeout(() => location.reload(), 600);
+};
+let stoArm = 0;
+$("stoAll").onclick = async () => {
+  const b = $("stoAll");
+  if (!stoArm) { stoArm = setTimeout(() => { stoArm = 0; b.textContent = "🗑 مسح كل بيانات التطبيق وتسجيل الخروج"; }, 4000); b.textContent = "⚠️ اضغط تاني للتأكيد (هيسجّل خروجك)"; return; }
+  clearTimeout(stoArm); b.disabled = true; b.textContent = "جاري المسح…";
+  await wipeStorage(true); setTimeout(() => location.reload(), 600);
+};
 
 // ───── لوحة الإيموجي ─────
 const EMO_CATS = [
