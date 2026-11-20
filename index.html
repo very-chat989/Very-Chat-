@@ -140,6 +140,12 @@ header{gap:10px;padding:8px 12px}
 .dhead b{font-size:21px;color:var(--pri);font-weight:800}
 .dsub{font-size:12px;font-weight:700;color:var(--mute);padding:0 6px}
 #dlist{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:6px}
+#dpin{display:flex;flex-direction:column;gap:6px;flex:none}
+#dpin .rrow{background:var(--bg)}
+.dsearch{flex:none;width:100%;border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:14px;padding:11px 14px;font-size:15px;outline:none}
+.dsearch:focus{border-color:var(--pri)}
+.dnone{color:var(--mute);font-size:13px;text-align:center;padding:14px 6px;line-height:1.7}
+.dnone button{margin-top:8px}
 .rrow{display:flex;align-items:center;gap:12px;border:0;background:none;text-align:start;padding:10px;border-radius:16px;cursor:pointer;color:var(--ink);width:100%}
 .rrow .av{width:46px;height:46px;font-size:23px}
 .rrow.on{background:var(--bg);box-shadow:inset 0 0 0 2px var(--pri)}
@@ -303,7 +309,8 @@ button.ri-chip{cursor:pointer}
 <div id="pview" hidden><button type="button" id="pvX" aria-label="إغلاق">✕</button><img id="pvImg" alt=""></div>
 <input type="file" id="aImg" accept="image/*" multiple hidden>
 <input type="file" id="aVid" accept="video/*" hidden>
-<input type="file" id="aCam" accept="image/*,video/*" capture hidden>
+<input type="file" id="aCam" accept="image/*" capture="environment" hidden>
+<input type="file" id="aCamV" accept="video/*" capture="environment" hidden>
 <div id="rinfo" hidden>
   <div class="ri-top"><button id="riBack" aria-label="رجوع">→</button><b>معلومات الغرفة</b></div>
   <div id="riBody"></div>
@@ -312,6 +319,8 @@ button.ri-chip{cursor:pointer}
 <div id="drawer" hidden>
   <div class="dpanel">
     <div class="dhead"><div id="dLogo"></div><b>Very Chat</b></div>
+    <div id="dpin"></div>
+    <input class="dsearch" id="dSearch" type="search" placeholder="🔎 ابحث بالاسم أو بالكود…" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="search">
     <div class="dsub">الغرف · اضغط مطوّلاً على غرفتك للتعديل</div>
     <div id="dlist"></div>
     <button class="ghost" id="dFind">🔎 اكتشاف غرف / الانضمام بكود</button>
@@ -403,31 +412,48 @@ function avatar(p, big) {
 function setAvatar(el, p) { el._photo = p && p.photo || ""; el.dataset.name = (p && p.name) || ""; el.replaceChildren(...avatar(p).childNodes); el.style.background = (p && !p.photo && p.color) || "var(--line)"; }
 
 function closeDrawer() { $("drawer").hidden = true; }
+const nzq = t => String(t || "").toLowerCase().replace(/[\u064B-\u0652\u0640]/g, "").replace(/[أإآٱ]/g, "ا").replace(/ى/g, "ي").replace(/ة/g, "ه").replace(/\s+/g, " ").trim();
+const nzc = t => String(t || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+function roomMatches(r, q) {
+  if (!q) return true;
+  const n = nzq(r.name), qq = nzq(q), qc = nzc(q);
+  return n.includes(qq) || (qc.length >= 2 && nzc(r.code).includes(qc));
+}
+function roomRow(r) {
+  const row = document.createElement("button"); row.className = "rrow" + (r.id === room ? " on" : ""); row.style.setProperty("--rc", r.color || "#5b6b78");
+  const ic = avatar(r.id === "general" || r.emoji || r.photo ? r : { emoji: "💬", color: "#5b6b78" });
+  const tx = document.createElement("div"); tx.className = "rt";
+  const nm = document.createElement("b"); nm.textContent = r.name;
+  const last = recent.find(m => m.room === r.id), un = unreadOf(r.id);
+  const sb = document.createElement("small"); sb.dir = "auto";
+  sb.textContent = (r.by === myId ? "👑 " : "") + (r.private ? "🔒 " : "") + (r.onlyAdmins ? "📢 " : "") + (last ? nameOf(last.uid, r.id) + ": " + mtext(last).slice(0, 28) : "أنت: " + ((profileFor(myId, r.id) || {}).name || "—"));
+  tx.append(nm, sb); row.append(ic, tx);
+  if (un) { const bd = document.createElement("span"); bd.className = "bdg"; bd.textContent = un > 99 ? "99+" : un; row.append(bd); }
+  let tm, fired = false;
+  row.onclick = () => { if (fired) { fired = false; return; } closeDrawer(); openRoom(r.id); };
+  if (r.id !== "general") {
+    const go = () => { fired = false; tm = setTimeout(() => { fired = true; openRoomMenu(r); }, 500); }, stop = () => clearTimeout(tm);
+    ["touchstart", "mousedown"].forEach(ev => row.addEventListener(ev, go, { passive: true }));
+    ["touchmove", "touchend", "touchcancel", "mouseup", "mouseleave"].forEach(ev => row.addEventListener(ev, stop, { passive: true }));
+    row.addEventListener("contextmenu", e => { e.preventDefault(); stop(); fired = true; openRoomMenu(r); });
+  }
+  return row;
+}
 function buildChips() {
-  const box = $("dlist"); box.textContent = "";
-  [generalRoom(), ...rooms.filter(canSee)].forEach(r => {
-    const row = document.createElement("button"); row.className = "rrow" + (r.id === room ? " on" : ""); row.style.setProperty("--rc", r.color || "#5b6b78");
-    const ic = avatar(r.id === "general" || r.emoji || r.photo ? r : { emoji: "💬", color: "#5b6b78" });
-    const tx = document.createElement("div"); tx.className = "rt";
-    const nm = document.createElement("b"); nm.textContent = r.name;
-    const last = recent.find(m => m.room === r.id), un = unreadOf(r.id);
-    const sb = document.createElement("small"); sb.dir = "auto";
-    sb.textContent = (r.by === myId ? "👑 " : "") + (r.private ? "🔒 " : "") + (r.onlyAdmins ? "📢 " : "") + (last ? nameOf(last.uid, r.id) + ": " + mtext(last).slice(0, 28) : "أنت: " + ((profileFor(myId, r.id) || {}).name || "—"));
-    tx.append(nm, sb); row.append(ic, tx);
-    if (un) { const bd = document.createElement("span"); bd.className = "bdg"; bd.textContent = un > 99 ? "99+" : un; row.append(bd); }
-    let tm, fired = false;
-    row.onclick = () => { if (fired) { fired = false; return; } closeDrawer(); openRoom(r.id); };
-    if (r.id !== "general") {
-      const go = () => { fired = false; tm = setTimeout(() => { fired = true; openRoomMenu(r); }, 500); }, stop = () => clearTimeout(tm);
-      ["touchstart", "mousedown"].forEach(ev => row.addEventListener(ev, go, { passive: true }));
-      ["touchmove", "touchend", "touchcancel", "mouseup", "mouseleave"].forEach(ev => row.addEventListener(ev, stop, { passive: true }));
-      row.addEventListener("contextmenu", e => { e.preventDefault(); stop(); fired = true; openRoomMenu(r); });
-    }
-    box.appendChild(row);
-  });
+  const box = $("dlist"), pin = $("dpin"), q = $("dSearch").value.trim();
+  box.textContent = ""; pin.textContent = "";
+  pin.appendChild(roomRow(generalRoom()));
+  const list = rooms.filter(canSee).filter(r => roomMatches(r, q));
+  list.forEach(r => box.appendChild(roomRow(r)));
+  if (q && !list.length) {
+    const nn = document.createElement("div"); nn.className = "dnone"; nn.textContent = "مفيش غرفة بالاسم أو الكود ده في غرفك.";
+    const fb = document.createElement("button"); fb.className = "ghost"; fb.type = "button"; fb.textContent = "🔎 دوّر في كل الغرف / انضم بكود";
+    fb.onclick = () => { closeDrawer(); openDiscover(); }; nn.append(document.createElement("br"), fb); box.appendChild(nn);
+  }
   refreshMe(); updateTotal();
 }
-$("menuBtn").onclick = () => { buildChips(); $("dNotif").hidden = !("Notification" in window) || Notification.permission !== "default"; $("drawer").hidden = false; };
+$("dSearch").addEventListener("input", buildChips);
+$("menuBtn").onclick = () => { $("dSearch").value = ""; buildChips(); $("dNotif").hidden = !("Notification" in window) || Notification.permission !== "default"; $("drawer").hidden = false; };
 $("drawer").onclick = e => { if (e.target === $("drawer")) closeDrawer(); };
 $("dAdd").onclick = () => { closeDrawer(); openSheet("room"); };
 $("hRoom").onclick = () => { if (curR()) openInfo(room); else $("meBtn").click(); };
@@ -874,7 +900,8 @@ function swRow(title, desc, on, fn) {
   const r = el("div", "ri-row"), t = el("div"); t.append(el("b", "", title), el("small", "", desc));
   const sw = el("button", "sw" + (on ? " on" : "")); sw.type = "button"; sw.setAttribute("aria-pressed", on ? "true" : "false"); sw.onclick = () => fn(!on); r.append(t, sw); return r;
 }
-function openInfo(id) { if (!id) return; infoId = id; $("rinfo").hidden = false; renderInfo(); }
+let infoSig = null;
+function openInfo(id) { if (!id) return; infoId = id; infoSig = null; $("rinfo").hidden = false; renderInfo(); }
 function closeInfo() { infoId = null; $("rinfo").hidden = true; }
 function addFriend(r, mem) {
   const c = $("mcard"); c.textContent = ""; c.append(el("div", "mprev", "＋ إضافة صديق"));
@@ -892,10 +919,53 @@ function memberMenu(r, u) {
   if (ownerOf(r)) act("🛡️", isAdm ? "إلغاء الإشراف" : "ترقية لمشرف", "linear-gradient(135deg,#5aa9ff,#2f6fed)", () => upd({ admins: isAdm ? AR(u) : AU(u) }, r.id));
   act("🔇", isMut ? "إلغاء الكتم" : "كتم", "linear-gradient(135deg,#a07cff,#6b46e0)", () => upd(isMut ? { muted: AR(u), ["mutedUntil." + u]: FV().delete() } : { muted: AU(u) }, r.id));
   if (!isMut) act("⏱️", "كتم ساعة", "linear-gradient(135deg,#8f7cff,#5b46e0)", () => upd({ ["mutedUntil." + u]: Date.now() + 3600000 }, r.id));
-  act("🧽", "مسح رسايله", "linear-gradient(135deg,#6bd0c0,#2a9d8f)", async () => { try { const q = await db.collection("msgs").where("room", "==", r.id).where("uid", "==", u).get(); await Promise.allSettled(q.docs.map(d => d.ref.delete())); setStatus("✓ اتمسحت رسايل " + nameOf(u, r.id)); } catch (e) { setStatus(errMsg(e)); } });
+  act("🧽", "مسح رسايله", "linear-gradient(135deg,#6bd0c0,#2a9d8f)", async () => { try { const res = await wipeRoomMsgs(r.id, null, u); setStatus(res.failed ? "اتمسح " + res.done + " ورسايل (" + res.failed + ") ماتمسحتش — راجع صلاحيات Firestore" : "✓ اتمسحت رسايل " + nameOf(u, r.id) + " (" + res.done + ")"); setTimeout(() => setStatus(""), 4000); } catch (e) { setStatus(errMsg(e)); } });
   if (r.id !== "general") act("🚪", "طرد", "linear-gradient(135deg,#ffb347,#e08a2f)", () => upd(gone({}), r.id));
   act("⛔", "حظر", "linear-gradient(135deg,#ff7a7a,#d64545)", () => upd(gone({ banned: AU(u) }), r.id));
   acts.style.gridTemplateColumns = "repeat(" + (acts.children.length <= 4 ? acts.children.length : 3) + ",1fr)"; c.append(acts); $("msheet").hidden = false;
+}
+// ── تأكيد الضغط التاني: الحالة محفوظة برّه الزرار علشان إعادة رسم الصفحة ما تلغيهاش ──
+const ARM = {}, BUSY = {};
+function confirmBtn(btn, key, label, armedLabel, action) {
+  const paint = () => {
+    if (BUSY[key]) { btn.textContent = BUSY[key]; btn.disabled = true; return; }
+    const left = (ARM[key] || 0) - Date.now();
+    btn.disabled = false;
+    if (left > 0) { btn.textContent = armedLabel; setTimeout(() => { if (btn.isConnected) paint(); }, left + 50); }
+    else btn.textContent = label;
+  };
+  paint();
+  btn.onclick = async () => {
+    if (BUSY[key]) return;
+    if (!((ARM[key] || 0) > Date.now())) { ARM[key] = Date.now() + 8000; paint(); return; }
+    ARM[key] = 0;
+    await action(t => { BUSY[key] = t; paint(); }, () => { BUSY[key] = ""; paint(); });
+  };
+}
+async function wipeRoomMsgs(rid, onProg, uid) {
+  // بيمسح على دفعات؛ لو في رسايل مش مسموح تتمسح بيعدّي عليها ويكمّل اللي بعدها
+  let done = 0, failed = 0, after = null;
+  for (let round = 0; round < 300; round++) {
+    const base = () => {
+      let x = db.collection("msgs").where("room", "==", rid); if (uid) x = x.where("uid", "==", uid);
+      if (after) x = x.orderBy(firebase.firestore.FieldPath.documentId()).startAfter(after);
+      return x.limit(400);
+    };
+    let q;
+    try { q = await base().get({ source: "server" }); } catch (e) { q = await base().get(); }
+    if (q.empty) break;
+    let ok = 0;
+    try { const b = db.batch(); q.docs.forEach(d => b.delete(d.ref)); await b.commit(); ok = q.size; }
+    catch (e) {
+      const rs = await Promise.allSettled(q.docs.map(d => d.ref.delete()));
+      ok = rs.filter(x => x.status === "fulfilled").length;
+      if (ok < rs.length) { failed += rs.length - ok; after = q.docs[q.docs.length - 1]; }
+    }
+    done += ok; onProg && onProg(done);
+    if (q.size < 400 && ok === q.size) break;
+    if (!ok && !after) break;
+  }
+  return { done, failed };
 }
 function renderInfo() {
   const G = infoId === "general", r = G ? generalRoom() : rooms.find(x => x.id === infoId), box = $("riBody");
@@ -1006,18 +1076,26 @@ function renderInfo() {
   }
   if (owner) {
     const cl = el("button", "ri-danger", "🧹 مسح كل الرسايل");
-    cl.onclick = async () => { if (!cl.dataset.ok) { cl.dataset.ok = "1"; cl.textContent = "اضغط تاني للتأكيد"; return; } cl.disabled = true; try { const qq = await db.collection("msgs").where("room", "==", r.id).get(); await Promise.allSettled(qq.docs.map(d => d.ref.delete())); cl.textContent = "✓ اتمسحت"; } catch (e) { setStatus(errMsg(e)); } };
+    confirmBtn(cl, "clr:" + r.id, "🧹 مسح كل الرسايل", "⚠️ اضغط تاني للتأكيد", async (busy, idle) => {
+      try {
+        busy("جاري المسح…");
+        const res = await wipeRoomMsgs(r.id, n => busy("جاري المسح… " + n));
+        setStatus(res.failed ? "اتمسح " + res.done + " ورسايل (" + res.failed + ") ماتمسحتش — راجع صلاحيات Firestore" : "✓ اتمسحت كل الرسايل (" + res.done + ")");
+        setTimeout(() => setStatus(""), 4000);
+      } catch (e) { setStatus(errMsg(e)); }
+      idle();
+    });
     dc.append(cl);
     if (!G) {
     const dl = el("button", "ri-danger", "🗑 حذف الغرفة");
-    dl.onclick = async () => {
-      if (!dl.dataset.ok) { dl.dataset.ok = "1"; dl.textContent = "اضغط تاني للتأكيد (هتتمسح الرسايل كمان)"; return; }
+    confirmBtn(dl, "del:" + r.id, "🗑 حذف الغرفة", "⚠️ اضغط تاني للتأكيد (هتتمسح الرسايل كمان)", async (busy, idle) => {
       try {
-        const qq = await db.collection("msgs").where("room", "==", r.id).get();
-        await Promise.allSettled(qq.docs.map(d => db.collection("msgs").doc(d.id).delete()));
+        busy("جاري الحذف…");
+        await wipeRoomMsgs(r.id);
         await db.collection("rooms").doc(r.id).delete(); closeInfo(); openRoom("general");
       } catch (e) { setStatus(errMsg(e)); }
-    };
+      idle();
+    });
     dc.append(dl);
     }
   }
@@ -1042,8 +1120,7 @@ function openRoomMenu(r) {
     if (!b.dataset.ok) { b.dataset.ok = "1"; sp.textContent = "تأكيد؟"; return; }
     close();
     try {
-      const q = await db.collection("msgs").where("room", "==", r.id).get();
-      await Promise.allSettled(q.docs.map(d => db.collection("msgs").doc(d.id).delete()));
+      await wipeRoomMsgs(r.id);
       await db.collection("rooms").doc(r.id).delete();
       if (room === r.id) openRoom("general");
     } catch (e) { setStatus("ماقدرتش أحذف الغرفة."); }
@@ -1062,7 +1139,7 @@ function openRoom(id) {
   setStatus("جاري تحميل الرسايل…");
   const timer = setTimeout(() => setStatus("مش قادر أوصل للرسايل دلوقتي، ممكن النت ضعيف."), 10000);
   unsub = db.collection("msgs").where("room", "==", id).onSnapshot(
-    s => { clearTimeout(timer); render(s.docs.map(d => ({ ...d.data(), id: d.id })).sort((a, b) => (a.ts - b.ts) || a.id.localeCompare(b.id)).slice(-150)); },
+    s => { clearTimeout(timer); { const st = $("status").textContent; if (st.startsWith("جاري تحميل") || st.startsWith("مش قادر أوصل")) setStatus(""); } render(s.docs.map(d => ({ ...d.data(), id: d.id })).sort((a, b) => (a.ts - b.ts) || a.id.localeCompare(b.id)).slice(-150)); },
     e => { clearTimeout(timer); setStatus(errMsg(e)); });
   maybePersona();
   if (window.syncHistory) syncHistory();
@@ -1350,6 +1427,7 @@ async function sendVideo(file) {
 $("aImg").onchange = e => { const f = [...e.target.files]; e.target.value = ""; if (f.length) sendImages(f.slice(0, 5)); };
 $("aVid").onchange = e => { const f = e.target.files[0]; e.target.value = ""; if (f) sendVideo(f); };
 $("aCam").onchange = e => { const f = e.target.files[0]; e.target.value = ""; if (!f) return; if ((f.type || "").startsWith("video")) sendVideo(f); else sendImages([f]); };
+$("aCamV").onchange = e => { const f = e.target.files[0]; e.target.value = ""; if (f) sendVideo(f); };
 
 function roomCard(sh) {
   const c = el("div", "rcard"), r = rooms.find(x => x.id === sh.id) || (sh.id === "general" ? generalRoom() : null);
@@ -1378,7 +1456,7 @@ function openSharePicker() {
 $("plusBtn").onclick = () => {
   const c = $("mcard"); c.textContent = ""; c.append(el("div", "mprev", "➕ إضافة"));
   const g = el("div", "acts");
-  [["🖼", "صورة", () => $("aImg").click()], ["🎥", "فيديو", () => $("aVid").click()], ["📸", "كاميرا", () => $("aCam").click()], ["🏠", "غرفة", openSharePicker]].forEach(([ic, t, fn]) => {
+  [["🖼", "صورة", () => $("aImg").click()], ["🎥", "فيديو", () => $("aVid").click()], ["📸", "كاميرا", () => $("aCam").click()], ["🎬", "تصوير", () => $("aCamV").click()], ["🏠", "غرفة", openSharePicker]].forEach(([ic, t, fn]) => {
     const b = el("button", "apick"); b.type = "button"; const i = el("i", "", ic); b.append(i, document.createTextNode(t));
     b.onclick = () => { $("msheet").hidden = true; fn(); }; g.append(b);
   });
@@ -1588,7 +1666,7 @@ async function start() {
     rooms = s.docs.filter(d => d.id !== "general").map(d => ({ ...d.data(), id: d.id })).sort((a, b) => (a.name || "").localeCompare(b.name || "", "ar"));
     buildChips();
     if (room !== "general" && had && !rooms.some(r => r.id === room && canSee(r))) openRoom("general");
-    tryJoin(); if (infoId) renderInfo(); refreshMe();
+    tryJoin(); if (infoId) { const sg = JSON.stringify(infoId === "general" ? gdoc : (rooms.find(x => x.id === infoId) || null)); if (sg !== infoSig) { infoSig = sg; renderInfo(); } } refreshMe();
   }, () => {});
   buildChips(); openRoom(room);
 }
