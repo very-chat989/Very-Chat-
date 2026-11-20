@@ -1,15 +1,25 @@
 // Very Chat service worker: network-first (always the newest page), cached copy only when offline
-const CACHE = "verychat-v7";
-self.addEventListener("install", e => { self.skipWaiting(); });
+const CACHE = "verychat-v8", SHELL = ["./", "index.html", "manifest.webmanifest", "icon-192.png"];
+self.addEventListener("install", e => {
+  e.waitUntil(caches.open(CACHE).then(c => Promise.allSettled(SHELL.map(u => c.add(u)))).then(() => self.skipWaiting()));
+});
 self.addEventListener("activate", e => {
   e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim()));
 });
 self.addEventListener("fetch", e => {
   const r = e.request, u = new URL(r.url);
   if (r.method !== "GET" || u.origin !== location.origin) return;
-  e.respondWith(fetch(r, { cache: "no-cache" }).then(res => { if (res && res.ok) { const c = res.clone(); caches.open(CACHE).then(k => k.put(r, c)).catch(() => {}); } return res; }).catch(() => caches.match(r).then(m => m || caches.match("index.html"))));
+  e.respondWith(
+    fetch(r, { cache: "no-cache" }).then(res => {
+      if (res && res.ok) { const c = res.clone(); caches.open(CACHE).then(k => k.put(r, c)).catch(() => {}); }
+      return res;
+    }).catch(async () => (await caches.match(r)) || (r.mode === "navigate" ? await caches.match("index.html") : null) || Response.error())
+  );
 });
 self.addEventListener("notificationclick", e => {
-  e.notification.close();
-  e.waitUntil(self.clients.matchAll({ type: "window", includeUncontrolled: true }).then(cs => cs.length ? cs[0].focus() : self.clients.openWindow("./")));
+  const tag = e.notification.tag; e.notification.close();
+  e.waitUntil(self.clients.matchAll({ type: "window", includeUncontrolled: true }).then(cs => {
+    if (!cs.length) return self.clients.openWindow("./");
+    cs[0].postMessage({ type: "open", tag }); return cs[0].focus();
+  }));
 });

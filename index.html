@@ -406,6 +406,16 @@ form.bar:focus-within{box-shadow:0 0 0 2px var(--pri),var(--sh2)}
 #login{background:radial-gradient(circle at 15% 8%,rgba(44,196,169,.34),transparent 55%),radial-gradient(circle at 88% 92%,rgba(47,111,237,.26),transparent 50%),var(--bg)}
 .gbtn{border-radius:18px}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
+
+/* ───── صندوق الطلبات ───── */
+#reqView{position:fixed;inset:0;z-index:4;background:var(--bg);display:flex;flex-direction:column;animation:up .25s ease both}
+#reqBody{flex:1;overflow-y:auto;padding-bottom:calc(24px + env(safe-area-inset-bottom,0px))}
+.rq-empty{text-align:center;color:var(--mute);padding:70px 20px;line-height:1.9;font-size:15px}.rq-empty i{display:block;font-style:normal;font-size:54px}
+.rq-all,.rq-wait{border:1px solid var(--line);background:var(--bg);color:var(--pri);font-weight:700;border-radius:12px;padding:7px 12px;cursor:pointer;font-size:12.5px}
+.rq-wait{color:var(--ink);font-weight:500;margin-inline-start:auto}
+.ri-ok:disabled,.ri-no:disabled,.rq-all:disabled,.rq-wait:disabled{opacity:.45}
+.dfoot #dReq{grid-column:1/-1;display:flex;align-items:center;justify-content:center;gap:8px;font-weight:700}
+.dfoot #dReq .bdg{margin:0}
 </style>
 </head>
 <body>
@@ -446,6 +456,11 @@ form.bar:focus-within{box-shadow:0 0 0 2px var(--pri),var(--sh2)}
   <div id="riBody"></div>
 </div>
 
+<div id="reqView" hidden>
+  <div class="ri-top"><button id="reqBack" aria-label="رجوع">→</button><b>📥 الطلبات</b></div>
+  <div id="reqBody"></div>
+</div>
+
 <div id="drawer" hidden>
   <div class="dpanel">
     <div class="dhead"><div id="dLogo"></div><b>Very Chat</b></div>
@@ -456,6 +471,7 @@ form.bar:focus-within{box-shadow:0 0 0 2px var(--pri),var(--sh2)}
     <div class="dsub tg" id="rmSub" data-k="rooms" role="button" tabindex="0" aria-expanded="true"><span>🏠 الغرف</span><i class="chev"></i><span class="cnt"></span><small>· اضغط مطوّلاً للتعديل</small></div>
     <div id="dlist"></div>
     <div class="dfoot">
+      <button class="ghost" id="dReq">📥 الطلبات <span class="bdg" id="reqBdg" hidden></span></button>
       <button class="ghost" id="dFind">🔑 انضم بكود</button>
       <button class="ghost" id="dInvite">👋 دعوة صديق</button>
       <button class="ghost" id="dSound">🔊 الأصوات: شغالة</button>
@@ -547,8 +563,8 @@ const dmRoom = id => { const p = profiles[dmPeerOf(id)] || {}; return { id, dm: 
 function flash(t) { setStatus(t); setTimeout(() => { if ($("status").textContent === t) setStatus(""); }, 3500); }
 async function sendDoc(doc) {
   if (!isDM(doc.room)) return db.collection("msgs").add(doc);
-  const r = await db.collection("dmsgs").add(doc);
-  db.collection("dms").doc(doc.room).set({ members: doc.members, last: { uid: myId, ts: doc.ts, text: mtext(doc).slice(0, 60) }, unread: { [dmPeerOf(doc.room)]: FV().increment(1) } }, { merge: true }).catch(() => {});
+  const r = await db.collection("dmsgs").add(doc), d0 = dms[doc.room], ex = !d0 && !dmFirst ? { req: myId } : d0 && d0.req && d0.req !== myId && !d0.acc ? { acc: true } : {};
+  db.collection("dms").doc(doc.room).set({ members: doc.members, ...ex, last: { uid: myId, ts: doc.ts, text: mtext(doc).slice(0, 60) }, unread: { [dmPeerOf(doc.room)]: FV().increment(1) } }, { merge: true }).catch(() => {});
   return r;
 }
 // في الغرف اللي فيها شخصيات مستعارة مينفعش نكشف الهوية الحقيقية؛ العام والخاص بس
@@ -576,7 +592,7 @@ function openPeer(u) {
 function dmRow(d) {
   const u = dmPeerOf(d.id), p = profiles[u] || {}, row = el("button", "rrow" + (d.id === room ? " on" : "")); row.type = "button"; row.style.setProperty("--rc", p.color || "#5b6b78");
   const tx = el("div", "rt"), sb = el("small"); sb.dir = "auto";
-  sb.textContent = ((d.blockedBy || []).length ? "🚫 " : "") + (d.last ? (d.last.uid === myId ? "أنت: " : "") + d.last.text : "");
+  sb.textContent = ((d.blockedBy || []).length ? "🚫 " : "") + (d.req === myId && !d.acc ? "⏳ " : "") + (d.last ? (d.last.uid === myId ? "أنت: " : "") + d.last.text : "");
   tx.append(el("b", "", p.name || "مجهول"), sb); row.append(avatar(p), tx);
   const un = unreadOf(d.id); if (un) row.append(el("span", "bdg", un > 99 ? "99+" : String(un)));
   let tm, fired = false;
@@ -621,7 +637,7 @@ function openDMMenu(d) {
 }
 function buildDMs(q) {
   const box = $("dmList"), sub = $("dmSub"), qn = nzq(q), qc = normFCode(q); box.textContent = "";
-  const list = Object.values(dms).filter(d => d.last && d.last.ts > dmClearedAt(d)).sort((a, b) => b.last.ts - a.last.ts).filter(d => { if (!q) return true; const p = profiles[dmPeerOf(d.id)] || {}; return nzq(p.name).includes(qn) || (qc.length >= 2 && String(p.fcode || "").includes(qc)); });
+  const list = Object.values(dms).filter(d => d.last && d.last.ts > dmClearedAt(d) && !pendingIn(d)).sort((a, b) => b.last.ts - a.last.ts).filter(d => { if (!q) return true; const p = profiles[dmPeerOf(d.id)] || {}; return nzq(p.name).includes(qn) || (qc.length >= 2 && String(p.fcode || "").includes(qc)); });
   list.forEach(d => box.appendChild(dmRow(d)));
   const pu = qc.length === 8 ? Object.keys(profiles).find(u => u !== myId && profiles[u] && profiles[u].fcode === qc) : null;
   if (pu && !list.some(d => dmPeerOf(d.id) === pu)) {
@@ -922,13 +938,14 @@ async function joinRoom(r) {
   if ((r.banned || []).includes(myId)) { const e = new Error("أنت محظور من الغرفة دي"); e.custom = true; throw e; }
   if (!canSee(r)) {
     $("msheet").hidden = true; closeDrawer();
-    if (r.approval) {
-      if (!(r.requests || []).includes(myId)) await db.collection("rooms").doc(r.id).update({ requests: AU(myId) }); logJoin(r, "request");
-      setStatus("✓ اتبعت طلب الانضمام، استنى موافقة المالك"); return;
+    if (needApproval(r)) {
+      if ((r.requests || []).includes(myId)) { flash("⏳ طلبك لسه معلّق، استنى موافقة المالك"); return; }
+      await db.collection("rooms").doc(r.id).update({ requests: AU(myId) }); logJoin(r, "request");
+      flash("✓ اتبعت طلب الانضمام، هيوصلك إشعار أول ما يوافق المالك"); return;
     }
     await db.collection("rooms").doc(r.id).update({ members: AU(myId) }); logJoin(r, "join");
   }
-  $("msheet").hidden = true; closeDrawer(); openRoom(r.id); setStatus("✓ انضميت لغرفة " + r.name);
+  $("msheet").hidden = true; closeDrawer(); openRoom(r.id); flash("✓ " + r.name);
 }
 function tryJoin() {
   if (!joinId || !db) return;
@@ -1102,8 +1119,9 @@ function netUI() { $("net").hidden = navigator.onLine !== false; }
 window.addEventListener("online", netUI); window.addEventListener("offline", netUI);
 function unreadOf(rid) { if (isDM(rid)) return ((dms[rid] || {}).unread || {})[myId] || 0; return readsLoaded ? recent.filter(m => m.room === rid && m.uid !== myId && m.ts > (myReads[rid] || 0)).length : 0; }
 function updateTotal() {
-  let n = 0; ["general", ...rooms.filter(canSee).map(r => r.id), ...Object.keys(dms)].forEach(id => { n += unreadOf(id); });
-  $("menuBtn").classList.toggle("un", n > 0); document.title = (n ? "(" + n + ") " : "") + "Very Chat";
+  let n = 0; ["general", ...rooms.filter(canSee).map(r => r.id), ...Object.keys(dms).filter(k => !pendingIn(dms[k]))].forEach(id => { n += unreadOf(id); });
+  const rc = reqCount(), bg = $("reqBdg"); bg.hidden = !rc; bg.textContent = rc > 99 ? "99+" : rc; renderReqs();
+  $("menuBtn").classList.toggle("un", n > 0 || rc > 0); document.title = (n ? "(" + n + ") " : "") + "Very Chat";
 }
 async function pushLocal(title, body, tag) {
   try { const reg = await navigator.serviceWorker.getRegistration(); if (reg) { await reg.showNotification(title, { body, tag, icon: "icon-192.png" }); return; } } catch (e) {}
@@ -1313,7 +1331,7 @@ function renderInfo() {
     c.append(swRow("🛡️ قائمة الأعضاء للمالك فقط", "حماية وأمان: إنت بس اللي تشوف الأعضاء وتبحث عنهم بالاسم أو الكود، وباقي الناس (حتى المشرفين) يشوفوا نفسهم بس", r.ownerOnlyMem !== false, v => upd({ ownerOnlyMem: v }, r.id)));
     if (!G) {
     S(c, "🔒 غرفة خاصة", "مش بتظهر في البحث، بالكود أو الرابط بس", "private");
-    S(c, "✋ الانضمام بموافقتك", "اللي عايز ينضم يبعت طلب وإنت توافق", "approval");
+    c.append(swRow("✋ الانضمام بموافقتك", "أي حد يطلب الدخول لازم تقبله من قسم «📥 الطلبات»", needApproval(r), v => upd({ approval: v }, r.id)));
     S(c, "🙈 إخفاء الكود والرابط عن الأعضاء", "المشرفين بس يشوفوا الكود ويدعوا", "lockInvite");
     }
     S(c, "👁 إخفاء «شوهدت بواسطة»", "المشرفين بس يشوفوا مين قرا الرسالة", "hideSeen");
@@ -1355,7 +1373,7 @@ function renderInfo() {
     const c = card("✋ طلبات الانضمام (" + reqs.length + ")");
     reqs.forEach(u => {
       const row = el("div", "ri-mem"), ok = el("button", "ri-ok", "✓"), no = el("button", "ri-no", "✕");
-      ok.onclick = () => upd({ requests: AR(u), members: AU(u) }, r.id); no.onclick = () => upd({ requests: AR(u) }, r.id);
+      ok.onclick = () => decideJoin(r, u, true); no.onclick = () => decideJoin(r, u, false);
       row.append(avatar(profileFor(u)), el("b", "", nameOf(u)), ok, no); c.append(row);
     });
   }
@@ -1589,7 +1607,7 @@ $("saveBtn").onclick = async () => {
       if (sheetRoom === "general") { delete patch.private; await db.collection("rooms").doc("general").set(patch, { merge: true }); }
       else await db.collection("rooms").doc(sheetRoom).update(patch);
     }
-    else { const priv = $("privCk").checked, nr = { ...data, name: name.slice(0, 30), by: myId, private: priv, members: [myId], code: newCode(), desc: $("descIn").value.trim() }; const r = await db.collection("rooms").add(nr); $("sheet").hidden = true; if (!rooms.some(x => x.id === r.id)) rooms = [...rooms, { ...nr, id: r.id }]; buildChips(); openRoom(r.id); return; }
+    else { const priv = $("privCk").checked, nr = { ...data, name: name.slice(0, 30), by: myId, private: priv, approval: true, members: [myId], code: newCode(), desc: $("descIn").value.trim() }; const r = await db.collection("rooms").add(nr); $("sheet").hidden = true; if (!rooms.some(x => x.id === r.id)) rooms = [...rooms, { ...nr, id: r.id }]; buildChips(); openRoom(r.id); return; }
     $("sheet").hidden = true;
   } catch (e) { perr("ماقدرتش أحفظ: " + errMsg(e) + (e && e.code ? " [" + e.code + "]" : "")); }
   finally { saving = false; $("saveBtn").disabled = false; }
@@ -2053,11 +2071,55 @@ async function start() {
   }, () => {});
   db.collection("dms").where("members", "array-contains", myId).onSnapshot(s => {
     const prevClr = dmClearedAt(dms[room]); dms = {}; s.docs.forEach(d => { dms[d.id] = { ...d.data(), id: d.id }; });
-    s.docChanges().forEach(ch => { const d = ch.doc.data(); if (!dmFirst && ch.type !== "removed" && d.last && d.last.uid !== myId && d.last.ts >= T0 - 2000 && d.last.ts > (dmDone[ch.doc.id] || 0) && !s.metadata.hasPendingWrites) { dmDone[ch.doc.id] = d.last.ts; notifyDM({ ...d, id: ch.doc.id }); } });
+    s.docChanges().forEach(ch => { const d = ch.doc.data(); if (!dmFirst && ch.type !== "removed" && d.last && d.last.uid !== myId && d.last.ts >= T0 - 2000 && d.last.ts > (dmDone[ch.doc.id] || 0) && !s.metadata.hasPendingWrites) { dmDone[ch.doc.id] = d.last.ts; pendingIn(d) ? reqToast(d, ch.doc.id) : notifyDM({ ...d, id: ch.doc.id }); } });
     { const wasFirst = dmFirst, nc = isDM(room) ? dmClearedAt(dms[room]) : 0; dmFirst = false; buildChips(); updateTotal(); if (isDM(room)) { refreshMe(); if (nc !== prevClr || (wasFirst && nc)) openRoom(room); } }
   }, () => {});
   buildChips(); openRoom(room); presenceStart();
 }
+// ═══ 📥 صندوق الطلبات: انضمام الغرف + طلبات المحادثة الخاصة + طلباتي المعلّقة ═══
+const needApproval = r => r.approval !== false;
+const pendingIn = d => !!d && !!d.req && d.req !== myId && !d.acc && !(d.blockedBy || []).includes(myId) && !!d.last && d.last.ts > dmClearedAt(d);
+const myName = () => (profiles[myId] || {}).name || gName() || "مجهول";
+const joinReqs = () => rooms.filter(adminOf).map(r => ({ r, us: (r.requests || []).filter(u => u !== myId && !(r.banned || []).includes(u)) })).filter(x => x.us.length);
+const dmReqs = () => Object.values(dms).filter(pendingIn).sort((a, b) => b.last.ts - a.last.ts);
+const myWaiting = () => rooms.filter(r => (r.requests || []).includes(myId) && !canSee(r));
+const reqCount = () => joinReqs().reduce((n, x) => n + x.us.length, 0) + dmReqs().length;
+function notifyUser(u, r, kind) { if (db && u && u !== myId) db.collection("joins").add({ owner: u, uid: myId, name: myName(), room: r.id, roomName: r.name || "", kind, ts: Date.now() }).catch(() => {}); }
+async function decideJoin(r, u, ok) {
+  try { await db.collection("rooms").doc(r.id).update(ok ? { requests: AR(u), members: AU(u) } : { requests: AR(u) }); notifyUser(u, r, ok ? "approved" : "declined"); flash(ok ? "✓ اتقبل الطلب" : "✕ اترفض الطلب"); }
+  catch (e) { flash(errMsg(e)); }
+}
+async function decideDM(d, ok) {
+  try { await db.collection("dms").doc(d.id).update(ok ? { acc: true } : { ["cleared." + myId]: Math.max(Date.now(), d.last.ts + 1), ["unread." + myId]: 0 }); flash(ok ? "✓ اتقبلت المحادثة" : "✕ اترفض الطلب"); }
+  catch (e) { flash(errMsg(e)); }
+}
+function reqToast(d, id) {
+  const t = "📩 " + nameOf(dmPeerOf(id)) + " بعتلك طلب محادثة"; toast(t); $("toast").onclick = () => { $("toast").hidden = true; openReqs(); };
+  if (document.hidden && "Notification" in window && Notification.permission === "granted") pushLocal("Very Chat", t, "req");
+}
+function openReqs() { closeDrawer(); closeInfo(); $("reqView").hidden = false; renderReqs(); }
+function renderReqs() {
+  const box = $("reqBody"); if ($("reqView").hidden) return; box.textContent = "";
+  const J = joinReqs(), D = dmReqs(), W = myWaiting();
+  if (!J.length && !D.length && !W.length) { const e = el("div", "rq-empty"); e.append(el("i", "", "🎉"), document.createTextNode("مفيش طلبات دلوقتي")); box.append(e); return; }
+  const card = t => { const c = el("div", "ri-card"); c.append(el("h3", "", t)); box.append(c); return c; };
+  const btn = (cls, t, fn) => { const b = el("button", cls, t); b.type = "button"; b.onclick = async () => { b.disabled = true; try { await fn(); } finally { b.disabled = false; } }; return b; };
+  J.forEach(({ r, us }) => {
+    const c = card("✋ طلبات الانضمام لـ «" + r.name + "» (" + us.length + ")");
+    if (us.length > 1) c.append(btn("rq-all", "✓ قبول الكل", async () => { for (const u of us) await decideJoin(r, u, true); }));
+    us.forEach(u => { const row = el("div", "ri-mem"); row.append(avatar(profileFor(u)), el("b", "", nameOf(u)), btn("ri-ok", "✓", () => decideJoin(r, u, true)), btn("ri-no", "✕", () => decideJoin(r, u, false))); c.append(row); });
+  });
+  if (D.length) {
+    const c = card("💬 طلبات المحادثة الخاصة (" + D.length + ")");
+    D.forEach(d => { const u = dmPeerOf(d.id), row = el("div", "ri-mem"), mi = el("div", "mi"), sm = el("small", "", d.last.text); sm.dir = "auto"; mi.append(el("b", "", nameOf(u)), sm); row.append(avatar(profiles[u]), mi, btn("ri-ok", "✓", () => decideDM(d, true)), btn("ri-no", "✕", () => decideDM(d, false))); c.append(row); });
+  }
+  if (W.length) {
+    const c = card("⏳ طلباتي المعلّقة (" + W.length + ")");
+    W.forEach(r => { const row = el("div", "ri-mem"), mi = el("div", "mi"); mi.append(el("b", "", r.name), el("small", "", "بانتظار موافقة المالك")); row.append(avatar(r.emoji || r.photo ? r : { emoji: "💬", color: "#5b6b78" }), mi, btn("rq-wait", "إلغاء الطلب", async () => { try { await db.collection("rooms").doc(r.id).update({ requests: AR(myId) }); } catch (e) { flash(errMsg(e)); } })); c.append(row); });
+  }
+}
+$("dReq").onclick = openReqs; $("reqBack").onclick = () => { $("reqView").hidden = true; };
+if (navigator.serviceWorker) navigator.serviceWorker.addEventListener("message", e => { const t = e.data && e.data.tag; if (t === "join" || t === "req") openReqs(); });
 // ═══ المتصلين / بيكتب / إشعار الانضمام للمالك ═══
 const PRES_TTL = 90000, PRES_BEAT = 30000, TYPE_TTL = 5000;
 let presence = {}, presOn = false, typingSent = 0, typingActive = false;
@@ -2089,7 +2151,7 @@ function presenceInfo() {
 function paintHSub() { try { if (window.__memPaint && !$("rinfo").hidden) window.__memPaint(); } catch (x0) {} const e = $("hSub"); if (!e) return; const x = presenceInfo(); e.textContent = x.text; e.classList.toggle("typing", x.typing); }
 function stopTyping() { if (typingActive) { typingActive = false; typingSent = 0; presWrite({ typing: "", tts: 0 }); } }
 function toast(t) {
-  let e = $("toast"); if (!e) { e = el("div"); e.id = "toast"; document.body.append(e); e.onclick = () => { e.hidden = true; }; }
+  let e = $("toast"); if (!e) { e = el("div"); e.id = "toast"; document.body.append(e); } e.onclick = () => { e.hidden = true; };
   vcSnd("ping"); e.textContent = t; e.hidden = false; clearTimeout(e._t); e._t = setTimeout(() => { e.hidden = true; }, 7000);
 }
 function logJoin(r, kind) {
@@ -2097,7 +2159,7 @@ function logJoin(r, kind) {
   const owner = r.id === "general" ? OWNER_UID : r.by; if (!owner || owner === myId) return;
   db.collection("joins").add({ owner, uid: myId, name: (profiles[myId] || {}).name || gName() || "مجهول", room: r.id, roomName: r.name || "عام", kind, ts: Date.now() }).catch(() => {});
 }
-const joinText = j => j.kind === "request" ? "✋ " + j.name + " طلب الانضمام لغرفة «" + j.roomName + "»" : j.room === "general" ? "👋 " + j.name + " انضم للدردشة العامة" : "👋 " + j.name + " انضم لغرفة «" + j.roomName + "»";
+const joinText = j => j.kind === "request" ? "✋ " + j.name + " طلب الانضمام لغرفة «" + j.roomName + "»" : j.kind === "approved" ? "✅ اتقبل طلب انضمامك لغرفة «" + j.roomName + "»" : j.kind === "declined" ? "❌ طلب انضمامك لغرفة «" + j.roomName + "» اترفض" : j.room === "general" ? "👋 " + j.name + " انضم للدردشة العامة" : "👋 " + j.name + " انضم لغرفة «" + j.roomName + "»";
 function presenceStart() {
   if (presOn) return; presOn = true;
   db.collection("presence").onSnapshot(s => { presence = {}; s.docs.forEach(d => { presence[d.id] = d.data(); }); paintHSub(); }, () => {});
@@ -2117,8 +2179,8 @@ function presenceStart() {
     if (!seen) { seen = Date.now(); try { localStorage.setItem("vc_joins_seen", seen); } catch (e) {} return; }
     const fresh = all.filter(j => j.ts > seen).sort((a, b) => a.ts - b.ts); if (!fresh.length) return;
     seen = fresh[fresh.length - 1].ts; try { localStorage.setItem("vc_joins_seen", seen); } catch (e) {}
-    const txt = fresh.length === 1 ? joinText(fresh[0]) : "👋 " + fresh.length + " انضموا: " + fresh.slice(-3).map(j => j.name).join("، ");
-    toast(txt); if (document.hidden && "Notification" in window && Notification.permission === "granted") pushLocal("Very Chat", txt, "join");
+    const txt = fresh.length === 1 ? joinText(fresh[0]) : "🔔 " + fresh.length + " إشعارات جديدة";
+    toast(txt); if (fresh.some(j => j.kind === "request")) $("toast").onclick = () => { $("toast").hidden = true; openReqs(); }; if (document.hidden && "Notification" in window && Notification.permission === "granted") pushLocal("Very Chat", txt, fresh.some(j => j.kind === "request") ? "join" : "info");
   }, () => {});
   // انضمام عضو جديد للدردشة العامة = أول مرة يحفظ بروفايله
   let noProfile = false, gLogged = false;
