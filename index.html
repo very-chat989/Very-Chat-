@@ -276,6 +276,25 @@ button.ri-chip{cursor:pointer}
 #lbX{position:absolute;top:calc(14px + env(safe-area-inset-top,0px));inset-inline-end:16px;width:42px;height:42px;border-radius:50%;border:0;background:rgba(255,255,255,.16);color:#fff;font-size:20px;cursor:pointer}
 #lb b{color:#fff;font-size:18px}
 .av:not(.nz){cursor:zoom-in}
+
+/* ── تحسين شكل القايمة الجانبية ── */
+.dpanel{gap:8px}
+.dsub{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:700;color:var(--ink);padding:8px 8px 2px}
+.dsub small{font-weight:400;color:var(--mute);font-size:11px}
+.dpanel .rrow{background:none;border-radius:14px;padding:8px 10px;gap:12px;overflow:visible;box-shadow:none}
+.dpanel .rrow::before{display:none}
+.dpanel .rrow:active{background:var(--bg)}
+.dpanel .rrow.on{background:var(--bg);box-shadow:inset 3px 0 0 var(--pri)}
+.dpanel #dpin .rrow{background:var(--bg)}
+.dpanel .rrow .av{width:48px;height:48px;font-size:24px;flex:none}
+.dpanel .rt{flex:1}
+.dpanel .rt b{font-size:15px}
+.dpanel .rt small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#dlist{gap:2px}
+.dsearch{border-radius:12px;padding:10px 14px;font-size:14px}
+.dfoot{display:grid;grid-template-columns:1fr 1fr;gap:8px;flex:none}
+.dfoot .ghost{padding:11px 6px;font-size:13px;width:100%}
+.dfoot #dNotif{grid-column:1/-1}
 </style>
 </head>
 <body>
@@ -321,13 +340,15 @@ button.ri-chip{cursor:pointer}
     <div class="dhead"><div id="dLogo"></div><b>Very Chat</b></div>
     <div id="dpin"></div>
     <input class="dsearch" id="dSearch" type="search" placeholder="🔎 ابحث بالاسم أو بالكود…" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="search">
-    <div class="dsub" id="dmSub" hidden>💬 الخاص</div>
-    <div id="dmList" style="flex:none;max-height:34%;overflow-y:auto;display:flex;flex-direction:column;gap:6px"></div>
-    <div class="dsub">الغرف · اضغط مطوّلاً على غرفتك للتعديل</div>
+    <div class="dsub" id="dmSub" hidden>💬 الخاص <small>· اضغط مطوّلاً للخيارات</small></div>
+    <div id="dmList" style="flex:none;max-height:34%;overflow-y:auto;display:flex;flex-direction:column;gap:2px"></div>
+    <div class="dsub">🏠 الغرف <small>· اضغط مطوّلاً للتعديل</small></div>
     <div id="dlist"></div>
-    <button class="ghost" id="dFind">🔑 غرفة أو صديق بالكود</button>
-    <button class="ghost" id="dNotif" hidden>🔔 تفعيل الإشعارات</button>
-    <button class="ghost" id="dInvite">👋 دعوة صديق للتطبيق</button>
+    <div class="dfoot">
+      <button class="ghost" id="dFind">🔑 انضم بكود</button>
+      <button class="ghost" id="dInvite">👋 دعوة صديق</button>
+      <button class="ghost" id="dNotif" hidden>🔔 تفعيل الإشعارات</button>
+    </div>
     <button class="send" id="dAdd" style="padding:13px">＋ غرفة جديدة</button>
   </div>
 </div>
@@ -431,7 +452,7 @@ function openPeer(u) {
   const p = profiles[u] || {}, key = dmKey(myId, u), blocked = ((dms[key] || {}).blockedBy || []).includes(myId), c = $("mcard"); c.textContent = "";
   const head = el("div", "mprev"); head.style.cssText += ";display:flex;align-items:center;gap:12px";
   const a = avatar(p); a.style.cssText += ";width:56px;height:56px;font-size:28px";
-  const t = el("div"), nm = el("b", "", p.name || "مجهول"); nm.style.display = "block"; t.append(nm, el("small", "", p.fcode ? "🆔 " + fmtFCode(p.fcode) : "")); head.append(a, t); c.append(head);
+  const t = el("div"), nm = el("b", "", p.name || "مجهول"); nm.style.display = "block"; t.append(nm); head.append(a, t); c.append(head);
   const go = el("button", "send", "💬 دردشة خاصة"); go.type = "button"; go.style.padding = "13px"; go.onclick = () => openDM(u);
   const bl = el("button", "ghost", blocked ? "✅ إلغاء الحظر" : "🚫 حظر (مايقدرش يكلمك خاص)"); bl.type = "button";
   bl.onclick = async () => {
@@ -446,16 +467,54 @@ function dmRow(d) {
   sb.textContent = ((d.blockedBy || []).length ? "🚫 " : "") + (d.last ? (d.last.uid === myId ? "أنت: " : "") + d.last.text : "");
   tx.append(el("b", "", p.name || "مجهول"), sb); row.append(avatar(p), tx);
   const un = unreadOf(d.id); if (un) row.append(el("span", "bdg", un > 99 ? "99+" : String(un)));
-  row.onclick = () => openDM(u); return row;
+  let tm, fired = false;
+  row.onclick = () => { if (fired) { fired = false; return; } openDM(u); };
+  const go = () => { fired = false; tm = setTimeout(() => { fired = true; openDMMenu(d); }, 500); }, stop = () => clearTimeout(tm);
+  ["touchstart", "mousedown"].forEach(ev => row.addEventListener(ev, go, { passive: true }));
+  ["touchmove", "touchend", "touchcancel", "mouseup", "mouseleave"].forEach(ev => row.addEventListener(ev, stop, { passive: true }));
+  row.addEventListener("contextmenu", e => { e.preventDefault(); stop(); fired = true; openDMMenu(d); });
+  return row;
+}
+const dmClearedAt = d => ((d && d.cleared) || {})[myId] || 0;
+async function wipeMyDm(id) {
+  const s = await db.collection("dmsgs").where("room", "==", id).where("members", "array-contains", myId).get();
+  const mine = s.docs.filter(x => x.data().uid === myId), rest = s.docs.filter(x => x.data().uid !== myId).map(x => x.data()).sort((a, b) => b.ts - a.ts);
+  for (let i = 0; i < mine.length; i += 400) { const b = db.batch(); mine.slice(i, i + 400).forEach(x => b.delete(x.ref)); await b.commit(); }
+  const lt = rest[0];
+  await db.collection("dms").doc(id).update({ last: lt ? { uid: lt.uid, ts: lt.ts, text: mtext(lt).slice(0, 60) } : FV().delete() }).catch(() => {});
+  return mine.length;
+}
+function openDMMenu(d) {
+  const u = dmPeerOf(d.id), p = profiles[u] || {}, c = $("mcard"); c.textContent = ""; const close = () => { $("msheet").hidden = true; };
+  const head = el("div", "mprev"); head.style.cssText += ";display:flex;align-items:center;gap:10px";
+  const ic = avatar(p); ic.style.cssText += ";width:42px;height:42px;font-size:22px";
+  const nm = el("span", "", p.name || "مجهول"); nm.style.fontWeight = "700"; head.append(ic, nm); c.append(head);
+  const acts = el("div", "acts"), blocked = (d.blockedBy || []).includes(myId);
+  const act = (ico, label, grad, fn) => { const b = el("button", "act"); b.type = "button"; const i = el("i", "", ico); i.style.background = grad; const sp = el("span", "", label); b.append(i, sp); b.onclick = () => fn(b, sp); acts.append(b); };
+  const sure = (b, sp) => { if (!b.dataset.ok) { b.dataset.ok = "1"; sp.textContent = "تأكيد؟"; return false; } return true; };
+  act("💬", "فتح", "linear-gradient(135deg,#5aa9ff,#2f6fed)", () => { close(); closeDrawer(); openDM(u); });
+  act("🧹", "مسح من عندي", "linear-gradient(135deg,#6bd0c0,#2a9d8f)", async (b, sp) => {
+    if (!sure(b, sp)) return; close();
+    try { await db.collection("dms").doc(d.id).update({ ["cleared." + myId]: Math.max(Date.now(), ((d.last || {}).ts || 0) + 1), ["unread." + myId]: 0 }); flash("🧹 اتمسحت المحادثة من عندك"); } catch (e) { flash(errMsg(e)); }
+  });
+  act("🗑", "حذف رسايلي للطرفين", "linear-gradient(135deg,#ff7a7a,#d64545)", async (b, sp) => {
+    if (!sure(b, sp)) return; close();
+    try { const n = await wipeMyDm(d.id); flash("🗑 اتحذفت " + n + " رسالة"); } catch (e) { flash(errMsg(e)); }
+  });
+  act(blocked ? "✅" : "🚫", blocked ? "إلغاء الحظر" : "حظر", "linear-gradient(135deg,#a07cff,#6b46e0)", async () => {
+    close();
+    try { await db.collection("dms").doc(d.id).set({ members: [myId, u].sort(), blockedBy: blocked ? AR(myId) : AU(myId) }, { merge: true }); flash(blocked ? "✓ اتلغى الحظر" : "🚫 اتحظر"); } catch (e) { flash(errMsg(e)); }
+  });
+  acts.style.gridTemplateColumns = "repeat(4,1fr)"; c.append(acts); $("msheet").hidden = false;
 }
 function buildDMs(q) {
   const box = $("dmList"), sub = $("dmSub"), qn = nzq(q), qc = normFCode(q); box.textContent = "";
-  const list = Object.values(dms).filter(d => d.last).sort((a, b) => b.last.ts - a.last.ts).filter(d => { if (!q) return true; const p = profiles[dmPeerOf(d.id)] || {}; return nzq(p.name).includes(qn) || (qc.length >= 2 && String(p.fcode || "").includes(qc)); });
+  const list = Object.values(dms).filter(d => d.last && d.last.ts > dmClearedAt(d)).sort((a, b) => b.last.ts - a.last.ts).filter(d => { if (!q) return true; const p = profiles[dmPeerOf(d.id)] || {}; return nzq(p.name).includes(qn) || (qc.length >= 2 && String(p.fcode || "").includes(qc)); });
   list.forEach(d => box.appendChild(dmRow(d)));
   const pu = qc.length === 8 ? Object.keys(profiles).find(u => u !== myId && profiles[u] && profiles[u].fcode === qc) : null;
   if (pu && !list.some(d => dmPeerOf(d.id) === pu)) {
     const p = profiles[pu], row = el("button", "rrow"), tx = el("div", "rt"); row.type = "button";
-    tx.append(el("b", "", p.name || "مجهول"), el("small", "", "🆔 " + fmtFCode(qc) + " · اضغط للمراسلة")); row.append(avatar(p), tx);
+    tx.append(el("b", "", p.name || "مجهول"), el("small", "", "اضغط للمراسلة")); row.append(avatar(p), tx);
     row.onclick = () => { closeDrawer(); openPeer(pu); }; box.appendChild(row);
   }
   sub.hidden = !box.children.length;
@@ -1205,7 +1264,7 @@ function openRoom(id) {
   setStatus("جاري تحميل الرسايل…");
   const timer = setTimeout(() => setStatus("مش قادر أوصل للرسايل دلوقتي، ممكن النت ضعيف."), 10000);
   unsub = (isDM(id) ? db.collection("dmsgs").where("room", "==", id).where("members", "array-contains", myId) : db.collection("msgs").where("room", "==", id)).onSnapshot(
-    s => { clearTimeout(timer); { const st = $("status").textContent; if (st.startsWith("جاري تحميل") || st.startsWith("مش قادر أوصل")) setStatus(""); } render(s.docs.map(d => ({ ...d.data(), id: d.id })).sort((a, b) => (a.ts - b.ts) || a.id.localeCompare(b.id)).slice(-150)); },
+    s => { clearTimeout(timer); const clr = isDM(id) ? dmClearedAt(dms[id]) : 0; { const st = $("status").textContent; if (st.startsWith("جاري تحميل") || st.startsWith("مش قادر أوصل")) setStatus(""); } render(s.docs.map(d => ({ ...d.data(), id: d.id })).filter(m => m.ts > clr).sort((a, b) => (a.ts - b.ts) || a.id.localeCompare(b.id)).slice(-150)); },
     e => { clearTimeout(timer); setStatus(errMsg(e)); });
   maybePersona();
   if (window.syncHistory) syncHistory();
@@ -1506,7 +1565,7 @@ function roomCard(sh) {
 // الكارت بيشاور على الـ uid بس، والاسم والكود بيتقروا من البروفايل الحقيقي (علشان محدش يزوّر كارت)
 function userCard(u) {
   const p = profiles[u && u.uid] || {}, c = el("div", "rcard"); c.append(avatar(p));
-  const t = el("div", "rt"); t.append(el("b", "", p.name || "مجهول"), el("small", "", p.fcode ? "🆔 " + fmtFCode(p.fcode) : "كارت تعريف")); c.append(t);
+  const t = el("div", "rt"); t.append(el("b", "", p.name || "مجهول"), el("small", "", "كارت تعريف")); c.append(t);
   if (u && u.uid !== myId) { const b = el("button", "", "مراسلة"); b.type = "button"; b.onclick = e => { e.stopPropagation(); if (!selMode) openPeer(u.uid); }; c.append(b); }
   return c;
 }
@@ -1590,7 +1649,7 @@ $("stoAll").onclick = async () => {
 };
 
 // ───── تحديث تلقائي: لو في نسخة أحدث على الموقع بتتحمّل لوحدها (من غير تسجيل خروج) ─────
-const BUILD = "20261120-5";
+const BUILD = "20261120-6";
 let updating = false;
 async function checkUpdate() {
   if (updating || !/^https?:/.test(location.protocol) || !navigator.onLine) return;
@@ -1750,9 +1809,9 @@ async function start() {
     tryJoin(); if (infoId) { const sg = JSON.stringify(infoId === "general" ? gdoc : (rooms.find(x => x.id === infoId) || null)); if (sg !== infoSig) { infoSig = sg; renderInfo(); } } refreshMe();
   }, () => {});
   db.collection("dms").where("members", "array-contains", myId).onSnapshot(s => {
-    dms = {}; s.docs.forEach(d => { dms[d.id] = { ...d.data(), id: d.id }; });
+    const prevClr = dmClearedAt(dms[room]); dms = {}; s.docs.forEach(d => { dms[d.id] = { ...d.data(), id: d.id }; });
     s.docChanges().forEach(ch => { const d = ch.doc.data(); if (!dmFirst && ch.type !== "removed" && d.last && d.last.uid !== myId && d.last.ts >= T0 - 2000 && d.last.ts > (dmDone[ch.doc.id] || 0) && !s.metadata.hasPendingWrites) { dmDone[ch.doc.id] = d.last.ts; notifyDM({ ...d, id: ch.doc.id }); } });
-    dmFirst = false; buildChips(); updateTotal(); if (isDM(room)) refreshMe();
+    { const wasFirst = dmFirst, nc = isDM(room) ? dmClearedAt(dms[room]) : 0; dmFirst = false; buildChips(); updateTotal(); if (isDM(room)) { refreshMe(); if (nc !== prevClr || (wasFirst && nc)) openRoom(room); } }
   }, () => {});
   buildChips(); openRoom(room);
 }
