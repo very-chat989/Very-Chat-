@@ -307,6 +307,80 @@ button.ri-chip{cursor:pointer}
 .dsub.tg:hover .chev{border-top-color:var(--ink)}
 .dsub.tg .cnt{font-size:11px;font-weight:700;color:var(--mute);background:rgba(255,255,255,.07);border-radius:9px;padding:0 7px;line-height:18px;display:none}
 .dsub.tg.fold .cnt{display:inline-block}
+
+/* ───── v3: شكل عصري (إضافات فقط، مفيش حاجة اتغيّرت في الوظايف) ───── */
+:root{--pri2:#2cc4a9;--glass:rgba(255,255,255,.74);--sh1:0 1px 2px rgba(15,40,35,.05),0 6px 20px rgba(15,40,35,.08);--sh2:0 10px 34px rgba(15,40,35,.16)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--glass:rgba(23,34,32,.74);--sh1:0 1px 2px rgba(0,0,0,.3),0 6px 20px rgba(0,0,0,.28);--sh2:0 12px 38px rgba(0,0,0,.5)}}
+:root[data-theme="dark"]{--glass:rgba(23,34,32,.74);--sh1:0 1px 2px rgba(0,0,0,.3),0 6px 20px rgba(0,0,0,.28);--sh2:0 12px 38px rgba(0,0,0,.5)}
+*{scrollbar-width:thin;scrollbar-color:var(--line) transparent;-webkit-tap-highlight-color:transparent}
+button{touch-action:manipulation}
+:focus-visible{outline:2px solid var(--pri);outline-offset:2px}
+body{background:radial-gradient(900px 520px at 100% -8%,rgba(44,196,169,.16),transparent 60%),radial-gradient(700px 480px at -10% 108%,rgba(47,111,237,.12),transparent 60%),var(--bg)}
+.app{background:transparent}
+header{background:var(--glass);-webkit-backdrop-filter:saturate(1.6) blur(16px);backdrop-filter:saturate(1.6) blur(16px);border-bottom:1px solid var(--line);box-shadow:0 4px 24px rgba(0,0,0,.06)}
+.hb{border-radius:16px;box-shadow:var(--sh1);transition:transform .15s}.hb:active{transform:scale(.92)}
+.me-btn .av{box-shadow:0 0 0 2px var(--card),0 0 0 4px var(--pri);transition:transform .15s}.me-btn:active .av{transform:scale(.92)}
+#msgs{background-image:radial-gradient(color-mix(in srgb,var(--mute) 20%,transparent) 1px,transparent 1.3px);background-size:24px 24px;padding:14px 12px 8px}
+.day{background:var(--glass);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);box-shadow:var(--sh1);font-weight:600}
+.b{border:0;border-radius:20px;padding:9px 14px;box-shadow:var(--sh1)}
+.row.first:not(.me) .b{border-bottom-left-radius:6px}.row.first.me .b{border-bottom-right-radius:6px}
+.me .b{background-image:linear-gradient(155deg,rgba(255,255,255,.22),rgba(0,0,0,.16))}
+.n{letter-spacing:.2px}
+.av{transition:transform .15s}
+#pin{margin:8px 10px 0;border:1px solid var(--line);border-radius:16px;box-shadow:var(--sh1);background:var(--glass);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);border-inline-start:4px solid #e0a82f}
+#net{border-radius:0 0 14px 14px}
+form.bar{border:0;background:var(--glass);-webkit-backdrop-filter:saturate(1.5) blur(14px);backdrop-filter:saturate(1.5) blur(14px);box-shadow:var(--sh2);transition:box-shadow .2s}
+form.bar:focus-within{box-shadow:0 0 0 2px var(--pri),var(--sh2)}
+#sendBtn{background-image:linear-gradient(135deg,var(--pri2),var(--pri));box-shadow:0 6px 16px rgba(15,143,122,.38);transition:transform .15s}
+#sendBtn:active:not(:disabled){transform:scale(.94)}
+#micBtn{border-radius:50%;background:var(--bg);color:var(--ink);box-shadow:none}
+#editBar,#replyBar{background:var(--glass);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
+#toast{border-radius:18px;box-shadow:var(--sh2)}
+/* القايمة الجانبية */
+.dpanel{border-start-end-radius:30px;border-end-end-radius:30px;background:var(--card)}
+.dpanel .rrow{border-radius:18px;transition:background .15s,transform .15s}
+.dpanel .rrow:hover{background:var(--bg)}.dpanel .rrow:active{transform:scale(.985)}
+.dpanel .rrow .av{box-shadow:0 0 0 2px var(--card),0 0 0 4px var(--rc,var(--line))}
+.dpanel .rrow.on .av{box-shadow:0 0 0 2px var(--card),0 0 0 4px var(--pri)}
+.dsearch{background:var(--bg);border-color:transparent;box-shadow:inset 0 0 0 1px var(--line);transition:box-shadow .2s}
+.dsearch:focus{box-shadow:inset 0 0 0 2px var(--pri)}
+.bdg{background-image:linear-gradient(135deg,#ff7aa2,#e0507a);color:#fff;box-shadow:0 2px 8px rgba(224,80,122,.4)}
+#dAdd{border-radius:18px;background-image:linear-gradient(135deg,var(--pri2),var(--pri));box-shadow:0 8px 20px rgba(15,143,122,.35)}
+.dfoot .ghost{border-radius:16px}
+.dfoot #dSound{grid-column:1/-1}
+/* الشيتات والأزرار */
+.card{border-radius:30px 30px 0 0;box-shadow:0 -12px 44px rgba(0,0,0,.25)}
+.sec{border-radius:22px}
+.ghost{transition:transform .12s,background .15s}.ghost:active{transform:scale(.97)}
+.card input[type=text]{border-radius:16px}
+.card input[type=text]:focus,.bar input:focus{outline:0}
+.card input[type=text]:focus{border-color:var(--pri);box-shadow:0 0 0 3px rgba(15,143,122,.2)}
+.acts{border-radius:28px}.act i{border-radius:20px}
+.rpill{border-radius:36px}
+/* معلومات الغرفة والأعضاء */
+.ri-hero{border-radius:0 0 36px 36px;padding:30px 16px 54px}
+.ri-av{box-shadow:0 0 0 4px rgba(255,255,255,.3),0 14px 34px rgba(0,0,0,.3)}
+.ri-quick{margin-top:-28px}
+.ri-q{border-radius:22px;transition:transform .15s}.ri-q:active{transform:scale(.94)}
+.ri-card{border:1px solid var(--line);border-inline-start:1px solid var(--line);border-radius:26px;box-shadow:var(--sh1);padding:16px}
+.ri-card h3{border-bottom:0;padding-bottom:2px;font-size:16px}
+.ri-card.dn{border-color:rgba(214,69,69,.5)}
+.ri-row{border-top:1px dashed var(--line)}
+.sw{box-shadow:inset 0 0 0 1px rgba(0,0,0,.06)}
+.sw.on{background-image:linear-gradient(135deg,var(--pri2),var(--pri))}
+.ri-mem{border-top:0;background:var(--bg);border-radius:18px;padding:9px 12px;margin-top:6px;transition:transform .12s}
+.ri-mem:active{transform:scale(.99)}
+.ri-mem .av{box-shadow:0 0 0 2px var(--card)}
+.ri-mem.on .av{box-shadow:0 0 0 2px var(--card),0 0 0 4px #2cae6a}
+.ri-dots{box-shadow:var(--sh1);background:var(--card)}
+.memlock{border-radius:14px;padding:9px 12px;line-height:1.6;background:rgba(224,168,47,.14);color:var(--ink);text-align:start}
+.memlock.own{background:rgba(15,143,122,.13)}
+#riBody input[type=search]{border-radius:16px!important;padding:11px 14px!important;border-color:transparent!important;box-shadow:inset 0 0 0 1px var(--line);outline:0}
+#riBody input[type=search]:focus{box-shadow:inset 0 0 0 2px var(--pri)}
+.ri-danger{border-radius:18px}
+#login{background:radial-gradient(circle at 15% 8%,rgba(44,196,169,.34),transparent 55%),radial-gradient(circle at 88% 92%,rgba(47,111,237,.26),transparent 50%),var(--bg)}
+.gbtn{border-radius:18px}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
 </style>
 </head>
 <body>
@@ -359,6 +433,7 @@ button.ri-chip{cursor:pointer}
     <div class="dfoot">
       <button class="ghost" id="dFind">🔑 انضم بكود</button>
       <button class="ghost" id="dInvite">👋 دعوة صديق</button>
+      <button class="ghost" id="dSound">🔊 الأصوات: شغالة</button>
       <button class="ghost" id="dNotif" hidden>🔔 تفعيل الإشعارات</button>
     </div>
     <button class="send" id="dAdd" style="padding:13px">＋ غرفة جديدة</button>
@@ -532,6 +607,7 @@ function buildDMs(q) {
   sub.hidden = !box.children.length;
 }
 function notifyDM(d) {
+  vcSnd(d.id === room ? "in" : "ping");
   if (!document.hidden || !("Notification" in window) || Notification.permission !== "granted") return;
   pushLocal("💬 " + ((profiles[dmPeerOf(d.id)] || {}).name || "رسالة خاصة"), d.last.text, d.id);
 }
@@ -680,6 +756,7 @@ function toggleReact(m, k) {
   if (selMode) return;
   const cr = curR(); if (cr && cr.noReact && !adminOf(cr)) { setStatus("التفاعلات متوقفة في الغرفة دي"); return; }
   const on = (m.reacts || {})[myId] === k;
+  vcSnd(on ? "tap" : "react");
   msgCol(m.room || room).doc(m.id).update({ ["reacts." + myId]: on ? FV().delete() : k }).catch(() => setStatus("ماقدرتش أضيف التفاعل."));
 }
 let selMode = false, selDelArm = false; const sel = new Set();
@@ -1031,6 +1108,10 @@ const generalRoom = () => ({ id: "general", name: "عام", emoji: "🌐", color
 const curR = () => room === "general" ? generalRoom() : isDM(room) ? dmRoom(room) : rooms.find(x => x.id === room);
 const ownerOf = r => !!r && r.by === myId;
 const adminOf = r => !!r && (r.by === myId || (r.admins || []).includes(myId));
+// 🔐 قائمة الأعضاء: للمالك فقط (افتراضي مفعّل، والمالك يقدر يقفله من إعدادات الغرفة)
+const memHidden = r => !!r && !ownerOf(r) && r.ownerOnlyMem !== false;
+// العدد: يظهر في الغرف لكل أعضائها، ومخفي في العام لغير المالك
+const countHidden = r => memHidden(r) && r.id === "general";
 const AU = v => FV().arrayUnion(v), AR = v => FV().arrayRemove(v);
 const lastSent = {}; let infoId = null;
 const LINK_RE = /(https?:\/\/|www\.)/i;
@@ -1140,7 +1221,7 @@ function renderInfo() {
   const chips = el("div", "ri-chips"), canCode = !!r.code && (admin || !r.lockInvite);
   const chipCopy = (lb, val, done) => { const b = el("button", "ri-chip", lb); b.onclick = async () => { b.textContent = (await copyText(val)) ? done : "ماقدرتش أنسخ"; setTimeout(() => { b.textContent = lb; }, 1500); }; return b; };
   if (canCode) chips.append(chipCopy("🔑 " + r.code, r.code, "✓ اتنسخ الكود"), chipCopy("🔗 نسخ الرابط", PAGE_URL + "#r-" + r.code, "✓ اتنسخ الرابط"));
-  if (G) chips.append(el("span", "ri-chip", "🌐 مفتوحة لكل المستخدمين")); else chips.append(el("span", "ri-chip", "👥 " + mem.length), el("span", "ri-chip", r.private ? "🔒 خاصة" : "🌐 عامة")); { const pp = profileFor(myId, r.id) || {}; chips.prepend(el("span", "ri-chip", "🙋 أنت: " + (pp.name || "—") + (owner ? " 👑" : admin ? " 🛡️" : ""))); } hero.append(chips); box.append(hero);
+  if (G) chips.append(el("span", "ri-chip", "🌐 مفتوحة لكل المستخدمين")); else chips.append(...(countHidden(r) ? [] : [el("span", "ri-chip", "👥 " + mem.length)]), el("span", "ri-chip", r.private ? "🔒 خاصة" : "🌐 عامة")); { const pp = profileFor(myId, r.id) || {}; chips.prepend(el("span", "ri-chip", "🙋 أنت: " + (pp.name || "—") + (owner ? " 👑" : admin ? " 🛡️" : ""))); } hero.append(chips); box.append(hero);
   const q = el("div", "ri-quick"), qa = (ico, lb, fn) => { const b = el("button", "ri-q"); b.append(el("i", "", ico), el("span", "", lb)); b.onclick = fn; q.append(b); };
   if (canCode && (admin || !r.private)) qa("📤", "دعوة", () => shareInvite(r));
   qa("🎭", G ? "بروفايلي" : "شخصيتي", () => G ? openSheet("me") : openSheet("persona", r.id));
@@ -1149,11 +1230,11 @@ function renderInfo() {
   if (owner) {
     const S = (c, t, d, k) => c.append(swRow(t, d, !!r[k], v => upd({ [k]: v }, r.id)));
     const c = card(G ? "🔐 الخصوصية" : "🔐 الخصوصية والدعوة");
+    c.append(swRow("🛡️ قائمة الأعضاء للمالك فقط", "حماية وأمان: إنت بس اللي تشوف الأعضاء وتبحث عنهم بالاسم أو الكود، وباقي الناس (حتى المشرفين) يشوفوا نفسهم بس", r.ownerOnlyMem !== false, v => upd({ ownerOnlyMem: v }, r.id)));
     if (!G) {
     S(c, "🔒 غرفة خاصة", "مش بتظهر في البحث، بالكود أو الرابط بس", "private");
     S(c, "✋ الانضمام بموافقتك", "اللي عايز ينضم يبعت طلب وإنت توافق", "approval");
     S(c, "🙈 إخفاء الكود والرابط عن الأعضاء", "المشرفين بس يشوفوا الكود ويدعوا", "lockInvite");
-    S(c, "👥 إخفاء قائمة الأعضاء", "الأعضاء العاديين مايشوفوش مين في الغرفة", "hideMembers");
     }
     S(c, "👁 إخفاء «شوهدت بواسطة»", "المشرفين بس يشوفوا مين قرا الرسالة", "hideSeen");
     S(c, "🚫 منع النسخ والتحويل", "الأعضاء مايقدروش ينسخوا أو يحوّلوا الرسايل", "noFwd");
@@ -1200,10 +1281,11 @@ function renderInfo() {
   }
   {
     const base = G ? [...new Set([...Object.keys(profiles), ...(r.by ? [r.by] : [])])].filter(u => !(r.banned || []).includes(u)) : mem;
-    const visible = admin || !r.hideMembers ? base : [myId];
-    const mc = card("👥 الأعضاء (" + visible.length + ")");
+    const locked = memHidden(r), visible = locked ? [myId] : base;
+    const mc = card(locked ? (G ? "👥 الأعضاء" : "👥 الأعضاء (" + mem.length + ")") : "👥 الأعضاء (" + visible.length + ")");
     if (admin && !G) { const add = el("button", "ghost", "＋ إضافة صديق"); add.onclick = () => addFriend(r, mem); mc.append(add); }
-    if (!admin && r.hideMembers) mc.append(el("div", "note", "🙈 المالك أخفى قائمة الأعضاء"));
+    if (locked) mc.append(el("div", "note memlock", "🔐 قائمة الأعضاء متاحة للمالك فقط"));
+    else if (owner && r.ownerOnlyMem !== false) mc.append(el("div", "note memlock own", "🔐 القائمة دي ظاهرة ليك إنت بس"));
     const onl = el("div", "note"), sIn = document.createElement("input"), lst = el("div");
     sIn.type = "search"; sIn.dir = "auto"; sIn.placeholder = admin ? "🔍 ابحث بالاسم أو الكود…" : "🔍 ابحث بالاسم أو الكود الكامل…"; sIn.autocomplete = "off";
     sIn.style.cssText = "width:100%;padding:10px 12px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--ink);margin:6px 0 8px;font:inherit";
@@ -1220,7 +1302,7 @@ function renderInfo() {
       onl.textContent = "🟢 " + visible.filter(isOn).length + " متصل من " + visible.length;
       if (!rows.length) { lst.append(el("div", "note", "مفيش نتايج")); return; }
       rows.forEach(u => {
-        const row = el("div", "ri-mem"), mi = el("div", "mi"), nm = el("b", "", nameOf(u, r.id) + (u === myId ? " (أنت)" : "")); row.dataset.uid = u;
+        const row = el("div", "ri-mem" + (isOn(u) ? " on" : "")), mi = el("div", "mi"), nm = el("b", "", nameOf(u, r.id) + (u === myId ? " (أنت)" : "")); row.dataset.uid = u;
         const sub = el("small", "", isOn(u) ? "🟢 متصل" : lastSeenText(presence[u]));
         if (admin && (profiles[u] || {}).fcode) { const cs = el("span", "", (sub.textContent ? "  ·  " : "") + fmtFCode(profiles[u].fcode)); cs.dir = "ltr"; sub.append(cs); }
         mi.append(nm, sub);
@@ -1852,7 +1934,7 @@ async function start() {
   }, () => { rpLoaded = true; });
   db.collection("msgs").orderBy("ts", "desc").limit(400).onSnapshot(s => {
     recent = s.docs.map(d => ({ ...d.data(), id: d.id }));
-    if (!firstRecent && !s.metadata.hasPendingWrites) s.docChanges().forEach(ch => { const m = ch.doc.data(); if (ch.type === "added" && m.ts >= T0 - 2000) notifyMsg(m); });
+    if (!firstRecent && !s.metadata.hasPendingWrites) s.docChanges().forEach(ch => { const m = ch.doc.data(); if (ch.type === "added" && m.ts >= T0 - 2000) { soundMsg(m); notifyMsg(m); } });
     firstRecent = false; updateTotal(); if (!$("drawer").hidden) buildChips();
   }, e => setStatus(errMsg(e)));
   document.addEventListener("visibilitychange", () => { if (!document.hidden && lastList.length) render(lastList); });
@@ -1902,14 +1984,14 @@ function presenceInfo() {
   const gen = room === "general", mem = !gen && r.members ? new Set([...r.members, r.by].filter(Boolean)) : null;
   const on = new Set(Object.keys(presence).filter(u => isOnline(presence[u]) && (gen || (mem ? mem.has(u) : presence[u].room === room))));
   if (!document.hidden) on.add(myId);
-  const total = gen ? Object.keys(profiles).length : mem ? mem.size : 0;
+  const total = countHidden(r) ? 0 : gen ? Object.keys(profiles).length : mem ? mem.size : 0;
   return { typing: false, text: "🟢 " + on.size + " متصل" + (total > on.size ? " من " + total : "") };
 }
 function paintHSub() { try { if (window.__memPaint && !$("rinfo").hidden) window.__memPaint(); } catch (x0) {} const e = $("hSub"); if (!e) return; const x = presenceInfo(); e.textContent = x.text; e.classList.toggle("typing", x.typing); }
 function stopTyping() { if (typingActive) { typingActive = false; typingSent = 0; presWrite({ typing: "", tts: 0 }); } }
 function toast(t) {
   let e = $("toast"); if (!e) { e = el("div"); e.id = "toast"; document.body.append(e); e.onclick = () => { e.hidden = true; }; }
-  e.textContent = t; e.hidden = false; clearTimeout(e._t); e._t = setTimeout(() => { e.hidden = true; }, 7000);
+  vcSnd("ping"); e.textContent = t; e.hidden = false; clearTimeout(e._t); e._t = setTimeout(() => { e.hidden = true; }, 7000);
 }
 function logJoin(r, kind) {
   if (!db || !myId || !r) return;
@@ -1961,6 +2043,39 @@ function fit() {
 if (vv) { vv.addEventListener("resize", fit); vv.addEventListener("scroll", fit); }
 $("inp").addEventListener("focus", () => { fit(); setTimeout(fit, 120); setTimeout(fit, 350); });
 fit();
+// ───── أصوات Very Chat: متصنّعة بالكود (Web Audio) يعني مفيش ملفات ولا حقوق، وليها طابع خاص بالتطبيق ─────
+let sndOn = true; try { sndOn = localStorage.getItem("vc_snd") !== "0"; } catch (e) {}
+let AC = null; const sndLast = {};
+function sndCtx() { try { if (!AC) { const C = window.AudioContext || window.webkitAudioContext; if (!C) return null; AC = new C(); } if (AC.state === "suspended") AC.resume(); return AC; } catch (e) { return null; } }
+["pointerdown", "keydown", "touchstart"].forEach(ev => window.addEventListener(ev, () => { if (sndOn) sndCtx(); }, { passive: true }));
+function pluck(t0, f, dur, vol, f2, type) {
+  const o = AC.createOscillator(), g = AC.createGain();
+  o.type = type || "sine"; o.frequency.setValueAtTime(f, t0);
+  if (f2) o.frequency.exponentialRampToValueAtTime(f2, t0 + dur * 0.8);
+  g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(vol, t0 + 0.008); g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  o.connect(g); g.connect(AC.destination); o.start(t0); o.stop(t0 + dur + 0.03);
+}
+const SND = {
+  send: t => { pluck(t, 520, 0.12, 0.16, 900); pluck(t + 0.07, 1320, 0.1, 0.05); },          // فقاعة طالعة لفوق
+  in: t => { pluck(t, 660, 0.16, 0.14); pluck(t + 0.09, 880, 0.22, 0.12); },                  // نغمتين دافيين
+  ping: t => { [784, 988, 1319].forEach((f, i) => pluck(t + i * 0.075, f, 0.2, 0.13, 0, i === 2 ? "triangle" : "sine")); }, // أربيجيو صغير
+  react: t => { pluck(t, 880, 0.14, 0.12, 1500); pluck(t + 0.06, 1760, 0.12, 0.06); pluck(t + 0.11, 2093, 0.1, 0.04); }, // بريق
+  tap: t => pluck(t, 1200, 0.035, 0.06, 700),
+  open: t => pluck(t, 380, 0.16, 0.07, 760)
+};
+function vcSnd(k) {
+  if (!sndOn || document.hidden) return;
+  const c = sndCtx(); if (!c || c.state !== "running") return;
+  const n = performance.now(); if (n - (sndLast[k] || 0) < 120) return; sndLast[k] = n;
+  try { SND[k](c.currentTime + 0.005); } catch (e) {}
+}
+function soundMsg(m) { if (m.uid === myId) return; if (m.room !== "general" && !rooms.some(r => r.id === m.room && canSee(r))) return; vcSnd(m.room === room ? "in" : "ping"); }
+function paintSnd() { $("dSound").textContent = sndOn ? "🔊 الأصوات: شغالة" : "🔇 الأصوات: مقفولة"; }
+$("dSound").onclick = () => { sndOn = !sndOn; try { localStorage.setItem("vc_snd", sndOn ? "1" : "0"); } catch (e) {} paintSnd(); if (sndOn) { sndCtx(); setTimeout(() => vcSnd("ping"), 80); } };
+paintSnd();
+document.addEventListener("click", e => { if (e.target.closest && e.target.closest(".sw")) vcSnd("tap"); }, true);
+$("menuBtn").addEventListener("click", () => vcSnd("open"));
+$("f").addEventListener("submit", () => { if ($("inp").value.trim() && !$("inp").disabled) vcSnd("send"); }, true);
 netUI(); buildChips(); registerSW();
 start();
 </script>
