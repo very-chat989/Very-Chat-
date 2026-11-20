@@ -226,7 +226,7 @@ button.ri-chip{cursor:pointer}
 #copyCode{flex:none;padding:0 16px;white-space:nowrap;border-radius:14px}
 .uidbox{margin-top:8px;font-size:12px;color:var(--mute);text-align:center}
 .uidbox summary{cursor:pointer;list-style:none}
-#myUidRow{margin-top:6px;font-size:11px;word-break:break-all;user-select:all;background:var(--card);border-radius:10px;padding:8px}
+#myUidRow{margin-top:6px;font-size:11px;word-break:break-all;user-select:none;-webkit-user-select:none;cursor:pointer;background:var(--card);border-radius:10px;padding:10px 8px;-webkit-tap-highlight-color:transparent;transition:background .15s}#myUidRow:active{background:rgba(255,255,255,.08)}
 .vp{display:flex;align-items:center;gap:8px;min-width:190px}
 .vpb{flex:none;width:36px;height:36px;border-radius:50%;border:0;background:var(--pri);color:var(--onpri);font-size:14px;cursor:pointer;padding:0}
 .vpt{flex:1;height:5px;border-radius:3px;background:rgba(127,127,127,.35);overflow:hidden;direction:ltr}
@@ -235,6 +235,26 @@ button.ri-chip{cursor:pointer}
 .row.me .vpb{background:#fff;color:var(--mine)}.row.me .vpt i{background:#fff}
 #micBtn,#emoBtn{flex:none;padding:0;width:44px;font-size:19px}
 #emoBtn{background:none;box-shadow:none;border:0}
+#plusBtn{flex:none;padding:0;width:44px;font-size:26px;line-height:1;background:none;box-shadow:none;border:0;color:var(--pri)}
+.mwrap{position:relative;overflow:hidden;border-radius:12px;background:var(--line);max-width:100%}
+.mwrap .mph{position:absolute;inset:0;background-size:cover;background-position:center;filter:blur(10px);transform:scale(1.15)}
+.mwrap .mimg,.mwrap .mvid{position:absolute;inset:0;width:100%;height:100%;max-height:none;border-radius:0;opacity:0;transition:opacity .25s}
+.mwrap.ok .mimg,.mwrap.ok .mvid{opacity:1}.mwrap.ok .mph,.mwrap.ok .msp{display:none}
+.mwrap .msp{position:absolute;top:50%;left:50%;width:34px;height:34px;margin:-17px 0 0 -17px;border-radius:50%;border:3px solid rgba(255,255,255,.35);border-top-color:#fff;animation:mspin .8s linear infinite}
+@keyframes mspin{to{transform:rotate(360deg)}}
+.mwrap .mretry{position:absolute;inset:0;border:0;background:rgba(0,0,0,.45);color:#fff;font-size:13px;cursor:pointer}
+.mimg,.mvid{display:block;max-width:100%;width:240px;max-height:300px;object-fit:cover;border-radius:12px;background:var(--line);cursor:zoom-in}
+.mvid{cursor:auto;object-fit:contain;background:#000}
+.mcap{margin-top:6px}
+.rcard{display:flex;align-items:center;gap:10px;min-width:210px;padding:8px;border-radius:14px;background:rgba(0,0,0,.14)}
+.rcard .av{width:44px;height:44px;font-size:22px;flex:none}
+.rcard .rt{display:flex;flex-direction:column;min-width:0;flex:1}.rcard .rt small{opacity:.75}
+.rcard button{flex:none;padding:8px 14px;border:0;border-radius:12px;background:var(--pri);color:#fff;font-weight:700;cursor:pointer}
+#pview{position:fixed;inset:0;z-index:9;background:rgba(0,0,0,.92);display:flex;align-items:center;justify-content:center}
+#pview[hidden]{display:none}#pview img{max-width:100%;max-height:100%;object-fit:contain}
+#pview button{position:absolute;top:calc(12px + env(safe-area-inset-top,0px));inset-inline-start:12px;width:42px;height:42px;border-radius:50%;border:0;background:rgba(255,255,255,.18);color:#fff;font-size:20px}
+.apick{display:flex;flex-direction:column;align-items:center;gap:6px;padding:12px 4px;border:0;border-radius:18px;background:var(--bg);color:var(--ink);cursor:pointer;font-size:12px}
+.apick i{font-style:normal;font-size:26px}
 #recBar{flex:1;display:flex;align-items:center;gap:10px;padding:0 8px}
 #recBar .dot{width:10px;height:10px;border-radius:50%;background:#e53935;animation:blink 1s infinite}
 @keyframes blink{50%{opacity:.25}}
@@ -254,7 +274,7 @@ button.ri-chip{cursor:pointer}
 </head>
 <body>
 <div id="splash"><div id="sLogo"></div><div class="sn">Very Chat</div><div class="ss">شات الشلة</div></div>
-<div id="login" hidden><div class="lbox"><div id="lLogo"></div><div class="sn">Very Chat</div><div class="ss">سجّل دخولك علشان غرفك ورسايلك تفضل معاك على أي جهاز</div><button class="gbtn" id="gBtn"><svg viewBox="0 0 48 48" width="20" height="20"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.9 6.1C12.4 13.6 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.5-4.8 7.2l7.6 5.9c4.4-4.1 7-10.1 7-17.6z"/><path fill="#FBBC05" d="M10.5 28.7c-.5-1.5-.8-3-.8-4.7s.3-3.2.8-4.7l-7.9-6.1C1 16.5 0 20.1 0 24s1 7.5 2.6 10.8l7.9-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 12-2.1 16-5.8l-7.6-5.9c-2.1 1.4-4.9 2.3-8.4 2.3-6.3 0-11.6-4.1-13.5-9.8l-7.9 6.1C6.5 42.6 14.6 48 24 48z"/></svg> المتابعة بحساب Google</button><button class="ghost" id="guestBtn">دخول كضيف (مؤقت)</button><div id="lErr" class="note" hidden></div></div></div>
+<div id="login" hidden><div class="lbox"><div id="lLogo"></div><div class="sn">Very Chat</div><div class="ss">سجّل دخولك علشان غرفك ورسايلك تفضل معاك على أي جهاز</div><button class="gbtn" id="gBtn"><svg viewBox="0 0 48 48" width="20" height="20"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.9 6.1C12.4 13.6 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.5-4.8 7.2l7.6 5.9c4.4-4.1 7-10.1 7-17.6z"/><path fill="#FBBC05" d="M10.5 28.7c-.5-1.5-.8-3-.8-4.7s.3-3.2.8-4.7l-7.9-6.1C1 16.5 0 20.1 0 24s1 7.5 2.6 10.8l7.9-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 12-2.1 16-5.8l-7.6-5.9c-2.1 1.4-4.9 2.3-8.4 2.3-6.3 0-11.6-4.1-13.5-9.8l-7.9 6.1C6.5 42.6 14.6 48 24 48z"/></svg> المتابعة بحساب Google</button><div id="lErr" class="note" hidden></div></div></div>
 <div id="lb" hidden><button id="lbX" type="button" aria-label="إغلاق">✕</button><div id="lbPic"></div><b id="lbName"></b></div>
 <div class="app">
   <header>
@@ -271,6 +291,7 @@ button.ri-chip{cursor:pointer}
   <div id="editBar" hidden><span>✏️ بتعدّل رسالة</span><button type="button" id="cancelEdit">إلغاء</button></div>
   <div id="emoPanel" hidden><div id="emoTabs"></div><div id="emoGrid"></div></div>
   <form class="bar" id="f">
+    <button class="send" id="plusBtn" type="button" aria-label="إضافة">＋</button>
     <button class="send" id="emoBtn" type="button" aria-label="إيموجي">😊</button>
     <div id="recBar" hidden><button class="x" id="recCancel" type="button" aria-label="إلغاء">🗑</button><span class="dot"></span><span id="recTime">0:00</span></div>
     <input id="inp" placeholder="اكتب رسالة…" autocomplete="off" maxlength="1000" dir="auto">
@@ -279,6 +300,10 @@ button.ri-chip{cursor:pointer}
   </form>
 </div>
 
+<div id="pview" hidden><button type="button" id="pvX" aria-label="إغلاق">✕</button><img id="pvImg" alt=""></div>
+<input type="file" id="aImg" accept="image/*" multiple hidden>
+<input type="file" id="aVid" accept="video/*" hidden>
+<input type="file" id="aCam" accept="image/*,video/*" capture hidden>
 <div id="rinfo" hidden>
   <div class="ri-top"><button id="riBack" aria-label="رجوع">→</button><b>معلومات الغرفة</b></div>
   <div id="riBody"></div>
@@ -404,6 +429,8 @@ $("hRoom").onclick = () => { if (curR()) openInfo(room); else $("meBtn").click()
 function render(list) {
   lastList = list;
   const box = $("msgs");
+  // لو في فيديو شغّال، نأجّل إعادة الرسم علشان ما يقفلش في وشك
+  if ([...box.querySelectorAll("video")].some(v => !v.paused && !v.ended)) { clearTimeout(render._t); render._t = setTimeout(() => render(lastList), 1500); return; }
   const near = box.scrollHeight - box.scrollTop - box.clientHeight < 90;
   box.textContent = "";
   list.forEach((m, i) => {
@@ -417,7 +444,14 @@ function render(list) {
     if (first && !mine) { const n = document.createElement("div"); n.className = "n"; n.dir = "auto"; n.textContent = (p && p.name) || "مجهول"; b.appendChild(n); }
     if (m.fwd) b.appendChild(el("div", "fw", "↪️ محوّلة من " + m.fwd));
     if (m.reply) { const q = el("div", "qt"); q.dir = "auto"; q.append(el("b", "", m.reply.name || "مجهول"), document.createTextNode(m.reply.text || "")); b.appendChild(q); }
-    const tx = document.createElement("div"); tx.className = "tx"; tx.dir = "auto"; if (m.audio) b.appendChild(audioPlayer(m)); else { linkify(tx, m.text); b.appendChild(tx); }
+    const tx = document.createElement("div"); tx.className = "tx"; tx.dir = "auto";
+    if (m.audio) b.appendChild(audioPlayer(m));
+    else {
+      if (m.mid || m.img || m.vid) b.appendChild(mediaBox(m));
+      if (m.share) b.appendChild(roomCard(m.share));
+      if (m.text) { linkify(tx, m.text); if (m.mid || m.img || m.vid) tx.classList.add("mcap"); b.appendChild(tx); }
+      else if (!m.mid && !m.img && !m.vid && !m.share) { linkify(tx, m.text || ""); b.appendChild(tx); }
+    }
     const rc = {}; Object.values(m.reacts || {}).forEach(k => { if (EMO[k]) rc[k] = (rc[k] || 0) + 1; });
     if (Object.keys(rc).length) {
       const rw = document.createElement("div"); rw.className = "rxs";
@@ -437,7 +471,7 @@ function render(list) {
   setStatus(list.length ? "" : "مفيش رسايل لسه. ابدأ إنت!");
 }
 
-const mtext = m => m.audio ? "🎤 رسالة صوتية" : (m.text || "");
+const mtext = m => m.audio ? "🎤 رسالة صوتية" : (m.mid ? m.mk === "vid" : false) || m.vid ? "🎥 فيديو" + (m.text ? " · " + m.text : "") : m.mid || m.img ? "🖼 صورة" + (m.text ? " · " + m.text : "") : m.share ? "🏠 غرفة: " + (m.share.name || "") : (m.text || "");
 const EMO = {
   fol: { n: "فل", s: `<svg viewBox='0 0 40 40'><g fill='#fff' stroke='#e7a8c8' stroke-width='1.5'><circle cx='20' cy='9' r='7'/><circle cx='31' cy='17' r='7'/><circle cx='27' cy='30' r='7'/><circle cx='13' cy='30' r='7'/><circle cx='9' cy='17' r='7'/></g><circle cx='20' cy='20' r='9' fill='#ffd34d'/><circle cx='17' cy='19' r='1.4' fill='#4a3200'/><circle cx='23' cy='19' r='1.4' fill='#4a3200'/><path d='M16 23q4 4 8 0' fill='none' stroke='#4a3200' stroke-width='1.6' stroke-linecap='round'/></svg>` },
   nar: { n: "نار", s: `<svg viewBox='0 0 40 40'><path d='M20 3c2 7 11 11 11 21a11 11 0 0 1-22 0c0-5 3-8 5-11 1 3 2 4 4 4 0-5 0-8 2-14z' fill='#ff7a2f'/><path d='M20 17c1 4 6 6 6 11a6 6 0 0 1-12 0c0-3 2-5 3-7 1 2 2 2 3 2z' fill='#ffd34d'/><rect x='12' y='22' width='7' height='5' rx='2' fill='#1b1b1b'/><rect x='21' y='22' width='7' height='5' rx='2' fill='#1b1b1b'/><path d='M19 24h2' stroke='#1b1b1b' stroke-width='1.5'/></svg>` },
@@ -631,7 +665,7 @@ function openForward(msgs) {
   go.onclick = async () => {
     if (!pick.size) return; go.disabled = true; let i = 0;
     try {
-      for (const rid of pick) for (const m of msgs) await db.collection("msgs").add({ room: rid, text: m.text || "", ...(m.audio ? { audio: m.audio, dur: m.dur || 0 } : {}), uid: myId, ts: Date.now() + (i++), fwd: m.fwd || nameOf(m.uid) });
+      for (const rid of pick) for (const m of msgs) await db.collection("msgs").add({ room: rid, text: m.text || "", ...(m.audio ? { audio: m.audio, dur: m.dur || 0 } : {}), ...(m.mid ? { mid: m.mid, mk: m.mk || "img", thumb: m.thumb || "", w: m.w || 0, h: m.h || 0 } : {}), ...(m.img ? { img: m.img, thumb: m.thumb || "", w: m.w || 0, h: m.h || 0 } : {}), ...(m.vid ? { vid: m.vid, thumb: m.thumb || "", w: m.w || 0, h: m.h || 0 } : {}), ...(m.share ? { share: m.share } : {}), uid: myId, ts: Date.now() + (i++), fwd: m.fwd || nameOf(m.uid) });
       $("msheet").hidden = true; if (selMode) exitSel(); setStatus("✓ تم التحويل");
     } catch (e) { go.disabled = false; setStatus("ماقدرتش أحوّل الرسالة."); }
   };
@@ -658,7 +692,7 @@ async function ensureMyCode() {
   try { await db.doc("profiles/" + myId).update({ fcode: await uniqueFCode() }); } catch (e) {}
   codeBusy = false;
 }
-function paintMyCode() { const u = $("myUidRow"); if (u) u.textContent = "معرّفك: " + (myId || "—"); const e = $("myCode"); if (e) e.textContent = fmtFCode((profiles[myId] || {}).fcode) || "جاري إنشاء الكود…"; }
+function paintMyCode() { const u = $("myUidRow"); if (u) u.textContent = myId || "—"; const e = $("myCode"); if (e) e.textContent = fmtFCode((profiles[myId] || {}).fcode) || "جاري إنشاء الكود…"; }
 function friendFinder(mem, banned, onAdd, btnLabel, memLabel) {
   const w = el("div", "ffind"); w.style.cssText = "display:flex;flex-direction:column;gap:8px";
   w.append(el("div", "note", "اكتب كود صديقك (8 حروف وأرقام) وهيظهرلك هو بالظبط. كل واحد ليه كود مختلف، فمفيش لخبطة في الأسامي."));
@@ -1067,6 +1101,12 @@ $("copyCode").onclick = async () => {
   try { await navigator.clipboard.writeText(c); } catch (e) { const t = document.createElement("textarea"); t.value = c; document.body.appendChild(t); t.select(); try { document.execCommand("copy"); } catch (x) {} t.remove(); }
   $("copyCode").textContent = "✓ اتنسخ"; setTimeout(() => { $("copyCode").textContent = "📋 نسخ"; }, 1500);
 };
+$("myUidRow").onclick = async () => {
+  const el = $("myUidRow"), id = myId; if (!id || el.dataset.busy) return;
+  const ok = await copyText(id);
+  el.dataset.busy = "1"; el.textContent = ok ? "✓ اتنسخ" : "ماقدرتش أنسخ"; el.style.color = ok ? "var(--pri)" : "";
+  setTimeout(() => { delete el.dataset.busy; el.style.color = ""; el.textContent = myId || "—"; }, 1200);
+};
 $("rmPhoto").onclick = () => { draft.photo = ""; paintDraft(); };
 Object.keys(EMO).forEach(k => {
   const b = document.createElement("button"); b.className = "opt sv"; b.title = EMO[k].n; b.innerHTML = EMO[k].s;
@@ -1133,7 +1173,7 @@ function audioPlayer(m) {
   return w;
 }
 const MAX_REC = 40; let rec = null;
-function showRec(on) { $("recBar").hidden = !on; $("inp").hidden = on; $("emoBtn").hidden = on; $("sendBtn").hidden = on; $("micBtn").hidden = false; $("micBtn").textContent = on ? "➤" : "🎤"; }
+function showRec(on) { $("recBar").hidden = !on; $("inp").hidden = on; $("emoBtn").hidden = on; $("plusBtn").hidden = on; $("sendBtn").hidden = on; $("micBtn").hidden = false; $("micBtn").textContent = on ? "➤" : "🎤"; }
 async function startRec() {
   if (rec || !db) return;
   const why = writeBlock(curR()); if (why) { setStatus(why); return; }
@@ -1169,6 +1209,172 @@ setInterval(() => {
   const has = !!$("inp").value.trim() || !!editingId;
   $("micBtn").hidden = has; $("sendBtn").hidden = !has; $("micBtn").disabled = !db || !!writeBlock(curR());
 }, 250);
+
+// ───── زرار + (صور / فيديو / كاميرا / مشاركة غرفة) ─────
+const MAX_DOC = 900000; // حد حجم الرسالة في Firestore (~1MB)
+$("pvX").onclick = () => { $("pview").hidden = true; $("pvImg").removeAttribute("src"); };
+$("pview").onclick = e => { if (e.target === $("pview")) $("pvX").click(); };
+function mediaGuard() {
+  if (!db) { setStatus("لسه مش متصل."); return false; }
+  const why = writeBlock(curR()); if (why) { setStatus(why); return false; }
+  const cr = curR(), wait = cr && !adminOf(cr) && cr.slow ? cr.slow - (Date.now() - (lastSent[room] || 0)) / 1000 : 0;
+  if (wait > 0) { setStatus("🐢 وضع بطيء: استنى " + Math.ceil(wait) + " ثانية"); return false; }
+  return true;
+}
+async function postMedia(extra, rid) {
+  rid = rid || room;
+  const doc = { room: rid, text: "", uid: myId, ts: Date.now(), ...extra };
+  if (replyTo && rid === room) { doc.reply = replyTo; clearReply(); }
+  lastSent[rid] = Date.now();
+  await db.collection("msgs").add(doc);
+}
+const readURL = f => new Promise(res => { const fr = new FileReader(); fr.onload = () => res(fr.result); fr.onerror = () => res(null); fr.readAsDataURL(f); });
+// ───── تخزين الملفات مرة واحدة + تحميل تدريجي (زي تيليجرام) ─────
+const MEDIA = new Map(), MEDIA_P = new Map();
+function mkThumb(src, w, h) { try { const k = Math.min(1, 28 / Math.max(w, h)), c = document.createElement("canvas"); c.width = Math.max(1, Math.round(w * k)); c.height = Math.max(1, Math.round(h * k)); c.getContext("2d").drawImage(src, 0, 0, c.width, c.height); return c.toDataURL("image/jpeg", .5); } catch (e) { return ""; } }
+function videoMeta(file) {
+  return new Promise(res => {
+    const u = URL.createObjectURL(file), v = document.createElement("video"); v.muted = true; v.playsInline = true; v.preload = "metadata";
+    const fin = r => { URL.revokeObjectURL(u); res(r); };
+    v.onloadeddata = () => { try { v.currentTime = Math.min(0.2, (v.duration || 1) / 2); } catch (e) { fin({ w: v.videoWidth, h: v.videoHeight, thumb: "" }); } };
+    v.onseeked = () => fin({ w: v.videoWidth, h: v.videoHeight, thumb: mkThumb(v, v.videoWidth, v.videoHeight) });
+    v.onerror = () => fin({ w: 0, h: 0, thumb: "" }); v.src = u; setTimeout(() => fin({ w: v.videoWidth || 0, h: v.videoHeight || 0, thumb: "" }), 4000);
+  });
+}
+// بيحفظ الملف في مجموعة media مرة واحدة، والرسالة بتشاور عليه بس. لو القواعد منعت بيرجع للطريقة القديمة.
+async function saveMedia(kind, data, meta) {
+  const id = db.collection("media").doc().id, base = { thumb: meta.thumb || "", w: meta.w || 0, h: meta.h || 0 };
+  MEDIA.set(id, data);
+  const p = db.collection("media").doc(id).set({ data, kind, uid: myId, ts: Date.now() });
+  try { const r = await Promise.race([p.then(() => "ok"), new Promise(x => setTimeout(() => x("slow"), 5000))]); if (r === "slow") p.catch(() => {}); return { mid: id, mk: kind, ...base }; }
+  catch (e) { MEDIA.delete(id); return { [kind === "vid" ? "vid" : "img"]: data, ...base }; }
+}
+function getMedia(id) {
+  if (MEDIA.has(id)) return Promise.resolve(MEDIA.get(id));
+  if (MEDIA_P.has(id)) return MEDIA_P.get(id);
+  const p = db.collection("media").doc(id).get().then(d => { const v = d.exists ? d.data().data : null; if (v) MEDIA.set(id, v); MEDIA_P.delete(id); return v; }).catch(() => { MEDIA_P.delete(id); return null; });
+  MEDIA_P.set(id, p); return p;
+}
+const MIO = "IntersectionObserver" in window ? new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { MIO.unobserve(e.target); if (e.target._load) e.target._load(); } }), { rootMargin: "400px" }) : null;
+function mediaBox(m) {
+  const vid = m.mk === "vid" || !!m.vid, w0 = +m.w || 4, h0 = +m.h || 3; let W = 240, H = W * h0 / w0; if (H > 320) { H = 320; W = H * w0 / h0; } if (W < 120) W = 120;
+  const box = el("div", "mwrap"); box.style.width = Math.round(W) + "px"; box.style.height = Math.round(H) + "px";
+  const ph = el("div", "mph"); if (m.thumb) ph.style.backgroundImage = "url(" + m.thumb + ")"; box.append(ph, el("div", "msp"));
+  const show = data => {
+    box.querySelectorAll(".mretry").forEach(x => x.remove());
+    if (!data) { const r = el("button", "mretry", "تعذّر التحميل · اضغط للإعادة"); r.type = "button"; r.onclick = e => { e.stopPropagation(); r.remove(); box.append(el("div", "msp")); box._load(); }; box.querySelectorAll(".msp").forEach(x => x.remove()); box.append(r); return; }
+    let node;
+    if (vid) { node = el("video", "mvid"); node.src = data; node.controls = true; node.playsInline = true; node.preload = "metadata"; if (m.thumb) node.poster = m.thumb; node.onclick = e => e.stopPropagation(); node.onloadeddata = () => box.classList.add("ok"); }
+    else { node = el("img", "mimg"); node.alt = "صورة"; node.decoding = "async"; node.onload = () => box.classList.add("ok"); node.onclick = e => { e.stopPropagation(); if (!selMode) { $("pvImg").src = data; $("pview").hidden = false; } }; node.src = data; }
+    box.append(node);
+  };
+  box._load = () => { if (m.mid) getMedia(m.mid).then(show); else show(m.img || m.vid); };
+  if (m.mid && MEDIA.has(m.mid) || !m.mid) box._load(); else if (MIO) MIO.observe(box); else box._load();
+  return box;
+}
+async function shrinkImage(file) {
+  let bmp;
+  try { bmp = await createImageBitmap(file); } catch (e) {
+    bmp = await new Promise((ok, no) => { const u = URL.createObjectURL(file), im = new Image(); im.onload = () => { URL.revokeObjectURL(u); ok(im); }; im.onerror = no; im.src = u; });
+  }
+  const w0 = bmp.width || bmp.naturalWidth, h0 = bmp.height || bmp.naturalHeight;
+  for (const [mx, q] of [[1280, .78], [1024, .7], [800, .62], [640, .55], [480, .5]]) {
+    const k = Math.min(1, mx / Math.max(w0, h0)), c = document.createElement("canvas");
+    c.width = Math.max(1, Math.round(w0 * k)); c.height = Math.max(1, Math.round(h0 * k));
+    c.getContext("2d").drawImage(bmp, 0, 0, c.width, c.height);
+    const url = c.toDataURL("image/jpeg", q);
+    if (url.length < MAX_DOC) return { url, w: c.width, h: c.height, thumb: mkThumb(c, c.width, c.height) };
+  }
+  return null;
+}
+async function sendImages(files) {
+  if (!mediaGuard()) return;
+  const cap = $("inp").value.trim(); let n = 0;
+  for (const f of files) {
+    setStatus("جاري تجهيز الصورة…");
+    try {
+      const r = await shrinkImage(f); if (!r) { setStatus("الصورة كبيرة جدًا."); continue; }
+      setStatus("جاري الإرسال…");
+      await postMedia({ ...(await saveMedia("img", r.url, r)), ...(cap && !n ? { text: cap.slice(0, 300) } : {}) }); n++;
+    } catch (e) { setStatus("الصورة ماتبعتتش."); }
+  }
+  if (n) { if (cap) $("inp").value = ""; setStatus(""); }
+}
+// ضغط الفيديو: بيعيد ترميزه بجودة قليلة علشان يدخل في حد الرسالة
+async function shrinkVideo(file) {
+  const src = URL.createObjectURL(file), v = document.createElement("video");
+  v.muted = true; v.playsInline = true; v.preload = "auto"; v.src = src;
+  try {
+    await new Promise((ok, no) => { v.onloadedmetadata = ok; v.onerror = no; });
+    if (!window.MediaRecorder || !v.captureStream && !document.createElement("canvas").captureStream) return null;
+    const MAXS = 15, dur = Math.min(v.duration || MAXS, MAXS), k = Math.min(1, 360 / Math.min(v.videoWidth, v.videoHeight || 360));
+    const cv = document.createElement("canvas"); cv.width = Math.round(v.videoWidth * k / 2) * 2 || 320; cv.height = Math.round(v.videoHeight * k / 2) * 2 || 240;
+    const g = cv.getContext("2d"), out = cv.captureStream(20);
+    try { v.muted = false; v.volume = 1; const ac = new (window.AudioContext || window.webkitAudioContext)(), sc = ac.createMediaElementSource(v), dst = ac.createMediaStreamDestination(); sc.connect(dst); out.addTrack(dst.stream.getAudioTracks()[0]); await ac.resume(); } catch (e) { v.muted = true; }
+    const mt = ["video/webm;codecs=vp8,opus", "video/webm;codecs=vp8", "video/webm", "video/mp4"].find(t => MediaRecorder.isTypeSupported(t)); if (!mt) return null;
+    const mr = new MediaRecorder(out, { mimeType: mt, videoBitsPerSecond: 280000, audioBitsPerSecond: 32000 }), parts = [];
+    mr.ondataavailable = e => { if (e.data && e.data.size) parts.push(e.data); };
+    const done = new Promise(r => { mr.onstop = r; });
+    let raf; const draw = () => { g.drawImage(v, 0, 0, cv.width, cv.height); raf = requestAnimationFrame(draw); };
+    mr.start(500);
+    try { await v.play(); } catch (e) { v.muted = true; await v.play(); }
+    draw();
+    await new Promise(r => { const t = setInterval(() => { setStatus("جاري ضغط الفيديو… " + Math.min(99, Math.round(v.currentTime / dur * 100)) + "%"); if (v.ended || v.currentTime >= dur) { clearInterval(t); r(); } }, 200); });
+    cancelAnimationFrame(raf); v.pause(); if (mr.state !== "inactive") mr.stop(); await done;
+    return await readURL(new Blob(parts, { type: mt.split(";")[0] }));
+  } catch (e) { return null; }
+  finally { URL.revokeObjectURL(src); }
+}
+async function sendVideo(file) {
+  if (!mediaGuard()) return;
+  const cap = $("inp").value.trim();
+  try {
+    let url = file.size < 650000 ? await readURL(file) : null;
+    if (!url || url.length > MAX_DOC) { setStatus("جاري تجهيز الفيديو…"); url = await shrinkVideo(file); }
+    if (!url || url.length > MAX_DOC) { setStatus("الفيديو كبير. اختار مقطع أقصر (حوالي 15 ثانية أو أقل)."); return; }
+    setStatus("جاري الإرسال…"); const meta = await videoMeta(file);
+    await postMedia({ ...(await saveMedia("vid", url, meta)), ...(cap ? { text: cap.slice(0, 300) } : {}) }); if (cap) $("inp").value = ""; setStatus("");
+  } catch (e) { setStatus("الفيديو ماتبعتش."); }
+}
+$("aImg").onchange = e => { const f = [...e.target.files]; e.target.value = ""; if (f.length) sendImages(f.slice(0, 5)); };
+$("aVid").onchange = e => { const f = e.target.files[0]; e.target.value = ""; if (f) sendVideo(f); };
+$("aCam").onchange = e => { const f = e.target.files[0]; e.target.value = ""; if (!f) return; if ((f.type || "").startsWith("video")) sendVideo(f); else sendImages([f]); };
+
+function roomCard(sh) {
+  const c = el("div", "rcard"), r = rooms.find(x => x.id === sh.id) || (sh.id === "general" ? generalRoom() : null);
+  c.append(avatar({ emoji: sh.emoji || "💬", color: sh.color || "#5b6b78", photo: sh.photo || "" }));
+  const t = el("div", "rt"); t.append(el("b", "", sh.name || "غرفة"), el("small", "", "غرفة على Very Chat")); c.append(t);
+  const b = el("button", "", r && canSee(r) ? "فتح" : "انضمام"); b.type = "button";
+  b.onclick = async e => { e.stopPropagation(); if (selMode) return; const rr = rooms.find(x => x.id === sh.id) || (sh.id === "general" ? generalRoom() : null); if (!rr) { setStatus("الغرفة دي مش موجودة."); return; } try { await joinRoom(rr); } catch (er) { setStatus(errMsg(er)); } };
+  c.append(b); return c;
+}
+function openSharePicker() {
+  const c = $("mcard"); c.textContent = "";
+  c.append(el("div", "mprev", "🏠 اختار غرفة تشاركها"));
+  const list = el("div", "acts"); list.style.cssText = "display:flex;flex-direction:column;gap:6px;max-height:52vh;overflow-y:auto";
+  const mine = [generalRoom(), ...rooms.filter(r => canSee(r) && (!r.private || r.by === myId || adminOf(r)))];
+  mine.forEach(r => {
+    const b = el("button", "rrow"); b.type = "button"; b.append(avatar(r.emoji || r.photo ? r : { emoji: "💬", color: "#5b6b78" }), el("b", "", r.name));
+    b.onclick = async () => {
+      $("msheet").hidden = true;
+      if (!mediaGuard()) return;
+      try { await postMedia({ share: { id: r.id, name: String(r.name || "").slice(0, 30), emoji: r.emoji || "", color: r.color || "" } }); } catch (e) { setStatus("ماقدرتش أشارك الغرفة."); }
+    };
+    list.append(b);
+  });
+  c.append(list); $("msheet").hidden = false;
+}
+$("plusBtn").onclick = () => {
+  const c = $("mcard"); c.textContent = ""; c.append(el("div", "mprev", "➕ إضافة"));
+  const g = el("div", "acts");
+  [["🖼", "صورة", () => $("aImg").click()], ["🎥", "فيديو", () => $("aVid").click()], ["📸", "كاميرا", () => $("aCam").click()], ["🏠", "غرفة", openSharePicker]].forEach(([ic, t, fn]) => {
+    const b = el("button", "apick"); b.type = "button"; const i = el("i", "", ic); b.append(i, document.createTextNode(t));
+    b.onclick = () => { $("msheet").hidden = true; fn(); }; g.append(b);
+  });
+  c.append(g); $("msheet").hidden = false;
+};
+// تعطيل + لما الكتابة ممنوعة
+setInterval(() => { $("plusBtn").disabled = !db || !!writeBlock(curR()); }, 400);
 
 // ───── لوحة الإيموجي ─────
 const EMO_CATS = [
@@ -1215,7 +1421,7 @@ const authMsg = e => ({ "auth/unauthorized-domain": "الدومين ده مش م
 function askLogin() {
   return new Promise(res => {
     $("lLogo").innerHTML = logo("lgL"); $("login").hidden = false;
-    const done = u => { $("login").hidden = true; res(u); }, busy = v => { $("gBtn").disabled = $("guestBtn").disabled = v; };
+    const done = u => { $("login").hidden = true; res(u); }, busy = v => { $("gBtn").disabled = v; };
     $("gBtn").onclick = async () => {
       busy(true); lerr("");
       try { done((await firebase.auth().signInWithPopup(new firebase.auth.GoogleAuthProvider())).user); }
@@ -1224,7 +1430,6 @@ function askLogin() {
         lerr(authMsg(e)); busy(false);
       }
     };
-    $("guestBtn").onclick = async () => { busy(true); lerr(""); try { done((await firebase.auth().signInAnonymously()).user); } catch (e) { lerr(authMsg(e)); busy(false); } };
   });
 }
 function showPic(av, name) {
