@@ -422,6 +422,62 @@ form.bar:focus-within{box-shadow:0 0 0 2px var(--pri),var(--sh2)}
 .ri-ok:disabled,.ri-no:disabled,.rq-all:disabled,.rq-wait:disabled{opacity:.45}
 .dfoot #dReq{grid-column:1/-1;display:flex;align-items:center;justify-content:center;gap:8px;font-weight:700}
 .dfoot #dReq .bdg{margin:0}
+/* ───── v10: تحديث الشكل ───── */
+:root{--rad:20px;--sh:0 8px 28px rgba(8,40,34,.12)}
+body,button,input{font-family:system-ui,-apple-system,"Segoe UI",Tahoma,Arial,sans-serif}
+header{background:color-mix(in srgb,var(--card) 82%,transparent);-webkit-backdrop-filter:saturate(1.6) blur(16px);backdrop-filter:saturate(1.6) blur(16px);border-bottom:1px solid color-mix(in srgb,var(--line) 70%,transparent)}
+#hRoom b{font-size:16.5px;font-weight:800}
+#msgs{padding:14px 12px 8px;gap:2px;background-image:radial-gradient(color-mix(in srgb,var(--pri) 16%,transparent) 1.2px,transparent 1.2px);background-size:26px 26px;scroll-behavior:smooth}
+.b{border:0;border-radius:20px;padding:8px 13px 6px;box-shadow:0 1px 2px rgba(8,40,34,.10),0 4px 14px rgba(8,40,34,.05)}
+.me .b{background-image:linear-gradient(150deg,color-mix(in srgb,var(--mine) 78%,#fff),var(--mine) 55%,color-mix(in srgb,var(--mine) 80%,#000))}
+.tx{line-height:1.65;font-size:15.5px}
+.n{font-size:12px;letter-spacing:.2px}
+.chips{padding:12px 14px 8px}
+.chip .av{border-width:2px}
+.chip.on .av{box-shadow:0 0 0 3px var(--pri),0 6px 16px color-mix(in srgb,var(--pri) 40%,transparent)}
+form.bar{margin:6px 10px calc(8px + env(safe-area-inset-bottom,0px)*0);padding:6px;border-radius:32px;border:0;box-shadow:var(--sh);align-items:center}
+.bar input{font-size:15.5px}
+.bar .send{height:42px;min-width:42px;border-radius:50%;padding:0 18px;transition:transform .15s}
+.bar .send:active{transform:scale(.92)}
+#micBtn{width:42px;height:42px;padding:0;background-image:linear-gradient(135deg,var(--pri),color-mix(in srgb,var(--pri) 70%,#000));color:var(--onpri)}
+.rrow{border-radius:18px;transition:background .15s}
+.rrow:active{transform:scale(.98)}
+.dpanel{border-radius:0 28px 28px 0;box-shadow:0 0 60px rgba(0,0,0,.4)}
+/* فويس */
+.vp{min-width:230px;gap:8px}
+.vpb{width:40px;height:40px;box-shadow:0 3px 10px rgba(0,0,0,.2);transition:transform .15s}
+.vpb:active{transform:scale(.9)}
+.vw{flex:1;height:34px;display:flex;align-items:center;gap:2px;direction:ltr;cursor:pointer}
+.vw i{flex:1;min-width:2px;border-radius:2px;background:currentColor;opacity:.3;transition:opacity .15s,transform .2s}
+.vw i.on{opacity:1;background:var(--pri)}
+.row.me .vw i.on{background:#fff}
+.vp.play .vw i.on:last-of-type,.vp.play .vw i.on{transform:scaleY(1.08)}
+.vps{flex:none;border:0;border-radius:12px;padding:3px 8px;min-width:38px;font-size:12px;font-weight:800;cursor:pointer;background:rgba(127,127,127,.22);color:inherit;font-variant-numeric:tabular-nums}
+.vpd{min-width:32px;text-align:end}
+/* شيت التأثيرات + جديد */
+#vfx,#wn{position:fixed;inset:0;z-index:40;background:rgba(6,12,11,.55);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);display:flex;align-items:flex-end;justify-content:center}
+.vcard{width:100%;max-width:520px;background:var(--card);border-radius:28px 28px 0 0;padding:16px 18px calc(20px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:14px;animation:up .32s cubic-bezier(.2,1,.3,1) both}
+.vcard h2{margin:0;text-align:center;font-size:19px}
+.vfxp{display:flex;align-items:center;gap:12px;background:var(--bg);border-radius:20px;padding:10px 12px}
+.vfxw{flex:1;height:38px;display:flex;align-items:center;gap:2px;direction:ltr}
+.vfxw i{flex:1;border-radius:2px;background:var(--pri);opacity:.45;height:30%}
+.vfxw i:nth-child(3n){height:70%}.vfxw i:nth-child(4n+1){height:48%}.vfxw i:nth-child(5n){height:88%}.vfxw i:nth-child(7n+2){height:58%}
+.vfxw.on i{animation:eq .7s ease-in-out infinite alternate;opacity:1}
+.vfxw.on i:nth-child(2n){animation-delay:.15s}.vfxw.on i:nth-child(3n){animation-delay:.3s}
+@keyframes eq{from{transform:scaleY(.4)}to{transform:scaleY(1.15)}}
+.vfxl{font-size:13px;font-weight:700;color:var(--mute)}
+.vfxg{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.fxb{border:2px solid transparent;background:var(--bg);border-radius:20px;padding:12px 4px;display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;font-size:13px;font-weight:700;color:var(--ink);transition:transform .15s}
+.fxb i{font-style:normal;font-size:28px}
+.fxb:active{transform:scale(.93)}
+.fxb.on{border-color:var(--pri);background:color-mix(in srgb,var(--pri) 12%,var(--bg))}
+.vfxa{display:flex;gap:10px}.vfxa .ghost{flex:1}.vfxa .send{flex:2;height:46px;border-radius:16px}
+.wnh{font-size:46px;text-align:center}
+#wn ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:12px}
+#wn li{background:var(--bg);border-radius:18px;padding:12px 14px}
+#wn li b{display:block}#wn li small{color:var(--mute);font-size:12.5px}
+#wn .send{height:48px;border-radius:16px}
+@media (prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
 </style>
 </head>
 <body>
@@ -1645,16 +1701,61 @@ $("meBtn").onclick = () => { if (db) { if (room === "general" || isDM(room)) ope
 
 // ───── رسائل صوتية ─────
 const fmtDur = t => Math.floor(t / 60) + ":" + String(Math.floor(t % 60)).padStart(2, "0");
-const AUD = new Map(); let curAudio = null;
+const AUD = new Map(); let curAudio = null; let VRATE = +localStorage.getItem("vrate") || 1;
 function audioPlayer(m) {
-  const w = el("div", "vp"), btn = el("button", "vpb", "▶"), bar = el("div", "vpt"), fill = el("i"), tm = el("span", "vpd", fmtDur(m.dur || 0));
-  btn.type = "button"; bar.append(fill); w.append(btn, bar, tm);
+  const w = el("div", "vp"), btn = el("button", "vpb", "▶"), wv = el("div", "vw"), tm = el("span", "vpd", fmtDur(m.dur || 0)), sp = el("button", "vps", VRATE + "×");
+  let h = 0; for (const c of String(m.id)) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+  const N = 30, bars = []; for (let i = 0; i < N; i++) { h = (h * 1664525 + 1013904223) >>> 0; const x = el("i"); x.style.height = (22 + (h >>> 24) % 78) + "%"; bars.push(x); wv.append(x); }
+  btn.type = sp.type = "button"; w.append(btn, wv, sp, tm);
   let a = AUD.get(m.id); if (!a) { a = new Audio(m.audio); a.preload = "none"; AUD.set(m.id, a); }
-  const sync = () => { btn.textContent = a.paused ? "▶" : "⏸"; const d = a.duration || m.dur || 0; fill.style.width = d && a.currentTime ? Math.min(100, a.currentTime / d * 100) + "%" : "0"; tm.textContent = fmtDur(a.paused && !a.currentTime ? (m.dur || 0) : a.currentTime); };
+  const sync = () => { btn.textContent = a.paused ? "▶" : "⏸"; const d = a.duration || m.dur || 0, p = d && a.currentTime ? a.currentTime / d : 0; bars.forEach((x, i) => x.classList.toggle("on", i / N < p)); tm.textContent = fmtDur(a.paused && !a.currentTime ? (m.dur || 0) : a.currentTime); w.classList.toggle("play", !a.paused); };
   a.ontimeupdate = sync; a.onplay = sync; a.onpause = sync; a.onended = () => { a.currentTime = 0; sync(); };
   sync();
-  btn.onclick = e => { e.stopPropagation(); if (selMode) return; if (a.paused) { if (curAudio && curAudio !== a) curAudio.pause(); curAudio = a; a.play().catch(() => setStatus("ماقدرتش أشغّل الصوت.")); } else a.pause(); };
+  btn.onclick = e => { e.stopPropagation(); if (selMode) return; if (a.paused) { if (curAudio && curAudio !== a) curAudio.pause(); curAudio = a; a.playbackRate = VRATE; a.play().catch(() => setStatus("ماقدرتش أشغّل الصوت.")); } else a.pause(); };
+  sp.onclick = e => { e.stopPropagation(); VRATE = VRATE === 1 ? 1.5 : VRATE === 1.5 ? 2 : VRATE === 2 ? 0.75 : 1; try { localStorage.setItem("vrate", VRATE); } catch (_) {} sp.textContent = VRATE + "×"; a.playbackRate = VRATE; };
+  wv.onclick = e => { e.stopPropagation(); if (selMode) return; const r = wv.getBoundingClientRect(), d = a.duration || m.dur || 0; let p = (e.clientX - r.left) / r.width; if (getComputedStyle(wv).direction === "rtl") p = 1 - p; if (a.readyState && d) { a.currentTime = Math.max(0, Math.min(1, p)) * d; sync(); } };
   return w;
+}
+// ───── تأثيرات الصوت ─────
+const FX = [["عادي", "🎙️"], ["تخين", "🐻"], ["سنجاب", "🐿️"], ["روبوت", "🤖"], ["صدى", "🏔️"], ["تليفون", "📞"]];
+function fxGraph(ctx, buf, fx, dest) {
+  const s = ctx.createBufferSource(); s.buffer = buf; let rate = 1, tail = 0;
+  if (fx === 1) rate = 0.78; if (fx === 2) rate = 1.5; s.playbackRate.value = rate;
+  if (fx === 3) { const g = ctx.createGain(); g.gain.value = 0; const o = ctx.createOscillator(); o.frequency.value = 55; o.connect(g.gain); s.connect(g).connect(dest); o.start(); s.onended = () => { try { o.stop(); } catch (_) {} }; }
+  else if (fx === 4) { const d = ctx.createDelay(1), f = ctx.createGain(); d.delayTime.value = 0.22; f.gain.value = 0.45; s.connect(dest); s.connect(d); d.connect(f); f.connect(d); d.connect(dest); tail = 1.4; }
+  else if (fx === 5) { const hp = ctx.createBiquadFilter(), lp = ctx.createBiquadFilter(), g = ctx.createGain(); hp.type = "highpass"; hp.frequency.value = 450; lp.type = "lowpass"; lp.frequency.value = 2800; g.gain.value = 1.7; s.connect(hp); hp.connect(lp); lp.connect(g); g.connect(dest); }
+  else s.connect(dest);
+  return { s, len: buf.duration / rate + tail };
+}
+function openVoiceFx(blob, dur, roomId) {
+  let fx = 0, ctx = null, buf = null, live = null;
+  const ov = el("div"); ov.id = "vfx";
+  ov.innerHTML = '<div class="vcard"><div class="grab"></div><h2>🎧 رسالتك الصوتية</h2><div class="vfxp"><button class="vpb" id="vfP" type="button">▶</button><div class="vfxw"></div><span class="vpd">' + fmtDur(dur) + '</span></div><div class="vfxl">اختار تأثير</div><div class="vfxg"></div><div class="vfxa"><button class="ghost" id="vfC" type="button">🗑 إلغاء</button><button class="send" id="vfS" type="button">إرسال ➤</button></div></div>';
+  document.body.append(ov);
+  const g = ov.querySelector(".vfxg"), wv = ov.querySelector(".vfxw"), pb = ov.querySelector("#vfP");
+  for (let i = 0; i < 36; i++) wv.append(el("i"));
+  const stop = () => { if (live) { try { live.s.stop(); } catch (_) {} live = null; } pb.textContent = "▶"; wv.classList.remove("on"); };
+  const load = async () => { if (buf) return buf; ctx = ctx || new (window.AudioContext || window.webkitAudioContext)(); if (ctx.state === "suspended") ctx.resume(); buf = await ctx.decodeAudioData(await blob.arrayBuffer()); return buf; };
+  const play = async () => { stop(); try { await load(); } catch (e) { setStatus("ماقدرتش أشغّل المعاينة."); return; } live = fxGraph(ctx, buf, fx, ctx.destination); const me = live; me.s.addEventListener("ended", () => { if (live === me) stop(); }); me.s.start(); pb.textContent = "⏸"; wv.classList.add("on"); };
+  FX.forEach((f, i) => { const b = el("button", "fxb" + (i ? "" : " on")); b.type = "button"; b.innerHTML = "<i>" + f[1] + "</i><span>" + f[0] + "</span>"; b.onclick = () => { fx = i; g.querySelectorAll(".fxb").forEach((x, j) => x.classList.toggle("on", j === i)); play(); }; g.append(b); });
+  pb.onclick = () => live ? stop() : play();
+  const close = () => { stop(); try { ctx && ctx.close(); } catch (_) {} ov.remove(); };
+  ov.querySelector("#vfC").onclick = close;
+  ov.onclick = e => { if (e.target === ov) close(); };
+  ov.querySelector("#vfS").onclick = async () => {
+    const sb = ov.querySelector("#vfS"); sb.disabled = true; stop();
+    if (!fx) { close(); return sendVoice(blob, dur, roomId); }
+    sb.textContent = "جاري التجهيز…";
+    try {
+      await load(); const c2 = new (window.AudioContext || window.webkitAudioContext)(), d = c2.createMediaStreamDestination();
+      const mt = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4", "audio/ogg;codecs=opus"].find(t => MediaRecorder.isTypeSupported(t)) || "";
+      const mr = new MediaRecorder(d.stream, mt ? { mimeType: mt, audioBitsPerSecond: 16000 } : { audioBitsPerSecond: 16000 }), parts = [];
+      mr.ondataavailable = e => e.data && e.data.size && parts.push(e.data);
+      const done = new Promise(r => mr.onstop = r), gr = fxGraph(c2, buf, fx, d); mr.start(); gr.s.start();
+      await new Promise(r => setTimeout(r, gr.len * 1000 + 200)); mr.stop(); await done; c2.close();
+      close(); sendVoice(new Blob(parts, { type: mr.mimeType || "audio/webm" }), Math.max(1, Math.round(gr.len)), roomId);
+    } catch (e) { close(); setStatus("التأثير ماشتغلش على جهازك."); }
+  };
 }
 const MAX_REC = 40; let rec = null;
 function showRec(on) { $("recBar").hidden = !on; $("inp").hidden = on; $("emoBtn").hidden = on; $("plusBtn").hidden = on; $("sendBtn").hidden = on; $("micBtn").hidden = false; $("micBtn").textContent = on ? "➤" : "🎤"; }
@@ -1679,11 +1780,14 @@ async function finishRec(r) {
   const dur = Math.round((Date.now() - r.t0) / 1000); if (dur < 1) { setStatus("الرسالة قصيرة جدًا."); return; }
   const cr = curR(), wait = cr && !adminOf(cr) && cr.slow ? cr.slow - (Date.now() - (lastSent[r.room] || 0)) / 1000 : 0;
   if (wait > 0) { setStatus("🐢 وضع بطيء: استنى " + Math.ceil(wait) + " ثانية"); return; }
-  const url = await new Promise(res => { const fr = new FileReader(); fr.onload = () => res(fr.result); fr.onerror = () => res(null); fr.readAsDataURL(new Blob(r.chunks, { type: r.mr.mimeType || "audio/webm" })); });
+  openVoiceFx(new Blob(r.chunks, { type: r.mr.mimeType || "audio/webm" }), dur, r.room);
+}
+async function sendVoice(blob, dur, roomId) {
+  const url = await new Promise(res => { const fr = new FileReader(); fr.onload = () => res(fr.result); fr.onerror = () => res(null); fr.readAsDataURL(blob); });
   if (!url) { setStatus("ماقدرتش أجهّز التسجيل."); return; }
   if (url.length > 900000) { setStatus("التسجيل كبير، سجّل رسالة أقصر."); return; }
-  lastSent[r.room] = Date.now();
-  const doc = { ...mBase(r.room), text: "", audio: url, dur, uid: myId, ts: Date.now() }; if (replyTo) { doc.reply = replyTo; clearReply(); }
+  lastSent[roomId] = Date.now();
+  const doc = { ...mBase(roomId), text: "", audio: url, dur, uid: myId, ts: Date.now() }; if (replyTo) { doc.reply = replyTo; clearReply(); }
   try { await sendDoc(doc); } catch (e) { setStatus("الرسالة الصوتية ماتبعتتش."); }
 }
 $("micBtn").onclick = () => { if (rec) stopRec(true); else startRec(); };
@@ -2338,6 +2442,9 @@ $("menuBtn").addEventListener("click", () => vcSnd("open"));
 $("f").addEventListener("submit", () => { if ($("inp").value.trim() && !$("inp").disabled) vcSnd("send"); }, true);
 netUI(); buildChips(); registerSW();
 start();
+// ───── جديد في التحديث ─────
+(() => { const V = "v10"; let seen; try { seen = localStorage.getItem("vc_ver"); } catch (_) {} if (seen === V) return;
+  setTimeout(() => { const o = el("div"); o.id = "wn"; o.innerHTML = '<div class="vcard"><div class="grab"></div><div class="wnh">✨</div><h2>تحديث جديد في Very Chat</h2><ul><li><b>🎧 تأثيرات الصوت</b><small>تخين، سنجاب، روبوت، صدى، تليفون — جرّب قبل ما تبعت</small></li><li><b>⚡ سرعة الفويس</b><small>اضغط على 1× لتغيير السرعة (0.75 / 1.5 / 2)</small></li><li><b>🌊 موجة صوتية</b><small>اضغط على الموجة للتقديم والتأخير</small></li><li><b>🎨 تصميم جديد</b><small>خطوط وألوان وفقاعات أحلى</small></li></ul><button class="send" type="button">يلا نبدأ</button></div>'; o.onclick = e => { if (e.target === o || e.target.tagName === "BUTTON") { o.remove(); try { localStorage.setItem("vc_ver", V); } catch (_) {} } }; document.body.append(o); }, 2600); })();
 </script>
 </body>
 </html>
