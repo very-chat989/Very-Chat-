@@ -771,6 +771,37 @@ html[dir=rtl] #sendBtn svg{transform:scaleX(-1)}
 #riBody .ri-card.dn{border-color:rgba(214,69,69,.45)}
 #riBody .ghost{border-radius:14px;padding:9px 14px;font:inherit;font-weight:700;font-size:13px;white-space:nowrap}
 .ri-top b{font-weight:800}
+
+/* ───── v12: الهيرو + كارت المعلومات + قوايم الشيتس + الطلبات ───── */
+.ri-sub{margin-top:4px;font-size:14px;font-weight:700;opacity:.92;letter-spacing:.2px;white-space:pre-wrap}
+.ri-hero{padding-bottom:52px!important}
+.ri-quick{gap:10px}
+.ri-q{max-width:none;min-width:0;padding:12px 4px;font-weight:700;font-family:inherit}
+.ri-q span{font-size:12.5px}
+#riBody .ri-card.ri-infoc{margin-top:20px}
+.ri-val{flex:none;max-width:46%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--mute);font-size:14px;font-weight:700}
+.ri-val.code{font-family:ui-monospace,Menlo,Consolas,monospace;letter-spacing:1.8px;color:var(--pri);font-size:15px;font-weight:800;background:color-mix(in srgb,var(--pri) 12%,transparent);padding:4px 10px;border-radius:10px}
+#msheet .mprev.mh{transform:none;width:100%;box-sizing:border-box;display:flex!important;flex-direction:column;align-items:center;gap:6px!important;text-align:center;padding:20px 16px 16px;border-radius:28px;background:var(--card);color:var(--ink);box-shadow:var(--sh2)}
+#msheet .mprev.mh .av{box-shadow:0 0 0 3px var(--card),0 0 0 5px var(--pri)}
+#msheet .mprev.mh b,#msheet .mprev.mh>span{font-size:19px;font-weight:800}
+.ri-msub{color:var(--mute);font-size:13px;font-weight:600}
+#msheet .acts.lst{display:flex!important;flex-direction:column;gap:2px;padding:8px;border-radius:28px;grid-template-columns:none}
+.acts.lst .act{flex-direction:row;justify-content:flex-start;width:100%;box-sizing:border-box;gap:14px;padding:9px 12px;border-radius:18px;font-size:15.5px;font-weight:700;text-align:start;font-family:inherit;transition:background .15s}
+.acts.lst .act:active{background:var(--bg)}
+.acts.lst .act i{flex:none;width:42px;height:42px;border-radius:14px;font-size:20px;box-shadow:none}
+.acts.lst .act span{flex:1}
+.acts.lst .act::after{content:"‹";color:var(--mute);font-size:26px;line-height:1;margin-inline-end:4px}
+.acts.lst .act.dng span{color:#e0584f}
+#reqBody .ri-card{margin:12px 14px 0;padding:14px;gap:10px;border:1px solid var(--line);border-radius:24px;box-shadow:var(--sh1)}
+#reqBody .ri-card h3{display:flex;align-items:center;gap:8px;font-size:15px;font-weight:800}
+#reqBody .ri-mem{margin:0;padding:10px 12px;border-radius:18px;background:var(--bg)}
+.rq-tabs{gap:8px;padding:10px 12px;background:var(--bg)}
+.rq-tab{border:0;border-bottom:0;border-radius:999px;background:var(--card);box-shadow:inset 0 0 0 1px var(--line);padding:10px 8px;font-family:inherit}
+.rq-tab.on{background:linear-gradient(135deg,var(--pri2),var(--pri));color:var(--onpri);box-shadow:0 6px 16px rgba(15,143,122,.3)}
+.ffind input{border-radius:16px!important;border:0!important;box-shadow:inset 0 0 0 1px var(--line);outline:0}
+.ffind input:focus{box-shadow:inset 0 0 0 2px var(--pri)}
+.ffind .send{border-radius:16px;padding:13px;font-family:inherit}
+.ffind .rrow{background:var(--bg);border-radius:18px}
 </style>
 </head>
 <body>
@@ -1454,7 +1485,7 @@ function shareInvite(r) {
   shareText("انضم لغرفة «" + r.name + "» على Very Chat\nالكود: " + r.code + "\nالرابط: " + PAGE_URL + "#r-" + r.code).then(x => { if (x !== "shared") setStatus(x === "copied" ? "✓ اتنسخت رسالة الدعوة" : "ماقدرتش أنسخ الدعوة"); });
 }
 function openDiscover() {
-  const c = $("mcard"); c.textContent = ""; c.append(el("div", "mprev", "🔑 غرفة أو صديق بالكود"));
+  const c = $("mcard"); c.textContent = ""; c.append(el("div", "mprev mh", "🔑 غرفة أو صديق بالكود"));
   const box = el("div", "acts"); box.style.cssText = "display:flex;flex-direction:column;gap:10px";
   box.append(el("div", "note", "اكتب كود غرفة (للانضمام) أو كود صاحبك (للمراسلة الخاصة)"));
   const row = el("div"); row.style.cssText = "display:flex;gap:8px";
@@ -1750,7 +1781,7 @@ let infoSig = null;
 function openInfo(id) { if (!id) return; infoId = id; infoSig = null; riTab = null; riQ = ""; riFlt = "all"; riLim = 20; riDraft = {}; $("rinfo").hidden = false; $("riBody").scrollTop = 0; renderInfo(); }
 function closeInfo() { infoId = null; $("rinfo").hidden = true; }
 function addFriend(r, mem) {
-  const c = $("mcard"); c.textContent = ""; c.append(el("div", "mprev", "＋ إضافة صديق"));
+  const c = $("mcard"); c.textContent = ""; c.append(el("div", "mprev mh", "＋ إضافة صديق"));
   const box = el("div", "acts"); box.style.cssText = "display:flex;flex-direction:column;gap:6px;max-height:55vh;overflow-y:auto";
   box.append(friendFinder(mem, [...(r.banned || []), ...(r.invites || [])], async u => { $("msheet").hidden = true; try { await db.collection("rooms").doc(r.id).update({ invites: AU(u) }); notifyUser(u, r, "invite"); flash("✓ اتبعتله دعوة، هيدخل أول ما يوافق"); } catch (e) { flash(errMsg(e)); } }));
   c.append(box); $("msheet").hidden = false;
@@ -1761,14 +1792,14 @@ function leftTxt(ms) { const m = Math.ceil(ms / 60000); return m < 90 ? m + " د
 function memberMenu(r, u) {
   const c = $("mcard"); c.textContent = ""; const close = () => { $("msheet").hidden = true; }, G = r.id === "general";
   const isAdm = (r.admins || []).includes(u), isMut = (r.muted || []).includes(u) || ((r.mutedUntil || {})[u] || 0) > Date.now();
-  const head = el("div", "mprev"); head.style.cssText += ";display:flex;align-items:center;gap:10px";
-  const a = avatar(profileFor(u, r.id)); a.style.cssText += ";width:40px;height:40px";
+  const head = el("div", "mprev mh");
+  const a = avatar(profileFor(u, r.id)); a.style.cssText += ";width:68px;height:68px;font-size:34px";
   const nm = el("b", "", nameOf(u, r.id)); nm.dir = "auto";
-  const tg = (isAdm ? " 🛡️" : "") + (isMut ? " 🔇" : ""); head.append(a, nm); if (tg) head.append(el("span", "", tg));
+  const roleTx = u === r.by ? "👑 مالك الغرفة" : isAdm ? "🛡️ مشرف" : "عضو"; head.append(a, nm, el("small", "ri-msub", roleTx + (isMut ? "  ·  🔇 مكتوم" : "") + (isOnline(presence[u]) ? "  ·  🟢 متصل" : "")));
   c.append(head);
-  const acts = el("div", "acts");
+  const acts = el("div", "acts lst");
   const act = (ico, lb, grad, fn, o) => {
-    o = o || {}; const b = el("button", "act"); b.type = "button"; const i = el("i", "", ico), sp = el("span", "", lb); i.style.background = grad; b.append(i, sp);
+    o = o || {}; const b = el("button", "act"); b.type = "button"; const i = el("i", "", ico), sp = el("span", "", lb); i.style.background = grad; if (/d64545/.test(grad)) b.classList.add("dng"); b.append(i, sp);
     b.onclick = () => {
       if (o.confirm && !b.dataset.ok) {
         b.dataset.ok = "1"; sp.textContent = "تأكيد؟"; sp.style.color = "#ff7a7a"; i.style.transform = "scale(1.1)";
@@ -1851,16 +1882,22 @@ function renderInfo(tabSwitch) {
   const hero = el("div", "ri-hero"); hero.style.background = "linear-gradient(160deg," + (r.color || "#5b6b78") + ",#0d1413)";
   const av = avatar(r.emoji || r.photo ? r : { emoji: "💬", color: "#5b6b78" }); av.classList.add("ri-av");
   hero.append(av, el("h2", "", r.name)); if (r.desc) hero.append(el("p", "", r.desc));
-  const chips = el("div", "ri-chips"), canCode = !!r.code && (admin || !r.lockInvite);
-  const chipCopy = (lb, val, done) => { const b = el("button", "ri-chip", lb); b.onclick = async () => { b.textContent = (await copyText(val)) ? done : "ماقدرتش أنسخ"; setTimeout(() => { b.textContent = lb; }, 1500); }; return b; };
-  if (canCode) chips.append(chipCopy("🔑 " + r.code, r.code, "✓ اتنسخ الكود"), chipCopy("🔗 نسخ الرابط", PAGE_URL + "#r-" + r.code, "✓ اتنسخ الرابط"));
-  if (G) chips.append(el("span", "ri-chip", "🌐 مفتوحة لكل المستخدمين")); else chips.append(...(countHidden(r) ? [] : [el("span", "ri-chip", "👥 " + mem.length)]), el("span", "ri-chip", r.private ? "🔒 خاصة" : "🌐 عامة"));
-  { const pp = profileFor(myId, r.id) || {}; chips.prepend(el("span", "ri-chip", "🙋 أنت: " + (pp.name || "—") + (owner ? " 👑" : admin ? " 🛡️" : ""))); } hero.append(chips); box.append(hero);
-  const q = el("div", "ri-quick"), qa = (ico, lb, fn) => { const b = el("button", "ri-q"); b.append(el("i", "", ico), el("span", "", lb)); b.onclick = fn; q.append(b); };
+  const canCode = !!r.code && (admin || !r.lockInvite);
+  hero.append(el("div", "ri-sub", (G ? "🌐 مفتوحة لكل المستخدمين" : r.private ? "🔒 غرفة خاصة" : "🌐 غرفة عامة") + (!G && !countHidden(r) ? "  ·  " + mem.length + " عضو" : ""))); box.append(hero);
+  const q = el("div", "ri-quick"), qa = (ico, lb, fn) => { const b = el("button", "ri-q"); b.type = "button"; b.append(el("i", "", ico), el("span", "", lb)); b.onclick = () => fn(b); q.append(b); };
   if (canCode && (admin || !r.private)) qa("📤", "دعوة", () => shareInvite(r));
+  if (canCode) qa("🔗", "نسخ الرابط", async b => { const sp = b.querySelector("span"), o = sp.textContent; if (await copyText(PAGE_URL + "#r-" + r.code)) { sp.textContent = "✓ اتنسخ"; setTimeout(() => { sp.textContent = o; }, 1500); } });
   qa("🎭", G ? "بروفايلي" : "شخصيتي", () => G ? openSheet("me") : openSheet("persona", r.id));
   if (owner) qa("✏️", "تعديل", () => openSheet("editroom", r.id));
   box.append(q);
+  { const pp = profileFor(myId, r.id) || {}, ic = el("div", "ri-card ri-infoc");
+    const val = (t, cls) => { const x = el("span", "ri-val" + (cls ? " " + cls : ""), t); x.dir = cls === "code" ? "ltr" : "auto"; return x; };
+    ic.append(setRow("🙋 اسمك في الغرفة", owner ? "👑 مالك الغرفة" : admin ? "🛡️ مشرف" : "عضو", val(pp.name || "—")));
+    const cp = (title, desc, text, v) => { const rw = setRow(title, desc, v); rw.classList.add("ri-act"); rw.onclick = async () => { const o = v.textContent; if (await copyText(text)) { v.textContent = "✓ اتنسخ"; setTimeout(() => { v.textContent = o; }, 1300); } }; ic.append(rw); };
+    if (canCode) { cp("🔑 كود الغرفة", "اضغط للنسخ", r.code, val(r.code, "code")); cp("🔗 رابط الدعوة", "اضغط للنسخ", PAGE_URL + "#r-" + r.code, val("نسخ")); }
+    ic.append(setRow(G || !r.private ? "🌐 نوع الغرفة" : "🔒 نوع الغرفة", G ? "مفتوحة لكل المستخدمين" : r.private ? "مش بتظهر في البحث" : "ظاهرة في البحث", val(G ? "عامة" : r.private ? "خاصة" : "عامة")));
+    if (!G && !countHidden(r)) ic.append(setRow("👥 عدد الأعضاء", null, val(String(mem.length))));
+    box.append(ic); }
 
   /* ── بيانات الأعضاء ── */
   const base = G ? [...new Set([...Object.keys(profiles), ...(r.by ? [r.by] : [])])].filter(u => !(r.banned || []).includes(u) && !kickedLeft(r, u)) : mem;
@@ -2115,12 +2152,12 @@ function renderInfo(tabSwitch) {
 $("riBack").onclick = closeInfo;
 function openRoomMenu(r) {
   const c = $("mcard"); c.textContent = ""; const close = () => { $("msheet").hidden = true; };
-  const head = document.createElement("div"); head.className = "mprev"; head.style.cssText += ";display:flex;align-items:center;gap:10px";
-  const ic = avatar(r.emoji || r.photo ? r : { emoji: "💬", color: "#5b6b78" }); ic.style.cssText += ";width:42px;height:42px;font-size:22px";
-  const nm = document.createElement("span"); nm.textContent = r.name; nm.style.fontWeight = "700"; head.append(ic, nm); c.appendChild(head);
-  const acts = document.createElement("div"); acts.className = "acts";
+  const head = document.createElement("div"); head.className = "mprev mh";
+  const ic = avatar(r.emoji || r.photo ? r : { emoji: "💬", color: "#5b6b78" }); ic.style.cssText += ";width:68px;height:68px;font-size:34px";
+  const nm = document.createElement("span"); nm.textContent = r.name; nm.style.fontWeight = "700"; head.append(ic, nm, el("small", "ri-msub", r.private ? "🔒 غرفة خاصة" : "🌐 غرفة عامة")); c.appendChild(head);
+  const acts = document.createElement("div"); acts.className = "acts lst";
   const act = (ico, label, grad, fn) => {
-    const b = document.createElement("button"); b.type = "button"; b.className = "act";
+    const b = document.createElement("button"); b.type = "button"; b.className = "act" + (/d64545/.test(grad) ? " dng" : "");
     const i = document.createElement("i"); i.textContent = ico; i.style.background = grad;
     const sp = document.createElement("span"); sp.textContent = label; b.append(i, sp); b.onclick = () => fn(b, sp); acts.appendChild(b);
   };
