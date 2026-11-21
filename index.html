@@ -478,6 +478,22 @@ form.bar{margin:6px 10px calc(8px + env(safe-area-inset-bottom,0px)*0);padding:6
 #wn li b{display:block}#wn li small{color:var(--mute);font-size:12.5px}
 #wn .send{height:48px;border-radius:16px}
 @media (prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+/* ───── v11: لوحة الإيموجي ───── */
+#emoPanel{display:flex;flex-direction:column;height:min(40vh,330px);padding:0;border-top:0;border-radius:26px 26px 0 0;margin-top:-6px;box-shadow:0 -10px 30px rgba(8,40,34,.14);animation:up .28s cubic-bezier(.2,1,.3,1) both;overflow:hidden}
+#emoGrid{flex:1;display:block;max-height:none;overflow-y:auto;position:relative;padding:0 10px;scrollbar-width:none;overscroll-behavior:contain}
+#emoGrid::-webkit-scrollbar{display:none}
+.eh{position:sticky;top:0;z-index:1;padding:12px 6px 6px;font-size:13px;font-weight:800;color:var(--mute);background:linear-gradient(var(--card) 75%,transparent)}
+.eg{display:grid;grid-template-columns:repeat(8,1fr);gap:0;padding-bottom:6px}
+#emoGrid .eg button{border:0;background:none;font-size:27px;line-height:1;padding:7px 0;border-radius:12px;cursor:pointer;transition:transform .12s,background .12s}
+#emoGrid .eg button:active{transform:scale(1.35);background:var(--line)}
+#emoTabs{flex:none;display:flex;align-items:center;justify-content:space-between;gap:2px;overflow:visible;padding:6px 8px calc(6px + env(safe-area-inset-bottom,0px)*0);border-top:1px solid var(--line);background:var(--card)}
+#emoTabs button{flex:1;height:38px;border-radius:14px;font-size:20px;padding:0;filter:grayscale(1);opacity:.55;transition:all .2s}
+#emoTabs button.on{background:color-mix(in srgb,var(--pri) 18%,transparent);filter:none;opacity:1}
+#emoTabs .ebk{flex:none;width:44px;filter:none;opacity:.8;font-size:18px;color:var(--ink)}
+.bar input,.bar input:focus{outline:0}
+form.bar:focus-within{box-shadow:var(--sh),0 0 0 2px color-mix(in srgb,var(--pri) 55%,transparent)}
+#recFx{flex:none;border:0;border-radius:14px;padding:7px 12px;font-size:13px;font-weight:700;background:var(--bg);color:var(--ink);cursor:pointer}
+#recFx.on{background:var(--pri);color:var(--onpri)}
 </style>
 </head>
 <body>
@@ -497,11 +513,11 @@ form.bar{margin:6px 10px calc(8px + env(safe-area-inset-bottom,0px)*0);padding:6
   <div id="msgs"></div>
   <div id="replyBar" hidden><span id="replyTxt"></span><button type="button" id="cancelReply">✕</button></div>
   <div id="editBar" hidden><span>✏️ بتعدّل رسالة</span><button type="button" id="cancelEdit">إلغاء</button></div>
-  <div id="emoPanel" hidden><div id="emoTabs"></div><div id="emoGrid"></div></div>
+  <div id="emoPanel" hidden><div id="emoGrid"></div><div id="emoTabs"></div></div>
   <form class="bar" id="f">
     <button class="send" id="plusBtn" type="button" aria-label="إضافة">＋</button>
     <button class="send" id="emoBtn" type="button" aria-label="إيموجي">😊</button>
-    <div id="recBar" hidden><button class="x" id="recCancel" type="button" aria-label="إلغاء">🗑</button><span class="dot"></span><span id="recTime">0:00</span></div>
+    <div id="recBar" hidden><button class="x" id="recCancel" type="button" aria-label="إلغاء">🗑</button><span class="dot"></span><span id="recTime">0:00</span><button id="recFx" type="button" aria-label="تأثير الصوت">🎛 عادي</button></div>
     <input id="inp" placeholder="اكتب رسالة…" autocomplete="off" maxlength="1000" dir="auto">
     <button class="send" id="micBtn" type="button" aria-label="رسالة صوتية">🎤</button>
     <button class="send" id="sendBtn">إرسال</button>
@@ -624,7 +640,7 @@ const dmPeerOf = id => dmMembers(id).find(u => u !== myId) || null;
 const msgCol = rid => db.collection(isDM(rid) ? "dmsgs" : "msgs");
 const mBase = rid => isDM(rid) ? { room: rid, members: dmMembers(rid) } : { room: rid };
 const dmRoom = id => { const p = profiles[dmPeerOf(id)] || {}; return { id, dm: true, name: p.name || "مجهول", emoji: p.emoji, color: p.color, photo: p.photo, blocked: (dms[id] || {}).blockedBy || [] }; };
-function flash(t) { setStatus(t); setTimeout(() => { if ($("status").textContent === t) setStatus(""); }, 3500); }
+function flash(t) { flashSnd(t); setStatus(t); setTimeout(() => { if ($("status").textContent === t) setStatus(""); }, 3500); }
 const dmEstablished = d => !!d && (!!d.acc || (!!d.last && !d.req));
 async function sendDoc(doc) {
   if (!isDM(doc.room)) return db.collection("msgs").add(doc);
@@ -730,7 +746,9 @@ function notifyDM(d) {
   pushLocal("💬 " + ((profiles[dmPeerOf(d.id)] || {}).name || "رسالة خاصة"), d.last.text, d.id);
 }
 
-function setStatus(t) { $("status").textContent = t; $("status").hidden = !t; }
+const ERR_RE = /ماقدرتش|ماتبعتتش|مش بيدعم|لازم تسمح|كبير|قصيرة|فشل|ممنوع|مينفعش|متوقفة/;
+function flashSnd(t) { try { t = String(t || ""); vcSnd(/اتبعت/.test(t) ? "req" : /اتقبل|قبل/.test(t) ? "ok" : /^✕|اترفض/.test(t) ? "no" : /^✓/.test(t) ? "ok" : ERR_RE.test(t) ? "err" : ""); } catch (_) {} }
+function setStatus(t) { try { if (t && ERR_RE.test(t)) vcSnd("err"); } catch (_) {} $("status").textContent = t; $("status").hidden = !t; }
 function avatar(p, big) {
   const d = document.createElement("div"); d.className = "av"; d.dataset.name = (p && p.name) || "";
   if (p && p.photo) { d._photo = p.photo; }
@@ -883,7 +901,7 @@ function enterSel(id) { selMode = true; sel.clear(); sel.add(id); updSel(); }
 function exitSel() { selMode = false; sel.clear(); updSel(); }
 function toggleSel(id) { if (sel.has(id)) sel.delete(id); else sel.add(id); if (!sel.size) exitSel(); else updSel(); }
 async function copyText(t) {
-  try { await navigator.clipboard.writeText(t); return true; } catch (e) {}
+  try { await navigator.clipboard.writeText(t); vcSnd("copy"); return true; } catch (e) {}
   try { const ta = document.createElement("textarea"); ta.value = t; ta.style.cssText = "position:fixed;opacity:0"; document.body.appendChild(ta); ta.select(); const ok = document.execCommand("copy"); ta.remove(); return ok; } catch (e) { return false; }
 }
 $("selCancel").onclick = exitSel;
@@ -897,7 +915,7 @@ $("selDel").onclick = () => {
   const cr = curR(), mine = lastList.filter(x => sel.has(x.id) && ((x.uid === myId && (!cr || !cr.noDelOwn || adminOf(cr))) || adminOf(cr)));
   if (!mine.length) { setStatus("تقدر تحذف رسايلك إنت بس."); return; }
   if (!selDelArm) { selDelArm = true; $("selDel").textContent = "تأكيد حذف " + mine.length + "؟"; setTimeout(() => { if (selDelArm) { selDelArm = false; $("selDel").textContent = "🗑 حذف"; } }, 4000); return; }
-  Promise.all(mine.map(x => msgCol(x.room || room).doc(x.id).delete())).catch(() => setStatus("ماقدرتش أحذف بعض الرسايل."));
+  vcSnd("del"); Promise.all(mine.map(x => msgCol(x.room || room).doc(x.id).delete())).catch(() => setStatus("ماقدرتش أحذف بعض الرسايل."));
   exitSel();
 };
 let editingId = null, reads = {}, myReads = {}, readsLoaded = false;
@@ -962,7 +980,7 @@ function openMsg(m) {
   if (curRoom && adminOf(curRoom)) act("📌", "تثبيت", "linear-gradient(135deg,#f5c542,#d9a300)", () => { close(); upd({ pinned: { id: m.id, name: nameOf(m.uid), text: mtext(m).slice(0, 120) } }); });
   if ((m.uid === myId && (!curRoom || !curRoom.noDelOwn || adminOf(curRoom))) || (curRoom && adminOf(curRoom))) {
     act("🗑", "حذف", "linear-gradient(135deg,#ff7a7a,#d64545)", (b, s) => {
-      if (b.dataset.ok) { close(); msgCol(m.room || room).doc(m.id).delete().catch(() => setStatus("ماقدرتش أحذف الرسالة.")); }
+      if (b.dataset.ok) { close(); vcSnd("del"); msgCol(m.room || room).doc(m.id).delete().catch(() => setStatus("ماقدرتش أحذف الرسالة.")); }
       else { b.dataset.ok = "1"; s.textContent = "تأكيد؟"; }
     });
   }
@@ -1639,7 +1657,7 @@ COLORS.forEach(c => { const b = document.createElement("button"); b.className = 
 $("copyCode").onclick = async () => {
   const c = fmtFCode((profiles[myId] || {}).fcode); if (!c) return;
   try { await navigator.clipboard.writeText(c); } catch (e) { const t = document.createElement("textarea"); t.value = c; document.body.appendChild(t); t.select(); try { document.execCommand("copy"); } catch (x) {} t.remove(); }
-  $("copyCode").textContent = "✓ اتنسخ"; setTimeout(() => { $("copyCode").textContent = "📋 نسخ"; }, 1500);
+  vcSnd("copy"); $("copyCode").textContent = "✓ اتنسخ"; setTimeout(() => { $("copyCode").textContent = "📋 نسخ"; }, 1500);
 };
 $("myUidRow").onclick = async () => {
   const el = $("myUidRow"), id = myId; if (!id || el.dataset.busy) return;
@@ -1727,36 +1745,23 @@ function fxGraph(ctx, buf, fx, dest) {
   else s.connect(dest);
   return { s, len: buf.duration / rate + tail };
 }
-function openVoiceFx(blob, dur, roomId) {
-  let fx = 0, ctx = null, buf = null, live = null;
-  const ov = el("div"); ov.id = "vfx";
-  ov.innerHTML = '<div class="vcard"><div class="grab"></div><h2>🎧 رسالتك الصوتية</h2><div class="vfxp"><button class="vpb" id="vfP" type="button">▶</button><div class="vfxw"></div><span class="vpd">' + fmtDur(dur) + '</span></div><div class="vfxl">اختار تأثير</div><div class="vfxg"></div><div class="vfxa"><button class="ghost" id="vfC" type="button">🗑 إلغاء</button><button class="send" id="vfS" type="button">إرسال ➤</button></div></div>';
-  document.body.append(ov);
-  const g = ov.querySelector(".vfxg"), wv = ov.querySelector(".vfxw"), pb = ov.querySelector("#vfP");
-  for (let i = 0; i < 36; i++) wv.append(el("i"));
-  const stop = () => { if (live) { try { live.s.stop(); } catch (_) {} live = null; } pb.textContent = "▶"; wv.classList.remove("on"); };
-  const load = async () => { if (buf) return buf; ctx = ctx || new (window.AudioContext || window.webkitAudioContext)(); if (ctx.state === "suspended") ctx.resume(); buf = await ctx.decodeAudioData(await blob.arrayBuffer()); return buf; };
-  const play = async () => { stop(); try { await load(); } catch (e) { setStatus("ماقدرتش أشغّل المعاينة."); return; } live = fxGraph(ctx, buf, fx, ctx.destination); const me = live; me.s.addEventListener("ended", () => { if (live === me) stop(); }); me.s.start(); pb.textContent = "⏸"; wv.classList.add("on"); };
-  FX.forEach((f, i) => { const b = el("button", "fxb" + (i ? "" : " on")); b.type = "button"; b.innerHTML = "<i>" + f[1] + "</i><span>" + f[0] + "</span>"; b.onclick = () => { fx = i; g.querySelectorAll(".fxb").forEach((x, j) => x.classList.toggle("on", j === i)); play(); }; g.append(b); });
-  pb.onclick = () => live ? stop() : play();
-  const close = () => { stop(); try { ctx && ctx.close(); } catch (_) {} ov.remove(); };
-  ov.querySelector("#vfC").onclick = close;
-  ov.onclick = e => { if (e.target === ov) close(); };
-  ov.querySelector("#vfS").onclick = async () => {
-    const sb = ov.querySelector("#vfS"); sb.disabled = true; stop();
-    if (!fx) { close(); return sendVoice(blob, dur, roomId); }
-    sb.textContent = "جاري التجهيز…";
-    try {
-      await load(); const c2 = new (window.AudioContext || window.webkitAudioContext)(), d = c2.createMediaStreamDestination();
-      const mt = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4", "audio/ogg;codecs=opus"].find(t => MediaRecorder.isTypeSupported(t)) || "";
-      const mr = new MediaRecorder(d.stream, mt ? { mimeType: mt, audioBitsPerSecond: 16000 } : { audioBitsPerSecond: 16000 }), parts = [];
-      mr.ondataavailable = e => e.data && e.data.size && parts.push(e.data);
-      const done = new Promise(r => mr.onstop = r), gr = fxGraph(c2, buf, fx, d); mr.start(); gr.s.start();
-      await new Promise(r => setTimeout(r, gr.len * 1000 + 200)); mr.stop(); await done; c2.close();
-      close(); sendVoice(new Blob(parts, { type: mr.mimeType || "audio/webm" }), Math.max(1, Math.round(gr.len)), roomId);
-    } catch (e) { close(); setStatus("التأثير ماشتغلش على جهازك."); }
-  };
+let recFx = 0, fxCtx = null;
+const fxCtxGet = () => { try { fxCtx = fxCtx && fxCtx.state !== "closed" ? fxCtx : new (window.AudioContext || window.webkitAudioContext)(); if (fxCtx.state === "suspended") fxCtx.resume(); } catch (_) {} return fxCtx; };
+async function fxSend(blob, dur, roomId, fx) {
+  if (!fx) return sendVoice(blob, dur, roomId);
+  setStatus("🎛 بطبّق التأثير…");
+  try {
+    const ctx = fxCtxGet(), buf = await ctx.decodeAudioData(await blob.arrayBuffer()), d = ctx.createMediaStreamDestination();
+    const mt = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4", "audio/ogg;codecs=opus"].find(t => MediaRecorder.isTypeSupported(t)) || "";
+    const mr = new MediaRecorder(d.stream, mt ? { mimeType: mt, audioBitsPerSecond: 16000 } : { audioBitsPerSecond: 16000 }), parts = [];
+    mr.ondataavailable = e => e.data && e.data.size && parts.push(e.data);
+    const done = new Promise(r => mr.onstop = r), gr = fxGraph(ctx, buf, fx, d); mr.start(); gr.s.start();
+    await new Promise(r => setTimeout(r, gr.len * 1000 + 200)); mr.stop(); await done; setStatus("");
+    sendVoice(new Blob(parts, { type: mr.mimeType || "audio/webm" }), Math.max(1, Math.round(gr.len)), roomId);
+  } catch (e) { setStatus(""); sendVoice(blob, dur, roomId); }
 }
+const paintRecFx = () => { $("recFx").textContent = "🎛 " + FX[recFx][0]; $("recFx").classList.toggle("on", !!recFx); };
+$("recFx").onclick = () => { recFx = (recFx + 1) % FX.length; fxCtxGet(); paintRecFx(); };
 const MAX_REC = 40; let rec = null;
 function showRec(on) { $("recBar").hidden = !on; $("inp").hidden = on; $("emoBtn").hidden = on; $("plusBtn").hidden = on; $("sendBtn").hidden = on; $("micBtn").hidden = false; $("micBtn").textContent = on ? "➤" : "🎤"; }
 async function startRec() {
@@ -1770,17 +1775,18 @@ async function startRec() {
   const r = rec = { mr, stream, chunks: [], t0: Date.now(), cancel: false, room };
   mr.ondataavailable = e => { if (e.data && e.data.size) r.chunks.push(e.data); };
   mr.onstop = () => finishRec(r);
-  mr.start(); showRec(true); $("recTime").textContent = "0:00";
+  recFx = 0; paintRecFx(); vcSnd("rec"); mr.start(); showRec(true); $("recTime").textContent = "0:00";
   r.timer = setInterval(() => { const t = (Date.now() - r.t0) / 1000; $("recTime").textContent = fmtDur(t); if (t >= MAX_REC) stopRec(true); }, 200);
 }
 function stopRec(send) { if (!rec) return; rec.cancel = !send; clearInterval(rec.timer); if (rec.mr.state !== "inactive") rec.mr.stop(); }
 async function finishRec(r) {
   clearInterval(r.timer); r.stream.getTracks().forEach(t => t.stop()); if (rec === r) rec = null; showRec(false);
-  if (r.cancel) return;
+  if (r.cancel) { vcSnd("recx"); return; }
+  vcSnd("recend");
   const dur = Math.round((Date.now() - r.t0) / 1000); if (dur < 1) { setStatus("الرسالة قصيرة جدًا."); return; }
   const cr = curR(), wait = cr && !adminOf(cr) && cr.slow ? cr.slow - (Date.now() - (lastSent[r.room] || 0)) / 1000 : 0;
   if (wait > 0) { setStatus("🐢 وضع بطيء: استنى " + Math.ceil(wait) + " ثانية"); return; }
-  openVoiceFx(new Blob(r.chunks, { type: r.mr.mimeType || "audio/webm" }), dur, r.room);
+  fxSend(new Blob(r.chunks, { type: r.mr.mimeType || "audio/webm" }), dur, r.room, recFx);
 }
 async function sendVoice(blob, dur, roomId) {
   const url = await new Promise(res => { const fr = new FileReader(); fr.onload = () => res(fr.result); fr.onerror = () => res(null); fr.readAsDataURL(blob); });
@@ -1788,9 +1794,9 @@ async function sendVoice(blob, dur, roomId) {
   if (url.length > 900000) { setStatus("التسجيل كبير، سجّل رسالة أقصر."); return; }
   lastSent[roomId] = Date.now();
   const doc = { ...mBase(roomId), text: "", audio: url, dur, uid: myId, ts: Date.now() }; if (replyTo) { doc.reply = replyTo; clearReply(); }
-  try { await sendDoc(doc); } catch (e) { setStatus("الرسالة الصوتية ماتبعتتش."); }
+  try { await sendDoc(doc); vcSnd("vsend"); } catch (e) { setStatus("الرسالة الصوتية ماتبعتتش."); }
 }
-$("micBtn").onclick = () => { if (rec) stopRec(true); else startRec(); };
+$("micBtn").onclick = () => { if (rec) { if (recFx) fxCtxGet(); stopRec(true); } else startRec(); };
 $("recCancel").onclick = () => stopRec(false);
 setInterval(() => {
   if (rec) return;
@@ -1813,7 +1819,7 @@ async function postMedia(extra, rid) {
   rid = rid || room;
   const doc = { ...mBase(rid), text: "", uid: myId, ts: Date.now(), ...extra };
   if (replyTo && rid === room) { doc.reply = replyTo; clearReply(); }
-  lastSent[rid] = Date.now();
+  lastSent[rid] = Date.now(); vcSnd("send");
   await sendDoc(doc);
 }
 const readURL = f => new Promise(res => { const fr = new FileReader(); fr.onload = () => res(fr.result); fr.onerror = () => res(null); fr.readAsDataURL(f); });
@@ -2060,11 +2066,32 @@ const EMO_CATS = [
   ["🍕", "🍏 🍎 🍉 🍇 🍓 🍒 🍑 🥭 🍍 🥥 🥝 🍅 🥑 🌽 🌶️ 🥔 🍞 🧀 🍳 🥞 🍔 🍟 🌭 🍕 🌮 🌯 🥙 🍗 🍖 🍣 🍜 🍝 🍰 🎂 🍩 🍪 🍫 🍿 🍦 ☕ 🍵 🥤 🍹 🍺"],
   ["⚽", "⚽ 🏀 🏈 ⚾ 🎾 🏐 🏓 🥊 🎮 🕹️ 🎯 🎲 🎧 🎤 🎸 🎹 🥁 🎬 📷 📱 💻 ⌚ 💡 🔋 🚗 🚕 🏍️ ✈️ 🚀 🛸 🏠 🏝️ 🕌 🕋 ⏰ 💰 📚 ✏️ 🔒 🔑"]
 ];
-let emoCat = 0;
+const EMO_NAMES = ["وجوه ومشاعر", "إيدين وجسم", "قلوب ورموز", "حيوانات وطبيعة", "أكل وشرب", "أنشطة وأشياء"];
+let emoRec = []; try { emoRec = JSON.parse(localStorage.getItem("emoRec") || "[]"); } catch (_) {}
+function insEmo(e) {
+  const i = $("inp"), a = i.selectionStart == null ? i.value.length : i.selectionStart, z = i.selectionEnd == null ? a : i.selectionEnd;
+  i.value = i.value.slice(0, a) + e + i.value.slice(z); try { i.setSelectionRange(a + e.length, a + e.length); } catch (x) {}
+  emoRec = [e, ...emoRec.filter(x => x !== e)].slice(0, 24); try { localStorage.setItem("emoRec", JSON.stringify(emoRec)); } catch (_) {}
+}
+function delEmo() {
+  const i = $("inp"), p = i.selectionStart == null ? i.value.length : i.selectionStart, s = i.value.slice(0, p);
+  const parts = window.Intl && Intl.Segmenter ? Array.from(new Intl.Segmenter(undefined, { granularity: "grapheme" }).segment(s), x => x.segment) : Array.from(s);
+  const n = parts.length ? parts[parts.length - 1].length : 0; i.value = i.value.slice(0, p - n) + i.value.slice(p); try { i.setSelectionRange(p - n, p - n); } catch (x) {}
+}
 function drawEmo() {
   const tabs = $("emoTabs"), grid = $("emoGrid"); tabs.textContent = ""; grid.textContent = "";
-  EMO_CATS.forEach((c, i) => { const b = el("button", i === emoCat ? "on" : "", c[0]); b.type = "button"; b.onclick = () => { emoCat = i; drawEmo(); }; tabs.append(b); });
-  EMO_CATS[emoCat][1].split(" ").forEach(e => { const b = el("button", "", e); b.type = "button"; b.onclick = () => { const i = $("inp"); const a = i.selectionStart == null ? i.value.length : i.selectionStart, z = i.selectionEnd == null ? a : i.selectionEnd; i.value = i.value.slice(0, a) + e + i.value.slice(z); i.focus(); try { i.setSelectionRange(a + e.length, a + e.length); } catch (x) {} }; grid.append(b); });
+  const secs = []; if (emoRec.length) secs.push(["🕘", "المستخدمة مؤخراً", emoRec]);
+  EMO_CATS.forEach((c, i) => secs.push([c[0], EMO_NAMES[i], c[1].split(" ")]));
+  const es = [], ts = [];
+  secs.forEach((s, i) => {
+    const sec = el("div", "es"), g = el("div", "eg"); sec.append(el("div", "eh", s[1]), g);
+    s[2].forEach(e => { const b = el("button", "", e); b.type = "button"; b.onclick = () => { insEmo(e); }; g.append(b); });
+    grid.append(sec); es.push(sec);
+    const t = el("button", i ? "" : "on", s[0]); t.type = "button"; t.setAttribute("aria-label", s[1]); t.onclick = () => grid.scrollTo({ top: sec.offsetTop, behavior: "smooth" }); tabs.append(t); ts.push(t);
+  });
+  const bk = el("button", "ebk", "⌫"); bk.type = "button"; bk.setAttribute("aria-label", "مسح"); bk.onclick = delEmo; tabs.append(bk);
+  grid.onscroll = () => { let k = 0; es.forEach((s, i) => { if (s.offsetTop <= grid.scrollTop + 12) k = i; }); ts.forEach((t, i) => t.classList.toggle("on", i === k)); };
+  grid.scrollTop = emoRec.length ? 0 : 0;
 }
 $("emoBtn").onclick = () => { const p = $("emoPanel"); p.hidden = !p.hidden; if (!p.hidden) drawEmo(); };
 
@@ -2415,7 +2442,25 @@ function pluck(t0, f, dur, vol, f2, type) {
   g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(vol, t0 + 0.008); g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
   o.connect(g); g.connect(AC.destination); o.start(t0); o.stop(t0 + dur + 0.03);
 }
+function noise(t0, dur, vol, f0, f1) {
+  const n = Math.floor(AC.sampleRate * dur), b = AC.createBuffer(1, n, AC.sampleRate), d = b.getChannelData(0); for (let i = 0; i < n; i++) d[i] = Math.random() * 2 - 1;
+  const s = AC.createBufferSource(), f = AC.createBiquadFilter(), g = AC.createGain(); s.buffer = b; f.type = "bandpass"; f.Q.value = 1.2;
+  f.frequency.setValueAtTime(f0, t0); f.frequency.exponentialRampToValueAtTime(f1, t0 + dur);
+  g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(vol, t0 + dur * 0.25); g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  s.connect(f); f.connect(g); g.connect(AC.destination); s.start(t0);
+}
 const SND = {
+  vsend: t => { noise(t, 0.22, 0.12, 400, 3200); pluck(t + 0.16, 880, 0.14, 0.14, 1320); pluck(t + 0.22, 1760, 0.16, 0.06); }, // فويس اتبعت: وشّة + بوب
+  rec: t => { pluck(t, 700, 0.07, 0.12, 1000); pluck(t + 0.08, 1000, 0.09, 0.12, 1400); },       // بدء التسجيل
+  recend: t => pluck(t, 1000, 0.09, 0.12, 650),                                                   // وقف التسجيل
+  recx: t => { pluck(t, 500, 0.2, 0.12, 200, "triangle"); noise(t, 0.12, 0.05, 1800, 500); },     // إلغاء التسجيل
+  del: t => { noise(t, 0.2, 0.14, 2600, 400); pluck(t, 300, 0.22, 0.1, 110, "triangle"); },       // حذف
+  ok: t => [523, 659, 784, 1047].forEach((f, i) => pluck(t + i * 0.07, f, 0.22, 0.12, 0, i === 3 ? "triangle" : "sine")), // موافقة
+  no: t => { pluck(t, 330, 0.14, 0.14, 0, "triangle"); pluck(t + 0.11, 247, 0.24, 0.14, 0, "triangle"); }, // رفض
+  req: t => { noise(t, 0.16, 0.09, 500, 2600); pluck(t + 0.12, 988, 0.12, 0.1); pluck(t + 0.2, 1319, 0.22, 0.1); }, // طلب اتبعت
+  err: t => { pluck(t, 200, 0.12, 0.07, 150, "sawtooth"); pluck(t + 0.14, 170, 0.16, 0.07, 130, "sawtooth"); }, // خطأ
+  copy: t => { pluck(t, 1500, 0.03, 0.07, 1000); pluck(t + 0.05, 1900, 0.04, 0.06); },
+  pop: t => pluck(t, 700, 0.06, 0.1, 1200),
   send: t => { pluck(t, 520, 0.12, 0.16, 900); pluck(t + 0.07, 1320, 0.1, 0.05); },          // فقاعة طالعة لفوق
   in: t => { pluck(t, 660, 0.16, 0.14); pluck(t + 0.09, 880, 0.22, 0.12); },                  // نغمتين دافيين
   ping: t => { [784, 988, 1319].forEach((f, i) => pluck(t + i * 0.075, f, 0.2, 0.13, 0, i === 2 ? "triangle" : "sine")); }, // أربيجيو صغير
@@ -2423,8 +2468,16 @@ const SND = {
   tap: t => pluck(t, 1200, 0.035, 0.06, 700),
   open: t => pluck(t, 380, 0.16, 0.07, 760)
 };
+// قواعد الهدوء: مفيش صوت وقت فتح التطبيق أو الرجوع له، والرسايل الداخلة صوت واحد كل 4 ثواني، وأصوات النتيجة (خطأ/قبول/رفض/طلب) بس بعد حاجة انت عملتها
+var lastGest = 0, quietUntil = performance.now() + 4000;
+["pointerdown", "keydown", "touchstart"].forEach(ev => window.addEventListener(ev, () => { lastGest = performance.now(); }, { passive: true, capture: true }));
+document.addEventListener("visibilitychange", () => { quietUntil = performance.now() + 3500; });
+const SND_IN = { in: 1, ping: 1 }, SND_RES = { err: 1, ok: 1, no: 1, req: 1 };
 function vcSnd(k) {
   if (!sndOn || document.hidden) return;
+  { const n = performance.now();
+    if (SND_IN[k]) { if (n < quietUntil || n - (sndLast.__in || 0) < 4000) return; sndLast.__in = n; }
+    else if (SND_RES[k] && n - lastGest > 8000) return; }
   const c = sndCtx(); if (!c || c.state !== "running") return;
   const n = performance.now(); if (n - (sndLast[k] || 0) < 120) return; sndLast[k] = n;
   try { SND[k](c.currentTime + 0.005); } catch (e) {}
@@ -2437,14 +2490,12 @@ paintReqMute();
 function paintSnd() { $("dSound").textContent = sndOn ? "🔊 الأصوات: شغالة" : "🔇 الأصوات: مقفولة"; }
 $("dSound").onclick = () => { sndOn = !sndOn; try { localStorage.setItem("vc_snd", sndOn ? "1" : "0"); } catch (e) {} paintSnd(); if (sndOn) { sndCtx(); setTimeout(() => vcSnd("ping"), 80); } };
 paintSnd();
-document.addEventListener("click", e => { if (e.target.closest && e.target.closest(".sw")) vcSnd("tap"); }, true);
-$("menuBtn").addEventListener("click", () => vcSnd("open"));
 $("f").addEventListener("submit", () => { if ($("inp").value.trim() && !$("inp").disabled) vcSnd("send"); }, true);
 netUI(); buildChips(); registerSW();
 start();
 // ───── جديد في التحديث ─────
-(() => { const V = "v10"; let seen; try { seen = localStorage.getItem("vc_ver"); } catch (_) {} if (seen === V) return;
-  setTimeout(() => { const o = el("div"); o.id = "wn"; o.innerHTML = '<div class="vcard"><div class="grab"></div><div class="wnh">✨</div><h2>تحديث جديد في Very Chat</h2><ul><li><b>🎧 تأثيرات الصوت</b><small>تخين، سنجاب، روبوت، صدى، تليفون — جرّب قبل ما تبعت</small></li><li><b>⚡ سرعة الفويس</b><small>اضغط على 1× لتغيير السرعة (0.75 / 1.5 / 2)</small></li><li><b>🌊 موجة صوتية</b><small>اضغط على الموجة للتقديم والتأخير</small></li><li><b>🎨 تصميم جديد</b><small>خطوط وألوان وفقاعات أحلى</small></li></ul><button class="send" type="button">يلا نبدأ</button></div>'; o.onclick = e => { if (e.target === o || e.target.tagName === "BUTTON") { o.remove(); try { localStorage.setItem("vc_ver", V); } catch (_) {} } }; document.body.append(o); }, 2600); })();
+(() => { const V = "v11"; let seen; try { seen = localStorage.getItem("vc_ver"); } catch (_) {} if (seen === V) return;
+  setTimeout(() => { const o = el("div"); o.id = "wn"; o.innerHTML = '<div class="vcard"><div class="grab"></div><div class="wnh">✨</div><h2>تحديث جديد في Very Chat</h2><ul><li><b>🎧 تأثيرات الصوت</b><small>وانت بتسجل دوس 🎛 واختار: تخين، سنجاب، روبوت، صدى، تليفون</small></li><li><b>⚡ سرعة الفويس</b><small>اضغط على 1× لتغيير السرعة (0.75 / 1.5 / 2)</small></li><li><b>🌊 موجة صوتية</b><small>اضغط على الموجة للتقديم والتأخير</small></li><li><b>🔊 أصوات تفاعلية</b><small>تسجيل وإرسال الفويس، الحذف، القبول والرفض والطلبات</small></li><li><b>😀 لوحة إيموجي جديدة</b><small>أقسام، المستخدمة مؤخراً، وزرار مسح</small></li><li><b>🎨 تصميم جديد</b><small>خطوط وألوان وفقاعات أحلى</small></li></ul><button class="send" type="button">يلا نبدأ</button></div>'; o.onclick = e => { if (e.target === o || e.target.tagName === "BUTTON") { o.remove(); try { localStorage.setItem("vc_ver", V); } catch (_) {} } }; document.body.append(o); }, 2600); })();
 </script>
 </body>
 </html>
