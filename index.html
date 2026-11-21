@@ -322,9 +322,6 @@ button.ri-chip{cursor:pointer}
 .dpanel .rt small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #dlist{gap:2px}
 .dsearch{border-radius:12px;padding:10px 14px;font-size:14px}
-.dfoot{display:grid;grid-template-columns:1fr 1fr;gap:8px;flex:none}
-.dfoot .ghost{padding:11px 6px;font-size:13px;width:100%}
-.dfoot #dNotif{grid-column:1/-1}
 
 /* ───── طي/فتح أقسام الخاص والغرف ───── */
 .dsub.tg{cursor:pointer;user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent;border-radius:10px;padding:10px 8px 6px;min-height:34px}
@@ -372,9 +369,7 @@ form.bar:focus-within{box-shadow:0 0 0 2px var(--pri),var(--sh2)}
 .dsearch{background:var(--bg);border-color:transparent;box-shadow:inset 0 0 0 1px var(--line);transition:box-shadow .2s}
 .dsearch:focus{box-shadow:inset 0 0 0 2px var(--pri)}
 .bdg{background-image:linear-gradient(135deg,#ff7aa2,#e0507a);color:#fff;box-shadow:0 2px 8px rgba(224,80,122,.4)}
-#dAdd{border-radius:18px;background-image:linear-gradient(135deg,var(--pri2),var(--pri));box-shadow:0 8px 20px rgba(15,143,122,.35)}
-.dfoot .ghost{border-radius:16px}
-.dfoot #dSound,.dfoot #dReqMute{grid-column:1/-1}
+#dAdd{padding:13px;border-radius:18px;background-image:linear-gradient(135deg,var(--pri2),var(--pri));box-shadow:0 8px 20px rgba(15,143,122,.35)}
 /* الشيتات والأزرار */
 .card{border-radius:30px 30px 0 0;box-shadow:0 -12px 44px rgba(0,0,0,.25)}
 .sec{border-radius:22px}
@@ -422,8 +417,6 @@ form.bar:focus-within{box-shadow:0 0 0 2px var(--pri),var(--sh2)}
 .rq-all,.rq-wait{border:1px solid var(--line);background:var(--bg);color:var(--pri);font-weight:700;border-radius:12px;padding:7px 12px;cursor:pointer;font-size:12.5px}
 .rq-wait{color:var(--ink);font-weight:500;margin-inline-start:auto}
 .ri-ok:disabled,.ri-no:disabled,.rq-all:disabled,.rq-wait:disabled{opacity:.45}
-.dfoot #dReq{grid-column:1/-1;display:flex;align-items:center;justify-content:center;gap:8px;font-weight:700}
-.dfoot #dReq .bdg{margin:0}
 /* ───── v10: تحديث الشكل ───── */
 :root{--rad:20px;--sh:0 8px 28px rgba(8,40,34,.12)}
 body,button,input{font-family:system-ui,-apple-system,"Segoe UI",Tahoma,Arial,sans-serif}
@@ -572,6 +565,30 @@ html[dir=rtl] #sendBtn svg{transform:scaleX(-1)}
 .seen .stack .rxm svg{width:100%;height:100%;display:block}
 .seen-hint{font-size:11px;color:var(--mute);margin-inline-start:auto}
 .b.press{transform:scale(.97);transition:transform .14s}
+/* ===== القايمة الجانبية: هيدر ثابت + بحث + قايمة بتتسحب + فوتر مدمج ===== */
+.dpanel{height:100%;max-height:100dvh;overflow:hidden;gap:10px;padding-bottom:calc(14px + env(safe-area-inset-bottom,0px))}
+.dhead{flex:none;position:relative}
+#dClose{position:absolute;left:2px;top:50%;margin-top:-20px;width:40px;height:40px;border:0;border-radius:50%;background:var(--bg);color:var(--mute);font-size:17px;display:grid;place-items:center;cursor:pointer;-webkit-tap-highlight-color:transparent}
+#dClose:active{transform:scale(.9)}
+.dscroll{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;display:flex;flex-direction:column;gap:6px;margin:0 -6px;padding:0 6px 6px;scrollbar-width:thin}
+.dscroll>*{flex:none}
+.dscroll #dlist{flex:none;overflow:visible}
+.dscroll #dmList{max-height:none!important;overflow:visible!important}
+.dfoot{flex:none;display:flex;flex-direction:column;gap:8px;padding-top:10px;border-top:1px solid var(--line)}
+.dfoot[hidden]{display:none}
+.dtiles{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+.dt{all:unset;box-sizing:border-box;position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;min-width:0;padding:9px 2px 7px;border-radius:16px;background:var(--bg);color:var(--ink);font-size:10.5px;font-weight:700;line-height:1.25;text-align:center;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:transform .15s,background .15s,opacity .2s}
+.dt:active{transform:scale(.92)}
+.dt i{display:grid;place-items:center;color:var(--pri);font-style:normal}
+.dt svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.dt span{display:block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dt.off{opacity:.6}.dt.off i{color:var(--mute)}
+#reqBdg{position:absolute;top:3px;inset-inline-end:5px;min-width:18px;height:18px;padding:0 5px;margin:0;border-radius:9px;background:#e5484d;color:#fff;font-size:11px;font-weight:800;display:grid;place-items:center;box-shadow:0 0 0 2px var(--card)}
+#reqBdg[hidden]{display:none}
+.dnotif{all:unset;box-sizing:border-box;width:100%;padding:10px 12px;border-radius:14px;background:color-mix(in srgb,var(--pri) 16%,var(--card));color:var(--ink);font-size:13px;font-weight:700;text-align:center;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.dnotif[hidden]{display:none}
+#dToast{position:absolute;left:14px;right:14px;bottom:calc(150px + env(safe-area-inset-bottom,0px));padding:10px 14px;border-radius:14px;background:#222c2a;color:#fff;font-size:13px;font-weight:600;text-align:center;box-shadow:0 8px 24px rgba(0,0,0,.35);animation:mxin .22s both;pointer-events:none;z-index:2}
+#dToast[hidden]{display:none}
 </style>
 </head>
 <body>
@@ -623,22 +640,27 @@ html[dir=rtl] #sendBtn svg{transform:scaleX(-1)}
 
 <div id="drawer" hidden>
   <div class="dpanel">
-    <div class="dhead"><div id="dLogo"></div><b>Very Chat</b></div>
-    <div id="dpin"></div>
+    <div class="dhead"><button id="dClose" type="button" aria-label="إغلاق">✕</button><div id="dLogo"></div><b>Very Chat</b></div>
     <input class="dsearch" id="dSearch" type="search" placeholder="🔎 ابحث بالاسم أو بالكود…" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="search">
-    <div class="dsub tg" id="dmSub" data-k="dm" role="button" tabindex="0" aria-expanded="true" hidden><span>💬 الخاص</span><i class="chev"></i><span class="cnt"></span><small>· اضغط مطوّلاً للخيارات</small></div>
-    <div id="dmList" style="flex:none;max-height:34%;overflow-y:auto;display:flex;flex-direction:column;gap:2px"></div>
-    <div class="dsub tg" id="rmSub" data-k="rooms" role="button" tabindex="0" aria-expanded="true"><span>🏠 الغرف</span><i class="chev"></i><span class="cnt"></span><small>· اضغط مطوّلاً للتعديل</small></div>
-    <div id="dlist"></div>
-    <div class="dfoot">
-      <button class="ghost" id="dReq">📥 الطلبات <span class="bdg" id="reqBdg" hidden></span></button>
-      <button class="ghost" id="dFind">🔑 انضم بكود</button>
-      <button class="ghost" id="dInvite">👋 دعوة صديق</button>
-      <button class="ghost" id="dSound">🔊 الأصوات: شغالة</button>
-      <button class="ghost" id="dReqMute">🔔 إشعارات الطلبات: شغالة</button>
-      <button class="ghost" id="dNotif" hidden>🔔 تفعيل الإشعارات</button>
+    <div class="dscroll" id="dScroll">
+      <div id="dpin"></div>
+      <div class="dsub tg" id="dmSub" data-k="dm" role="button" tabindex="0" aria-expanded="true" hidden><span>💬 الخاص</span><i class="chev"></i><span class="cnt"></span><small>· اضغط مطوّلاً للخيارات</small></div>
+      <div id="dmList" style="display:flex;flex-direction:column;gap:2px"></div>
+      <div class="dsub tg" id="rmSub" data-k="rooms" role="button" tabindex="0" aria-expanded="true"><span>🏠 الغرف</span><i class="chev"></i><span class="cnt"></span><small>· اضغط مطوّلاً للتعديل</small></div>
+      <div id="dlist"></div>
     </div>
-    <button class="send" id="dAdd" style="padding:13px">＋ غرفة جديدة</button>
+    <div class="dfoot">
+      <button class="dnotif" id="dNotif" type="button" hidden>🔔 فعّل الإشعارات علشان توصلك الرسايل</button>
+      <div class="dtiles">
+        <button class="dt" id="dReq" type="button"><i></i><span>الطلبات</span><b class="bdg" id="reqBdg" hidden></b></button>
+        <button class="dt" id="dFind" type="button"><i></i><span>انضم بكود</span></button>
+        <button class="dt" id="dInvite" type="button"><i></i><span>دعوة صديق</span></button>
+        <button class="dt" id="dSound" type="button"><i></i><span>الصوت</span></button>
+        <button class="dt" id="dReqMute" type="button"><i></i><span>تنبيهات</span></button>
+      </div>
+      <button class="send" id="dAdd" type="button">＋ غرفة جديدة</button>
+    </div>
+    <div id="dToast" hidden></div>
   </div>
 </div>
 
@@ -715,6 +737,18 @@ const SVG_MIC = '<svg viewBox="0 0 24 24"><path d="M12 15a3.5 3.5 0 0 0 3.5-3.5v
   SVG_CLOCK = '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.2 2"/></svg>',
   SVG_CAM = '<svg viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>';
 $("emoBtn").innerHTML = SVG_SMILE; $("plusBtn").innerHTML = SVG_CLIP; $("camBtn").innerHTML = SVG_CAM; $("micBtn").innerHTML = SVG_MIC; $("sendBtn").innerHTML = SVG_SEND;
+const DI = {
+  inbox: '<svg viewBox="0 0 24 24"><path d="M3 13l2.6-7.2A2 2 0 0 1 7.5 4.5h9a2 2 0 0 1 1.9 1.3L21 13v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M3 13h5l1 2.5h6l1-2.5h5"/></svg>',
+  key: '<svg viewBox="0 0 24 24"><circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M16 7l3 3M14 9l2 2"/></svg>',
+  invite: '<svg viewBox="0 0 24 24"><circle cx="9.5" cy="8" r="3.8"/><path d="M2.5 20c.8-3.6 3.5-5.5 7-5.5s6.2 1.9 7 5.5M19 8v6M16 11h6"/></svg>',
+  spk: '<svg viewBox="0 0 24 24"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/></svg>',
+  spkoff: '<svg viewBox="0 0 24 24"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M16 9.5l5 5M21 9.5l-5 5"/></svg>',
+  bell: '<svg viewBox="0 0 24 24"><path d="M6 17V11a6 6 0 0 1 12 0v6l1.5 2h-15z"/><path d="M10 21a2 2 0 0 0 4 0"/></svg>',
+  belloff: '<svg viewBox="0 0 24 24"><path d="M6 17V11a6 6 0 0 1 9.5-4.9M18 11v6l1.5 2H8M10 21a2 2 0 0 0 4 0M3 3l18 18"/></svg>'
+};
+$("dReq").firstChild.innerHTML = DI.inbox; $("dFind").firstChild.innerHTML = DI.key; $("dInvite").firstChild.innerHTML = DI.invite;
+let _dtT = 0; function dtoast(t) { const e = $("dToast"); e.textContent = t; e.hidden = false; clearTimeout(_dtT); _dtT = setTimeout(() => { e.hidden = true; }, 1800); }
+$("dClose").onclick = () => closeDrawer();
 var _spMin = false, _spMsg = false;
 function hideSplash() { const s = $("splash"); if (!s || s._h) return; s._h = 1; s.classList.add("out"); setTimeout(() => s.remove(), 450); }
 setTimeout(() => { _spMin = true; if (_spMsg) hideSplash(); }, 350); setTimeout(hideSplash, 6000);
@@ -2700,11 +2734,11 @@ function vcSnd(k) {
 }
 function soundMsg(m) { if (m.uid === myId) return; if (m.room !== "general" && !rooms.some(r => r.id === m.room && canSee(r))) return; vcSnd(m.room === room ? "in" : "ping"); }
 let reqMute = false; try { reqMute = localStorage.getItem("vc_reqmute") === "1"; } catch (e) {}
-function paintReqMute() { $("dReqMute").textContent = reqMute ? "🔕 إشعارات الطلبات: مكتومة (الرقم بس)" : "🔔 إشعارات الطلبات: شغالة"; }
-$("dReqMute").onclick = () => { reqMute = !reqMute; try { localStorage.setItem("vc_reqmute", reqMute ? "1" : "0"); } catch (e) {} paintReqMute(); };
+function paintReqMute() { $("dReqMute").firstChild.innerHTML = reqMute ? DI.belloff : DI.bell; $("dReqMute").classList.toggle("off", !!reqMute); $("dReqMute").title = reqMute ? "إشعارات الطلبات مكتومة" : "إشعارات الطلبات شغالة"; }
+$("dReqMute").onclick = () => { reqMute = !reqMute; try { localStorage.setItem("vc_reqmute", reqMute ? "1" : "0"); } catch (e) {} paintReqMute(); dtoast(reqMute ? "🔕 إشعارات الطلبات مكتومة (الرقم بس)" : "🔔 إشعارات الطلبات شغالة"); };
 paintReqMute();
-function paintSnd() { $("dSound").textContent = sndOn ? "🔊 الأصوات: شغالة" : "🔇 الأصوات: مقفولة"; }
-$("dSound").onclick = () => { sndOn = !sndOn; try { localStorage.setItem("vc_snd", sndOn ? "1" : "0"); } catch (e) {} paintSnd(); if (sndOn) { sndCtx(); setTimeout(() => vcSnd("ping"), 80); } };
+function paintSnd() { $("dSound").firstChild.innerHTML = sndOn ? DI.spk : DI.spkoff; $("dSound").classList.toggle("off", !sndOn); $("dSound").title = sndOn ? "الأصوات شغالة" : "الأصوات مقفولة"; }
+$("dSound").onclick = () => { sndOn = !sndOn; try { localStorage.setItem("vc_snd", sndOn ? "1" : "0"); } catch (e) {} paintSnd(); dtoast(sndOn ? "🔊 الأصوات شغالة" : "🔇 الأصوات مقفولة"); if (sndOn) { sndCtx(); setTimeout(() => vcSnd("ping"), 80); } };
 paintSnd();
 $("f").addEventListener("submit", () => { if ($("inp").value.trim() && !$("inp").disabled) vcSnd("send"); }, true);
 netUI(); buildChips(); registerSW();

@@ -1,5 +1,5 @@
 // Very Chat service worker: stale-while-revalidate (opens instantly from cache, updates in background)
-const CACHE = "verychat-v23", SHELL = ["./", "index.html", "manifest.webmanifest", "icon-192.png"];
+const CACHE = "verychat-v24", SHELL = ["./", "index.html", "manifest.webmanifest", "icon-192.png"];
 const FB = ["app", "auth", "firestore", "app-check"].map(n => "https://www.gstatic.com/firebasejs/10.12.2/firebase-" + n + "-compat.js");
 self.addEventListener("install", e => {
   e.waitUntil(caches.open(CACHE).then(c => Promise.allSettled([...SHELL.map(u => c.add(u)), ...FB.map(u => fetch(u, { mode: "no-cors" }).then(r => c.put(u, r)))])).then(() => self.skipWaiting()));
