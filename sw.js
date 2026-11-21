@@ -1,5 +1,5 @@
-// Very Chat service worker: network-first (always the newest page), cached copy only when offline
-const CACHE = "verychat-v17", SHELL = ["./", "index.html", "manifest.webmanifest", "icon-192.png"];
+// Very Chat service worker: stale-while-revalidate (opens instantly from cache, updates in background)
+const CACHE = "verychat-v18", SHELL = ["./", "index.html", "manifest.webmanifest", "icon-192.png"];
 self.addEventListener("install", e => {
   e.waitUntil(caches.open(CACHE).then(c => Promise.allSettled(SHELL.map(u => c.add(u)))).then(() => self.skipWaiting()));
 });
@@ -9,12 +9,12 @@ self.addEventListener("activate", e => {
 self.addEventListener("fetch", e => {
   const r = e.request, u = new URL(r.url);
   if (r.method !== "GET" || u.origin !== location.origin) return;
-  e.respondWith(
-    fetch(r, { cache: "no-cache" }).then(res => {
-      if (res && res.ok) { const c = res.clone(); caches.open(CACHE).then(k => k.put(r, c)).catch(() => {}); }
-      return res;
-    }).catch(async () => (await caches.match(r)) || (r.mode === "navigate" ? await caches.match("index.html") : null) || Response.error())
-  );
+  e.respondWith(caches.open(CACHE).then(async c => {
+    const hit = await c.match(r, { ignoreSearch: r.mode === "navigate" }) || (r.mode === "navigate" ? await c.match("index.html") : null);
+    const net = fetch(r, { cache: "no-cache" }).then(res => { if (res && res.ok) c.put(r, res.clone()).catch(() => {}); return res; });
+    if (hit) { net.catch(() => {}); return hit; }
+    return net.catch(() => Response.error());
+  }));
 });
 self.addEventListener("notificationclick", e => {
   const tag = e.notification.tag; e.notification.close();

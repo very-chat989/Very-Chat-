@@ -429,7 +429,7 @@ form.bar:focus-within{box-shadow:0 0 0 2px var(--pri),var(--sh2)}
 body,button,input{font-family:system-ui,-apple-system,"Segoe UI",Tahoma,Arial,sans-serif}
 header{background:color-mix(in srgb,var(--card) 82%,transparent);-webkit-backdrop-filter:saturate(1.6) blur(16px);backdrop-filter:saturate(1.6) blur(16px);border-bottom:1px solid color-mix(in srgb,var(--line) 70%,transparent)}
 #hRoom b{font-size:16.5px;font-weight:800}
-#msgs{padding:14px 12px 8px;gap:2px;background-image:radial-gradient(color-mix(in srgb,var(--pri) 16%,transparent) 1.2px,transparent 1.2px);background-size:26px 26px;scroll-behavior:smooth}
+#msgs{padding:14px 12px 8px;gap:2px;background-image:radial-gradient(color-mix(in srgb,var(--pri) 16%,transparent) 1.2px,transparent 1.2px);background-size:26px 26px;scroll-behavior:auto;overflow-anchor:none;-webkit-overflow-scrolling:touch}
 .b{border:0;border-radius:20px;padding:8px 13px 6px;box-shadow:0 1px 2px rgba(8,40,34,.10),0 4px 14px rgba(8,40,34,.05)}
 .me .b{background-image:linear-gradient(150deg,color-mix(in srgb,var(--mine) 78%,#fff),var(--mine) 55%,color-mix(in srgb,var(--mine) 80%,#000))}
 .tx{line-height:1.65;font-size:15.5px}
@@ -640,7 +640,7 @@ const logo = id => `<svg viewBox='0 0 100 100'><defs><linearGradient id='${id}' 
 $("sLogo").innerHTML = logo("lgS"); $("dLogo").innerHTML = logo("lgD");
 var _spMin = false, _spMsg = false;
 function hideSplash() { const s = $("splash"); if (!s || s._h) return; s._h = 1; s.classList.add("out"); setTimeout(() => s.remove(), 450); }
-setTimeout(() => { _spMin = true; if (_spMsg) hideSplash(); }, 900); setTimeout(hideSplash, 6000);
+setTimeout(() => { _spMin = true; if (_spMsg) hideSplash(); }, 350); setTimeout(hideSplash, 6000);
 const EMOJIS = ["😀","😎","🤓","🥳","😍","🤩","😂","🥹","😴","🤠","👻","🤖","👽","💀","🐱","🐶","🦁","🐼","🦊","🐯","🐸","🐵","🦄","🐧","🦅","🐢","🐬","🦋","🚀","⚽","🏀","🎮","🎧","🎸","🌶️","🍕","🍔","🔥","⭐","👑","💎","❤️","🌹","🌙"];
 const COLORS = ["#0f8f7a","#2f6fed","#8a4fe0","#e0507a","#e08a2f","#c9a400","#3f8f3f","#5b6b78"];
 let confirmDel = false;
@@ -867,7 +867,14 @@ function boxScrolled() {
 }
 $("msgs").addEventListener("scroll", () => { if (!boxScrolled._r) boxScrolled._r = requestAnimationFrame(() => { boxScrolled._r = 0; boxScrolled(); }); }, { passive: true });
 try { new ResizeObserver(() => boxScrolled()).observe($("msgs")); } catch (_) {}
-$("toBottom").onclick = () => { const b = $("msgs"); b.scrollTo({ top: b.scrollHeight, behavior: "smooth" }); };
+function jumpBottom(smooth) {
+  const b = $("msgs"), end = () => b.scrollHeight - b.clientHeight, gap = end() - b.scrollTop;
+  if (!smooth || gap < b.clientHeight * 0.6) { b.scrollTop = end(); return; }
+  if (gap > b.clientHeight * 1.5) b.scrollTo({ top: end() - b.clientHeight * 1.2, behavior: "instant" });
+  requestAnimationFrame(() => b.scrollTo({ top: end(), behavior: "smooth" }));
+}
+$("toBottom").onclick = () => { jumpBottom(true); if (lastList.length) setSeen(room, lastList[lastList.length - 1].ts); setTimeout(boxScrolled, 350); };
+["touchstart", "wheel", "mousedown"].forEach(ev => $("msgs").addEventListener(ev, () => { $("msgs")._pin = 0; }, { passive: true }));
 function render(list) {
   lastList = list;
   const box = $("msgs");
@@ -876,15 +883,15 @@ function render(list) {
   // لو في فيديو شغّال، نأجّل إعادة الرسم علشان ما يقفلش في وشك
   if ([...box.querySelectorAll("video")].some(v => !v.paused && !v.ended)) { clearTimeout(render._t); render._t = setTimeout(() => render(lastList), 1500); return; }
   const near = box.scrollHeight - box.scrollTop - box.clientHeight < 90;
-  box.textContent = "";
+  const frag = document.createDocumentFragment();
   list.forEach((m, i) => { try {
     const prev = list[i - 1], mine = m.uid === myId, p = profileFor(m.uid);
     const newDay = !prev || new Date(prev.ts).toDateString() !== new Date(m.ts).toDateString();
-    if (newDay) { const dv = document.createElement("div"), d0 = new Date(m.ts); dv.className = "day"; dv.textContent = d0.toDateString() === new Date().toDateString() ? "اليوم" : d0.toLocaleDateString("ar-EG", { day: "numeric", month: "long" }); box.appendChild(dv); }
+    if (newDay) { const dv = document.createElement("div"), d0 = new Date(m.ts); dv.className = "day"; dv.textContent = d0.toDateString() === new Date().toDateString() ? "اليوم" : d0.toLocaleDateString("ar-EG", { day: "numeric", month: "long" }); frag.appendChild(dv); }
     const first = newDay || prev.uid !== m.uid || m.ts - prev.ts > 300000;
     const row = document.createElement("div"); row.className = "row" + (mine ? " me" : "") + (first ? " first" : "") + (sel.has(m.id) ? " sel" : "");
     row.dataset.uid = m.uid; row.dataset.ts = m.ts;
-    if (box._unr && m.ts >= box._unr && !(prev && prev.ts >= box._unr)) { const u = document.createElement("div"); u.className = "unr"; u.id = "unrDiv"; const cnt = list.filter(x => x.uid !== myId && x.ts >= box._unr).length; u.textContent = "⬇ " + cnt + " رسالة غير مقروءة"; box.appendChild(u); } if (first) row.appendChild(avatar(p)); else { const s = document.createElement("div"); s.className = "sp"; row.appendChild(s); }
+    if (box._unr && m.ts >= box._unr && !(prev && prev.ts >= box._unr)) { const u = document.createElement("div"); u.className = "unr"; u.id = "unrDiv"; const cnt = list.filter(x => x.uid !== myId && x.ts >= box._unr).length; u.textContent = "⬇ " + cnt + " رسالة غير مقروءة"; frag.appendChild(u); } if (first) row.appendChild(avatar(p)); else { const s = document.createElement("div"); s.className = "sp"; row.appendChild(s); }
     const b = document.createElement("div"); b.className = "b";
     if (first && !mine) { const n = document.createElement("div"); n.className = "n"; n.dir = "auto"; n.textContent = (p && p.name) || "مجهول"; n.style.cursor = "pointer"; n.onclick = e => { e.stopPropagation(); if (Date.now() - (b._f || 0) > 800) peerTap(m.uid, m.room || room); }; b.appendChild(n); }
     if (m.fwd) b.appendChild(el("div", "fw", "↪️ محوّلة من " + m.fwd));
@@ -910,10 +917,11 @@ function render(list) {
     const tm = document.createElement("span"); tm.textContent = new Date(m.ts).toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit" }); t.appendChild(tm);
     b.appendChild(t); holdMenu(b, m); row.appendChild(b);
     if (selMode) { const ck = document.createElement("span"); ck.className = "ck"; ck.textContent = sel.has(m.id) ? "✓" : ""; row.appendChild(ck); }
-    row.onclick = () => { if (selMode) toggleSel(m.id); }; box.appendChild(row);
+    row.onclick = () => { if (selMode) toggleSel(m.id); }; frag.appendChild(row);
   } catch (err) { console.warn("رسالة تالفة اتخطّت", err); } });
+  box.replaceChildren(frag);
   const lm = list[list.length - 1], mineNew = lm && lm.uid === myId && Date.now() - lm.ts < 5000;
-  if (fresh) { const u = $("unrDiv"); if (u) box.scrollTop += u.getBoundingClientRect().top - box.getBoundingClientRect().top - 56; else box.scrollTop = box.scrollHeight; }
+  if (fresh) { box.scrollTop = box.scrollHeight; box._pin = 1; requestAnimationFrame(() => { if (box._pin) box.scrollTop = box.scrollHeight; setTimeout(() => { if (box._pin) box.scrollTop = box.scrollHeight; box._pin = 0; }, 400); }); }
   else if (near || mineNew || list.length < 4) box.scrollTop = box.scrollHeight;
   boxScrolled(); _spMsg = true; if (_spMin) hideSplash();
   markSeen(list); updateTotal();
