@@ -4,6 +4,8 @@
 <meta charset="utf-8">
 <title>Very Chat</title>
 <link rel="manifest" href="manifest.webmanifest">
+<meta http-equiv="Content-Security-Policy" content="object-src 'none'; base-uri 'self'; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://apis.google.com https://www.google.com">
+<meta name="referrer" content="no-referrer">
 <meta name="theme-color" content="#0f8f7a">
 <link rel="apple-touch-icon" href="icon-192.png">
 <link rel="icon" href="icon-192.png">
@@ -499,6 +501,14 @@ form.bar:focus-within{box-shadow:var(--sh),0 0 0 2px color-mix(in srgb,var(--pri
 .jumbo .t{background:color-mix(in srgb,var(--card) 85%,transparent);color:var(--ink);border-radius:10px;padding:1px 7px;width:fit-content;margin-inline-start:auto;opacity:.8}
 #emoPanel.out{animation:emoOut .17s ease-in both}
 @keyframes emoOut{to{transform:translateY(30px);opacity:0}}
+#toBottom{position:fixed;left:14px;bottom:90px;z-index:8;width:44px;height:44px;border-radius:50%;border:0;background:var(--card);color:var(--ink);box-shadow:0 4px 18px rgba(0,0,0,.32);display:grid;place-items:center;cursor:pointer;animation:pop .25s both}
+#toBottom:active{transform:scale(.92)}
+#tbN{position:absolute;top:-10px;left:50%;transform:translateX(-50%);min-width:22px;height:22px;border-radius:11px;padding:0 6px;background:var(--pri);color:var(--onpri);font-size:12px;font-weight:800;display:grid;place-items:center;box-shadow:0 2px 6px rgba(0,0,0,.25)}
+.unr{width:fit-content;margin:10px auto;padding:5px 14px;border-radius:14px;background:color-mix(in srgb,var(--pri) 22%,var(--card));color:var(--ink);font-size:12.5px;font-weight:700}
+button,.rrow,.fxb{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+#msgs,#emoGrid,#drawer *{overscroll-behavior:contain}
+button:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--pri);outline-offset:2px}
+.tx{-webkit-user-select:text;user-select:text;overflow-wrap:anywhere}
 </style>
 </head>
 <body>
@@ -516,6 +526,7 @@ form.bar:focus-within{box-shadow:var(--sh),0 0 0 2px color-mix(in srgb,var(--pri
   <div id="net" hidden>⚠️ مفيش اتصال بالنت، رسايلك هتتبعت أول ما يرجع</div>
   <div id="status">جاري التحميل…</div>
   <div id="msgs"></div>
+  <button id="toBottom" type="button" hidden aria-label="لآخر الرسايل"><svg viewBox="0 0 24 24" width="22" height="22"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg><b id="tbN" hidden></b></button>
   <div id="replyBar" hidden><span id="replyTxt"></span><button type="button" id="cancelReply">✕</button></div>
   <div id="editBar" hidden><span>✏️ بتعدّل رسالة</span><button type="button" id="cancelEdit">إلغاء</button></div>
   <div id="emoPanel" hidden><div id="emoGrid"></div><div id="emoTabs"></div></div>
@@ -611,8 +622,11 @@ form.bar:focus-within{box-shadow:var(--sh),0 0 0 2px color-mix(in srgb,var(--pri
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-check-compat.js"></script>
 <script>
 // ═══ إعدادات Firebase: الصق هنا القيم من Firebase Console ← Project settings ← Your apps ← Web app ═══
+// App Check: حط مفتاح reCAPTCHA v3 هنا بعد ما تفعّله من Firebase → App Check (فاضي = متوقف)
+const APPCHECK_KEY = "6LdvzCsuAAAAAHvmMunzSxfkhomq9hmeyc4W9598";
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyA2G05p10GHyhFR8hOfdx0f__pYRw8fG9s",
   authDomain: "very-chat-c7e65.firebaseapp.com",
@@ -620,9 +634,13 @@ const FIREBASE_CONFIG = {
   appId: "1:351423421163:web:f61b829b9b65deb38abcae"
 };
 const $ = id => document.getElementById(id);
+const okSrc = (u, k) => { u = String(u || ""); return u.startsWith("blob:") || u.startsWith("data:" + k + "/"); };
+const okPhoto = u => { u = String(u || ""); return u.startsWith("data:image/") || /^https:\/\/[a-z0-9.-]+\.googleusercontent\.com\//i.test(u); };
 const logo = id => `<svg viewBox='0 0 100 100'><defs><linearGradient id='${id}' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='#2cc4a9'/><stop offset='1' stop-color='#0f8f7a'/></linearGradient></defs><rect width='100' height='100' rx='26' fill='url(#${id})'/><path d='M50 18c-18 0-32 12-32 28 0 8 4 15 10 20l-3 14 15-7c3 1 6 1 10 1 18 0 32-12 32-28S68 18 50 18z' fill='#fff'/><path d='M36 38l14 22 14-22' fill='none' stroke='#0f8f7a' stroke-width='8' stroke-linecap='round' stroke-linejoin='round'/></svg>`;
 $("sLogo").innerHTML = logo("lgS"); $("dLogo").innerHTML = logo("lgD");
-setTimeout(() => { $("splash").classList.add("out"); setTimeout(() => $("splash").remove(), 450); }, 900);
+var _spMin = false, _spMsg = false;
+function hideSplash() { const s = $("splash"); if (!s || s._h) return; s._h = 1; s.classList.add("out"); setTimeout(() => s.remove(), 450); }
+setTimeout(() => { _spMin = true; if (_spMsg) hideSplash(); }, 900); setTimeout(hideSplash, 6000);
 const EMOJIS = ["😀","😎","🤓","🥳","😍","🤩","😂","🥹","😴","🤠","👻","🤖","👽","💀","🐱","🐶","🦁","🐼","🦊","🐯","🐸","🐵","🦄","🐧","🦅","🐢","🐬","🦋","🚀","⚽","🏀","🎮","🎧","🎸","🌶️","🍕","🍔","🔥","⭐","👑","💎","❤️","🌹","🌙"];
 const COLORS = ["#0f8f7a","#2f6fed","#8a4fe0","#e0507a","#e08a2f","#c9a400","#3f8f3f","#5b6b78"];
 let confirmDel = false;
@@ -757,7 +775,7 @@ function setStatus(t) { try { if (t && ERR_RE.test(t)) vcSnd("err"); } catch (_)
 function avatar(p, big) {
   const d = document.createElement("div"); d.className = "av"; d.dataset.name = (p && p.name) || "";
   if (p && p.photo) { d._photo = p.photo; }
-  if (p && p.photo) { const i = document.createElement("img"); i.src = p.photo; i.alt = ""; d.appendChild(i); }
+  if (p && okPhoto(p.photo)) { const i = document.createElement("img"); i.src = p.photo; i.alt = ""; d.appendChild(i); }
   else { d.style.background = (p && p.color) || "var(--line)"; d.textContent = (p && p.emoji) || "👤"; }
   return d;
 }
@@ -834,20 +852,39 @@ $("drawer").onclick = e => { if (e.target === $("drawer")) closeDrawer(); };
 $("dAdd").onclick = () => { closeDrawer(); openSheet("room"); };
 $("hRoom").onclick = () => { if (isDM(room)) openPeer(dmPeerOf(room)); else if (curR()) openInfo(room); else $("meBtn").click(); };
 
+// ───── آخر قراية + سهم الرسايل الفايتة ─────
+const getSeen = r => { try { return +localStorage.getItem("vc_seen_" + r) || 0; } catch (_) { return 0; } };
+const setSeen = (r, ts) => { try { if (ts > getSeen(r)) localStorage.setItem("vc_seen_" + r, ts); } catch (_) {} };
+function boxScrolled() {
+  const box = $("msgs"), fab = $("toBottom"); if (!box || !fab) return;
+  const gap = box.scrollHeight - box.scrollTop - box.clientHeight, bt = box.getBoundingClientRect().bottom - 8; let ts = 0;
+  for (let i = box.children.length - 1; i >= 0; i--) { const r = box.children[i]; if (r.dataset && r.dataset.ts && r.getBoundingClientRect().top < bt) { ts = +r.dataset.ts; break; } }
+  if (gap < 90 && lastList.length) ts = Math.max(ts, lastList[lastList.length - 1].ts);
+  if (ts && !document.hidden) setSeen(room, ts);
+  const s = getSeen(room), n = s ? lastList.filter(m => m.uid !== myId && m.ts > s).length : 0, tb = $("tbN");
+  tb.textContent = n > 99 ? "99+" : n; tb.hidden = !n; fab.hidden = gap < 160;
+  const a = !$("emoPanel").hidden ? $("emoPanel") : $("f"); fab.style.bottom = Math.round(innerHeight - a.getBoundingClientRect().top + 12) + "px";
+}
+$("msgs").addEventListener("scroll", () => { if (!boxScrolled._r) boxScrolled._r = requestAnimationFrame(() => { boxScrolled._r = 0; boxScrolled(); }); }, { passive: true });
+try { new ResizeObserver(() => boxScrolled()).observe($("msgs")); } catch (_) {}
+$("toBottom").onclick = () => { const b = $("msgs"); b.scrollTo({ top: b.scrollHeight, behavior: "smooth" }); };
 function render(list) {
   lastList = list;
   const box = $("msgs");
+  const fresh = box._room !== room;
+  if (fresh) { box._room = room; box._unr = 0; const s0 = getSeen(room); if (s0) { const f0 = list.find(m => m.uid !== myId && m.ts > s0); if (f0) box._unr = f0.ts; } else if (list.length) setSeen(room, list[list.length - 1].ts); }
   // لو في فيديو شغّال، نأجّل إعادة الرسم علشان ما يقفلش في وشك
   if ([...box.querySelectorAll("video")].some(v => !v.paused && !v.ended)) { clearTimeout(render._t); render._t = setTimeout(() => render(lastList), 1500); return; }
   const near = box.scrollHeight - box.scrollTop - box.clientHeight < 90;
   box.textContent = "";
-  list.forEach((m, i) => {
+  list.forEach((m, i) => { try {
     const prev = list[i - 1], mine = m.uid === myId, p = profileFor(m.uid);
     const newDay = !prev || new Date(prev.ts).toDateString() !== new Date(m.ts).toDateString();
     if (newDay) { const dv = document.createElement("div"), d0 = new Date(m.ts); dv.className = "day"; dv.textContent = d0.toDateString() === new Date().toDateString() ? "اليوم" : d0.toLocaleDateString("ar-EG", { day: "numeric", month: "long" }); box.appendChild(dv); }
     const first = newDay || prev.uid !== m.uid || m.ts - prev.ts > 300000;
     const row = document.createElement("div"); row.className = "row" + (mine ? " me" : "") + (first ? " first" : "") + (sel.has(m.id) ? " sel" : "");
-    row.dataset.uid = m.uid; if (first) row.appendChild(avatar(p)); else { const s = document.createElement("div"); s.className = "sp"; row.appendChild(s); }
+    row.dataset.uid = m.uid; row.dataset.ts = m.ts;
+    if (box._unr && m.ts >= box._unr && !(prev && prev.ts >= box._unr)) { const u = document.createElement("div"); u.className = "unr"; u.id = "unrDiv"; const cnt = list.filter(x => x.uid !== myId && x.ts >= box._unr).length; u.textContent = "⬇ " + cnt + " رسالة غير مقروءة"; box.appendChild(u); } if (first) row.appendChild(avatar(p)); else { const s = document.createElement("div"); s.className = "sp"; row.appendChild(s); }
     const b = document.createElement("div"); b.className = "b";
     if (first && !mine) { const n = document.createElement("div"); n.className = "n"; n.dir = "auto"; n.textContent = (p && p.name) || "مجهول"; n.style.cursor = "pointer"; n.onclick = e => { e.stopPropagation(); if (Date.now() - (b._f || 0) > 800) peerTap(m.uid, m.room || room); }; b.appendChild(n); }
     if (m.fwd) b.appendChild(el("div", "fw", "↪️ محوّلة من " + m.fwd));
@@ -874,8 +911,11 @@ function render(list) {
     b.appendChild(t); holdMenu(b, m); row.appendChild(b);
     if (selMode) { const ck = document.createElement("span"); ck.className = "ck"; ck.textContent = sel.has(m.id) ? "✓" : ""; row.appendChild(ck); }
     row.onclick = () => { if (selMode) toggleSel(m.id); }; box.appendChild(row);
-  });
-  if (near || list.length < 4) box.scrollTop = box.scrollHeight;
+  } catch (err) { console.warn("رسالة تالفة اتخطّت", err); } });
+  const lm = list[list.length - 1], mineNew = lm && lm.uid === myId && Date.now() - lm.ts < 5000;
+  if (fresh) { const u = $("unrDiv"); if (u) box.scrollTop += u.getBoundingClientRect().top - box.getBoundingClientRect().top - 56; else box.scrollTop = box.scrollHeight; }
+  else if (near || mineNew || list.length < 4) box.scrollTop = box.scrollHeight;
+  boxScrolled(); _spMsg = true; if (_spMin) hideSplash();
   markSeen(list); updateTotal();
   setStatus(list.length ? "" : "مفيش رسايل لسه. ابدأ إنت!");
 }
@@ -1030,7 +1070,7 @@ const el = (t, c, x) => { const e = document.createElement(t); if (c) e.classNam
 const canSee = r => !(r.banned || []).includes(myId) && (r.by === myId || (r.members || []).includes(myId) || (!r.private && !r.members));
 const isOwner = r => !r.by || r.by === myId;
 const nameOf = (u, rid) => (profileFor(u, rid) || {}).name || "مجهول";
-const newCode = () => Array.from({ length: 6 }, () => "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"[Math.floor(Math.random() * 32)]).join("");
+const newCode = () => { const A = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789", b = new Uint8Array(10); try { crypto.getRandomValues(b); } catch (_) { for (let i = 0; i < 10; i++) b[i] = Math.floor(Math.random() * 256); } return Array.from(b, x => A[x % 32]).join(""); };
 let joinId = (location.hash.match(/^#r-([A-Za-z0-9-]+)$/) || [])[1] || null;
 const FV = () => firebase.firestore.FieldValue;
 const findByCode = code => rooms.find(x => String(x.code || "").toLowerCase() === String(code || "").trim().toLowerCase());
@@ -1236,8 +1276,9 @@ function notifyMsg(m) {
 function linkify(node, text) {
   String(text || "").split(/(https?:\/\/[^\s]+)/g).forEach(part => {
     if (/^https?:\/\//.test(part)) {
+      const tail = (part.match(/[.,!?؟،;:)\]}"']+$/) || [""])[0], url = tail ? part.slice(0, -tail.length) : part; if (tail) part = url;
       const a = document.createElement("a"); a.href = part; a.textContent = part; a.target = "_blank"; a.rel = "noopener noreferrer";
-      a.style.cssText = "color:inherit;text-decoration:underline"; a.addEventListener("click", e => e.stopPropagation()); node.appendChild(a);
+      a.style.cssText = "color:inherit;text-decoration:underline"; a.addEventListener("click", e => e.stopPropagation()); node.appendChild(a); if (tail) node.appendChild(document.createTextNode(tail));
     } else if (part) node.appendChild(document.createTextNode(part));
   });
 }
@@ -1265,10 +1306,16 @@ $("accBtn").onclick = async () => {
   } catch (e) { perr("ماقدرتش أكمل (" + (e.code || e.message) + "). اتأكد إن تسجيل جوجل متفعل في Firebase."); }
 };
 $("dNotif").onclick = async () => { try { await Notification.requestPermission(); } catch (e) {} $("dNotif").hidden = !("Notification" in window) || Notification.permission !== "default"; };
+function softReload() {
+  if (document.getElementById("updov")) return; const o = document.createElement("div"); o.id = "updov";
+  o.style.cssText = "position:fixed;inset:0;z-index:99;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:var(--ink);font-weight:800;font-size:20px";
+  o.innerHTML = '<div style="width:84px;height:84px">' + logo("lgU") + '</div>Very Chat<div style="font-size:12px;font-weight:400;opacity:.6">جاري التحديث…</div>';
+  document.body.append(o); setTimeout(() => location.reload(), 120);
+}
 function registerSW() {
   if (!("serviceWorker" in navigator) || !/^https?:/.test(location.protocol)) return;
   const had = !!navigator.serviceWorker.controller; let reloaded = false;
-  navigator.serviceWorker.addEventListener("controllerchange", () => { if (had && !reloaded) { reloaded = true; location.reload(); } });
+  navigator.serviceWorker.addEventListener("controllerchange", () => { if (had && !reloaded) { reloaded = true; softReload(); } });
   navigator.serviceWorker.register("sw.js", { updateViaCache: "none" }).then(r => { r.update().catch(() => {}); document.addEventListener("visibilitychange", () => { if (!document.hidden) r.update().catch(() => {}); }); }).catch(() => {});
 }
 
@@ -1724,13 +1771,13 @@ $("meBtn").onclick = () => { if (db) { if (room === "general" || isDM(room)) ope
 
 // ───── رسائل صوتية ─────
 const fmtDur = t => Math.floor(t / 60) + ":" + String(Math.floor(t % 60)).padStart(2, "0");
-const AUD = new Map(); let curAudio = null; let VRATE = +localStorage.getItem("vrate") || 1;
+const AUD = new Map(); let curAudio = null; let VRATE = 1; try { VRATE = +localStorage.getItem("vrate") || 1; } catch (_) {}
 function audioPlayer(m) {
   const w = el("div", "vp"), btn = el("button", "vpb", "▶"), wv = el("div", "vw"), tm = el("span", "vpd", fmtDur(m.dur || 0)), sp = el("button", "vps", VRATE + "×");
   let h = 0; for (const c of String(m.id)) h = (h * 31 + c.charCodeAt(0)) >>> 0;
   const N = 30, bars = []; for (let i = 0; i < N; i++) { h = (h * 1664525 + 1013904223) >>> 0; const x = el("i"); x.style.height = (22 + (h >>> 24) % 78) + "%"; bars.push(x); wv.append(x); }
   btn.type = sp.type = "button"; w.append(btn, wv, sp, tm);
-  let a = AUD.get(m.id); if (!a) { a = new Audio(m.audio); a.preload = "none"; AUD.set(m.id, a); }
+  let a = AUD.get(m.id); if (!a) { a = new Audio(okSrc(m.audio, "audio") ? m.audio : ""); a.preload = "none"; AUD.set(m.id, a); if (AUD.size > 40) for (const [k, v] of AUD) { if (v.paused && v !== curAudio && k !== m.id) { AUD.delete(k); break; } } }
   const sync = () => { btn.textContent = a.paused ? "▶" : "⏸"; const d = a.duration || m.dur || 0, p = d && a.currentTime ? a.currentTime / d : 0; bars.forEach((x, i) => x.classList.toggle("on", i / N < p)); tm.textContent = fmtDur(a.paused && !a.currentTime ? (m.dur || 0) : a.currentTime); w.classList.toggle("play", !a.paused); };
   a.ontimeupdate = sync; a.onplay = sync; a.onpause = sync; a.onended = () => { a.currentTime = 0; sync(); };
   sync();
@@ -1862,13 +1909,14 @@ function mediaBox(m) {
   const vid = m.mk === "vid" || !!m.vid, w0 = +m.w || 4, h0 = +m.h || 3; let W = 240, H = W * h0 / w0; if (H > 320) { H = 320; W = H * w0 / h0; } if (W < 120) W = 120;
   const box = el("div", "mwrap"); box.style.width = Math.round(W) + "px"; box.style.height = Math.round(H) + "px";
   const key = m.mid || m.id, auto = DLD.has(key) || (m.uid === myId && (!m.mid || MEDIA.has(m.mid)));
-  const ph = el("div", "mph"); if (m.thumb) ph.style.backgroundImage = "url(" + m.thumb + ")"; else ph.style.background = "linear-gradient(135deg,#3a4a46,#25332f)"; box.append(ph);
+  const ph = el("div", "mph"); if (okSrc(m.thumb, "image")) ph.style.backgroundImage = "url(" + m.thumb + ")"; else ph.style.background = "linear-gradient(135deg,#3a4a46,#25332f)"; box.append(ph);
   if (auto) box.append(el("div", "msp"));
   const show = data => {
+    if (data && !okSrc(data, vid ? "video" : "image")) data = "";
     box.querySelectorAll(".mretry").forEach(x => x.remove());
     if (!data) { const r = el("button", "mretry", "تعذّر التحميل · اضغط للإعادة"); r.type = "button"; r.onclick = e => { e.stopPropagation(); r.remove(); box.append(el("div", "msp")); box._load(); }; box.querySelectorAll(".msp").forEach(x => x.remove()); box.append(r); return; }
     let node;
-    if (vid) { node = el("video", "mvid"); node.src = data; node.controls = true; node.playsInline = true; node.preload = "metadata"; if (m.thumb) node.poster = m.thumb; node.onclick = e => e.stopPropagation(); node.onloadeddata = () => box.classList.add("ok"); }
+    if (vid) { node = el("video", "mvid"); node.src = data; node.controls = true; node.playsInline = true; node.preload = "metadata"; if (okSrc(m.thumb, "image")) node.poster = m.thumb; node.onclick = e => e.stopPropagation(); node.onloadeddata = () => box.classList.add("ok"); }
     else { node = el("img", "mimg"); node.alt = "صورة"; node.decoding = "async"; node.onload = () => box.classList.add("ok"); node.onclick = e => { e.stopPropagation(); if (!selMode) { $("pvImg").src = data; $("pview").hidden = false; } }; node.src = data; }
     box.append(node); if (key && !DLD.has(key)) { DLD.add(key); dlSave(); }
   };
@@ -2152,7 +2200,7 @@ function askLogin() {
 function showPic(av, name) {
   const pic = $("lbPic"); pic.textContent = ""; pic.style.background = ""; pic.classList.remove("emo");
   const src = av._photo || (av.querySelector("img") && av.querySelector("img").src);
-  if (src) { const i = new Image(); i.alt = ""; i.src = src; pic.append(i); }
+  if (okPhoto(src)) { const i = new Image(); i.alt = ""; i.src = src; pic.append(i); }
   else { pic.classList.add("emo"); pic.style.background = av.style.background || "var(--line)"; pic.textContent = av.textContent; }
   $("lbName").textContent = name || av.dataset.name || ""; $("lb").hidden = false;
 }
@@ -2200,6 +2248,7 @@ async function start() {
   try {
     await preWipe();
     if (!(firebase.apps || []).length) firebase.initializeApp(FIREBASE_CONFIG);
+if (APPCHECK_KEY && firebase.appCheck) { try { firebase.appCheck().activate(APPCHECK_KEY, true); } catch (_) {} }
     const au = firebase.auth(); au.getRedirectResult().catch(e => lerr(authMsg(e)));
     let user = await new Promise(res => { const un = au.onAuthStateChanged(u => { un(); res(u); }); });
     if (!user) user = await askLogin();
@@ -2488,7 +2537,10 @@ var lastGest = 0, quietUntil = performance.now() + 4000;
 ["pointerdown", "keydown", "touchstart"].forEach(ev => window.addEventListener(ev, () => { lastGest = performance.now(); }, { passive: true, capture: true }));
 document.addEventListener("visibilitychange", () => { quietUntil = performance.now() + 3500; });
 const SND_IN = { in: 1, ping: 1 }, SND_RES = { err: 1, ok: 1, no: 1, req: 1 };
+const HAP = { send: 8, vsend: 12, del: [12, 40, 12], err: [18, 50, 18], ok: 10, no: [10, 40, 10], req: 10 };
+function buzz(k) { try { if (HAP[k] && navigator.vibrate && !document.hidden && performance.now() - lastGest < 8000) navigator.vibrate(HAP[k]); } catch (_) {} }
 function vcSnd(k) {
+  buzz(k);
   if (!sndOn || document.hidden) return;
   { const n = performance.now();
     if (SND_IN[k]) { if (n < quietUntil || n - (sndLast.__in || 0) < 4000) return; sndLast.__in = n; }
