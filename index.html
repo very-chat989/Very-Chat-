@@ -49,11 +49,27 @@ header h1{flex:1;margin:0;font-size:18px}
 .b{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 #editBar{display:flex;justify-content:space-between;align-items:center;padding:6px 14px;background:var(--card);border-top:1px solid var(--line);font-size:13px;color:var(--mute)}
 #editBar button{border:0;background:none;color:var(--pri);cursor:pointer;font-weight:700}
-#selBar{display:flex;align-items:center;gap:10px;padding:8px 14px;background:var(--pri);color:var(--onpri)}
-#selBar span{flex:1;font-weight:700}
+#selBar{display:flex;align-items:center;gap:6px;padding:0 10px;background:color-mix(in srgb,var(--card) 88%,transparent);-webkit-backdrop-filter:blur(14px) saturate(1.4);backdrop-filter:blur(14px) saturate(1.4);color:var(--ink);border-bottom:1px solid var(--line);box-shadow:0 8px 24px rgba(0,0,0,.28);animation:selIn .26s cubic-bezier(.2,.9,.3,1.1) both}
+#selBar::after{content:"";position:absolute;inset-inline:0;bottom:-1px;height:2px;background:linear-gradient(90deg,transparent,var(--pri),transparent);opacity:.9;pointer-events:none}
+@keyframes selIn{from{opacity:0;transform:translateY(-14px)}}
+#selBar .sx{width:42px;height:42px;border-radius:50%;border:0;background:var(--bg);color:var(--ink);display:flex;align-items:center;justify-content:center;cursor:pointer;flex:none;transition:transform .15s,background .15s}
+#selBar .sx:active{transform:scale(.88)}
+#selBar .sc{flex:1;min-width:0;display:flex;align-items:center;gap:8px;padding:0 6px}
+#selCount{min-width:34px;height:34px;padding:0 8px;box-sizing:border-box;border-radius:12px;background:var(--pri);color:var(--onpri);font-size:17px;font-weight:800;display:flex;align-items:center;justify-content:center;font-variant-numeric:tabular-nums}
+#selCount.pop{animation:selPop .28s cubic-bezier(.2,1.6,.4,1)}
+@keyframes selPop{from{transform:scale(.6)}}
+#selBar .sc small{font-size:13px;font-weight:700;color:var(--mute);white-space:nowrap}
+#selBar .sa{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-width:56px;height:50px;padding:0 6px;border:0;border-radius:16px;background:transparent;color:var(--ink);cursor:pointer;font:inherit;transition:background .15s,transform .15s,color .15s}
+#selBar .sa svg{width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+#selBar .sa .l{font-size:11px;font-weight:700;line-height:1;white-space:nowrap}
+#selBar .sa:active{transform:scale(.9);background:var(--bg)}
+#selBar .sa.ok{color:var(--pri)}
+#selBar .sa.bad{color:#ff6b6b}
+#selBar .sa.del{color:#ff6b6b;background:rgba(255,92,92,.12)}
+#selBar .sa.del.arm{background:#e5484d;color:#fff;animation:selShake .4s both}
+@keyframes selShake{20%{transform:translateX(-4px)}40%{transform:translateX(4px)}60%{transform:translateX(-3px)}80%{transform:translateX(2px)}}
 #pStrip{display:flex;align-items:center;gap:10px;padding:7px 14px;background:var(--card);border-bottom:1px solid var(--line);font-size:13px}
 #pStrip button{border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:12px;padding:4px 10px;cursor:pointer}
-#selBar button{border:0;background:rgba(255,255,255,.22);color:inherit;border-radius:10px;padding:6px 12px;cursor:pointer}
 .ck{width:22px;height:22px;border-radius:50%;border:2px solid var(--mute);display:flex;align-items:center;justify-content:center;font-size:13px;flex:none;align-self:center;color:var(--onpri)}
 .row.sel .ck{background:var(--pri);border-color:var(--pri)}.row.sel .b{outline:2px solid var(--pri)}
 .rxs{display:flex;flex-wrap:wrap;gap:4px;margin-top:5px}
@@ -589,6 +605,88 @@ html[dir=rtl] #sendBtn svg{transform:scaleX(-1)}
 .dnotif[hidden]{display:none}
 #dToast{position:absolute;left:14px;right:14px;bottom:calc(150px + env(safe-area-inset-bottom,0px));padding:10px 14px;border-radius:14px;background:#222c2a;color:#fff;font-size:13px;font-weight:600;text-align:center;box-shadow:0 8px 24px rgba(0,0,0,.35);animation:mxin .22s both;pointer-events:none;z-index:2}
 #dToast[hidden]{display:none}
+
+/* ===== شاشة البروفايل (تصميم جديد) ===== */
+#sheet .shc{padding:0;gap:0;overflow:hidden;background:var(--bg);border-radius:28px 28px 0 0;max-height:94%;display:flex;flex-direction:column;box-shadow:0 -10px 40px rgba(0,0,0,.35)}
+#sheet .shc.tall{height:min(94%,780px)}
+#sheet .shtop{padding:10px 16px 8px;display:flex;flex-direction:column;gap:10px;flex:none}
+#sheet .shtop .grab{margin:0 auto}
+#sheet .shtop h2{font-size:19px;font-weight:800;letter-spacing:.2px}
+#sheet .shbody{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding:4px 16px 18px}
+#sheet #pgP,#sheet #pgS{display:flex;flex-direction:column;gap:12px}
+#sheet #pgP[hidden],#sheet #pgS[hidden]{display:none}
+#sheet #pgP,#sheet #pgS{animation:pkIn .22s ease both}
+@keyframes pkIn{from{opacity:0;transform:translateY(8px)}}
+#sheet .grp{background:var(--card);border:1px solid var(--line);border-radius:22px;padding:14px;display:flex;flex-direction:column;gap:12px}
+#sheet .grp[hidden]{display:none}
+#sheet .gl{font-size:13px;font-weight:800;color:var(--ink);display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+#sheet .gl small{font-size:11.5px;font-weight:500;color:var(--mute)}
+#sheet .hero2{position:relative;background:var(--card);border:1px solid var(--line);border-radius:26px;overflow:hidden;padding:46px 16px 16px;display:flex;flex-direction:column;align-items:center;gap:10px;--dc:var(--pri)}
+#sheet .hero2 .banner{position:absolute;inset:0 0 auto 0;height:96px;background:linear-gradient(135deg,var(--dc),color-mix(in srgb,var(--dc) 55%,#000));transition:background .35s}
+#sheet .hero2 .banner::after{content:"";position:absolute;inset:0;background:radial-gradient(circle at 18% 25%,rgba(255,255,255,.28),transparent 46%),radial-gradient(circle at 88% 85%,rgba(255,255,255,.16),transparent 42%)}
+#sheet .avwrap{position:relative;width:108px;height:108px;border-radius:50%;padding:5px;background:var(--card);box-shadow:0 10px 28px rgba(0,0,0,.32);flex:none}
+#sheet .av.big{width:98px;height:98px;font-size:52px;cursor:default;transition:background .3s}
+#sheet .fab{position:absolute;width:34px;height:34px;border-radius:50%;border:3px solid var(--card);display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0;overflow:hidden;transition:transform .15s}
+#sheet .fab:active{transform:scale(.9)}
+#sheet .fab.cam{bottom:-2px;inset-inline-end:-2px;background:var(--pri);color:var(--onpri)}
+#sheet .fab.rm{top:-2px;inset-inline-start:-2px;background:#e5484d;color:#fff}
+#sheet .fab input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;font-size:0}
+#sheet .hero2 input[type=text]{width:100%;max-width:340px;background:var(--bg);border:1.5px solid transparent;border-radius:15px;padding:13px 14px;text-align:center;font-size:17px;font-weight:700;outline:none;transition:border-color .2s,background .2s}
+#sheet .hero2 input[type=text]:focus{border-color:var(--pri)}
+#sheet .hero2 #descIn{font-size:14px;font-weight:500;padding:11px 14px}
+#sheet .tabs{display:flex;gap:4px;background:var(--bg);border-radius:15px;padding:4px}
+#sheet .tabs button{flex:1;border:0;background:none;border-radius:12px;padding:9px 6px;font-weight:700;font-size:13px;color:var(--mute);cursor:pointer;transition:background .2s,color .2s,box-shadow .2s}
+#sheet .tabs button.on{background:var(--card);color:var(--ink);box-shadow:0 1px 5px rgba(0,0,0,.25)}
+#sheet .tabs.top{background:var(--card);border:1px solid var(--line)}
+#sheet .tabs.top button.on{background:var(--pri);color:var(--onpri);box-shadow:0 4px 12px color-mix(in srgb,var(--pri) 45%,transparent)}
+#sheet .pkp{display:flex;flex-direction:column;gap:12px;animation:pkIn .2s ease both}
+#sheet .pkp[hidden]{display:none}
+#sheet .clrs{display:flex;justify-content:space-between;gap:6px;overflow-x:auto;padding:6px 6px 8px;scrollbar-width:none}
+#sheet .clrs::-webkit-scrollbar{display:none}
+#sheet .col{width:32px;height:32px;flex:none;border:0;transition:transform .15s,box-shadow .15s}
+#sheet .col.on{box-shadow:0 0 0 3px var(--card),0 0 0 5px var(--pri);transform:scale(.9)}
+#sheet .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(46px,1fr));gap:8px;justify-items:center}
+#sheet .opt{width:46px;height:46px;font-size:24px;background:var(--bg);border:2px solid transparent;transition:transform .15s,background .15s,border-color .15s}
+#sheet .opt:active{transform:scale(.9)}
+#sheet .opt.on{border-color:var(--pri);background:color-mix(in srgb,var(--pri) 18%,var(--card));transform:scale(1.06)}
+#sheet .opt.col.on{background:inherit}
+#sheet .hint{font-size:11.5px;line-height:1.7;color:var(--mute);text-align:center;padding:2px 6px}
+#sheet #myCode{border-radius:16px;font-size:19px}
+#sheet #copyCode{background:var(--pri);color:var(--onpri);border:0;font-weight:800;border-radius:16px;padding:0 18px}
+#sheet .trow{flex-direction:row;align-items:center;gap:12px;cursor:pointer}
+#sheet .trow .tt{flex:1;display:flex;flex-direction:column;gap:3px}
+#sheet .trow .tt b{font-size:14px}
+#sheet .trow .tt small{font-size:12px;color:var(--mute)}
+#sheet .tgl{appearance:none;-webkit-appearance:none;flex:none;width:50px;height:30px;border-radius:15px;background:var(--line);position:relative;cursor:pointer;transition:background .2s;margin:0}
+#sheet .tgl::after{content:"";position:absolute;top:3px;inset-inline-start:3px;width:24px;height:24px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.35);transition:transform .2s}
+#sheet .tgl:checked{background:var(--pri)}
+#sheet .tgl:checked::after{transform:translateX(-20px)}
+#sheet #accNote{text-align:start;font-size:13px;line-height:1.7;color:var(--mute)}
+#sheet #accBtn{padding:13px;border-radius:15px;font-weight:700}
+#sheet #accBtn.pri{background:var(--pri);color:var(--onpri);border-color:transparent}
+#sheet .sto{display:flex;flex-direction:column;gap:10px}
+#sheet .sto-top{display:flex;align-items:baseline;gap:6px}
+#sheet .sto-top b{font-size:30px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums}
+#sheet .sto-top span{font-size:14px;font-weight:700}
+#sheet .sto-top small{margin-inline-start:auto;font-size:12px;color:var(--mute)}
+#sheet .sto-bar{height:8px;border-radius:4px;background:var(--bg);overflow:hidden}
+#sheet .sto-bar i{display:block;height:100%;border-radius:4px;background:linear-gradient(90deg,var(--pri),color-mix(in srgb,var(--pri) 55%,#fff));transition:width .5s}
+#sheet .sto-chips{display:flex;gap:8px;flex-wrap:wrap}
+#sheet .sto-chips span{background:var(--bg);border-radius:12px;padding:7px 11px;font-size:12px;color:var(--mute)}
+#sheet .sto-chips b{color:var(--ink);margin-inline-start:4px}
+#sheet .lrows{display:flex;flex-direction:column;border-radius:16px;overflow:hidden;border:1px solid var(--line)}
+#sheet .lrow{border:0;background:var(--bg);padding:14px;text-align:start;font-size:14px;font-weight:600;cursor:pointer;transition:background .15s}
+#sheet .lrow+.lrow{border-top:1px solid var(--line)}
+#sheet .lrow:active{background:var(--line)}
+#sheet .lrow.danger{color:#ff6b6b}
+#sheet .lrow:disabled{opacity:.6}
+#sheet .shfoot{flex:none;background:var(--card);border-top:1px solid var(--line);padding:12px 16px calc(12px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:8px;box-shadow:0 -8px 24px rgba(0,0,0,.18)}
+#sheet #pErr{font-size:13px;text-align:center;color:#ff8a8a;background:rgba(255,92,92,.1);border-radius:12px;padding:8px 10px}
+#sheet #skipBtn{padding:12px;border-radius:15px;font-weight:700}
+#sheet .frow{display:flex;gap:10px}
+#sheet .frow .ghost{flex:1;padding:14px;border-radius:16px;font-weight:700}
+#sheet .frow .send{flex:2;padding:14px;border-radius:16px;font-size:16px;font-weight:800;box-shadow:0 8px 20px color-mix(in srgb,var(--pri) 40%,transparent)}
+#sheet .frow .send:active{transform:scale(.98)}
 </style>
 </head>
 <body>
@@ -600,7 +698,7 @@ html[dir=rtl] #sendBtn svg{transform:scaleX(-1)}
     <button class="hb" id="menuBtn" aria-label="الغرف">☰</button>
     <div id="hRoom"></div>
     <button class="me-btn" id="meBtn" title="شخصيتك"><div class="av" id="meAv">👤</div></button>
-    <div id="selBar" hidden><button id="selCancel">✕</button><span id="selCount"></span><button id="selFwd">↪️</button><button id="selCopy">📋 نسخ</button><button id="selDel">🗑 حذف</button></div>
+    <div id="selBar" hidden><button class="sx" id="selCancel" aria-label="إلغاء التحديد"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button><div class="sc"><span id="selCount">0</span><small>تم التحديد</small></div><button class="sa" id="selFwd"><svg viewBox="0 0 24 24"><path d="M10 5l-7 7 7 7M3 12h12a6 6 0 0 1 6 6v1"/></svg><span class="l">توجيه</span></button><button class="sa" id="selCopy"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2.5"/><path d="M5 15V6.5A2.5 2.5 0 0 1 7.5 4H15"/></svg><span class="l">نسخ</span></button><button class="sa del" id="selDel"><svg viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/></svg><span class="l">حذف</span></button></div>
   </header>
   <div id="pin" hidden></div>
   <div id="net" hidden>⚠️ مفيش اتصال بالنت، رسايلك هتتبعت أول ما يرجع</div>
@@ -665,42 +763,64 @@ html[dir=rtl] #sendBtn svg{transform:scaleX(-1)}
 </div>
 
 <div id="sheet" hidden>
-  <div class="card">
-    <div class="grab"></div>
-    <h2 id="shTitle">بروفايلك</h2>
-    <div class="hero">
-      <div class="av big" id="pvAv"></div>
-      <input type="text" id="nameIn" placeholder="اسمك" maxlength="20" autocomplete="off">
-      <input type="text" id="descIn" placeholder="وصف الغرفة (اختياري)" maxlength="120" autocomplete="off" hidden>
+  <div class="card shc" id="shCard">
+    <div class="shtop">
+      <div class="grab"></div>
+      <h2 id="shTitle">بروفايلك</h2>
+      <div class="tabs top" id="pgSeg" hidden><button type="button" data-pg="p" class="on">البروفايل</button><button type="button" data-pg="s">الحساب والتخزين</button></div>
     </div>
-    <div class="sec" id="codeSec" hidden>
-      <label>كودك (شاركه مع صحابك علشان يضيفوك)</label>
-      <div class="codebox"><div id="myCode" dir="ltr">—</div><button class="ghost" id="copyCode" type="button">📋 نسخ</button></div>
-      <details class="uidbox"><summary>معرّف الحساب التقني</summary><div id="myUidRow" dir="ltr">—</div></details>
-    </div>
-    <div class="sec" id="accSec" hidden><label>حسابك</label><div class="note" id="accNote"></div><button class="ghost" id="accBtn"></button></div>
-    <div class="sec" id="stoSec" hidden>
-      <label>💾 التخزين والبيانات المحمّلة</label>
-      <div class="note" id="stoInfo">جاري الحساب…</div>
-      <button class="ghost" id="stoClear" type="button">🧹 مسح الملفات المؤقتة (الصور والفيديو)</button>
-      <button class="ghost" id="stoAll" type="button">🗑 مسح كل بيانات التطبيق وتسجيل الخروج</button>
-    </div>
-    <label class="sec" id="privRow" hidden style="flex-direction:row;align-items:center;gap:10px;cursor:pointer"><input type="checkbox" id="privCk"><span>🔒 غرفة خاصة (الأعضاء اللي تضيفهم بس يشوفوها)</span></label>
-    <div class="sec"><label>شخصيات الشلة</label><div class="grid" id="shalla"></div></div>
-    <div class="sec"><label>إيموجي</label><div class="grid" id="emojis"></div></div>
-    <div class="sec"><label>لون الخلفية</label><div class="grid" id="colors"></div></div>
-    <div class="sec">
-      <label>صورة من جهازك</label>
-      <div class="grid">
-        <div class="ghost" id="upBtn" style="position:relative;overflow:hidden">📷 ارفع صورة<input type="file" id="file" accept="image/*" style="position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;font-size:0"></div>
-        <button class="ghost" id="rmPhoto" hidden>إزالة الصورة</button>
+    <div class="shbody" id="shBody">
+      <div id="pgP">
+        <div class="hero2" id="hero2">
+          <div class="banner"></div>
+          <div class="avwrap">
+            <div class="av big" id="pvAv"></div>
+            <label class="fab cam" aria-label="رفع صورة من جهازك"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l1.6-2.4h6.8L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13" r="3.6"/></svg><input type="file" id="file" accept="image/*"></label>
+            <button class="fab rm" id="rmPhoto" type="button" hidden aria-label="إزالة الصورة"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+          </div>
+          <input type="text" id="nameIn" placeholder="اسمك" maxlength="20" autocomplete="off">
+          <input type="text" id="descIn" placeholder="وصف الغرفة (اختياري)" maxlength="120" autocomplete="off" hidden>
+        </div>
+        <div class="grp pk">
+          <div class="tabs" id="pkSeg"><button type="button" data-pk="emojis" class="on">إيموجي</button><button type="button" data-pk="shalla">شخصيات الشلة</button></div>
+          <div id="pk-emojis" class="pkp">
+            <div class="clrs" id="colors"></div>
+            <div class="grid" id="emojis"></div>
+          </div>
+          <div id="pk-shalla" class="pkp" hidden><div class="grid" id="shalla"></div></div>
+          <div class="hint">📷 زرار الكاميرا على الصورة بيرفع صورة من جهازك. لو ماشتغلش افتح الصفحة من Chrome أو Safari بدل التطبيق.</div>
+        </div>
+        <div class="grp" id="codeSec" hidden>
+          <div class="gl">كودك <small>شاركه مع صحابك علشان يضيفوك</small></div>
+          <div class="codebox"><div id="myCode" dir="ltr">—</div><button class="ghost" id="copyCode" type="button">📋 نسخ</button></div>
+          <details class="uidbox"><summary>معرّف الحساب التقني</summary><div id="myUidRow" dir="ltr">—</div></details>
+        </div>
+        <label class="grp trow" id="privRow" hidden><span class="tt"><b>🔒 غرفة خاصة</b><small>الأعضاء اللي تضيفهم بس يشوفوها</small></span><input type="checkbox" id="privCk" class="tgl"></label>
       </div>
-      <div class="note">لو مافتحش اختيار الصور، افتح الصفحة من المتصفح (Chrome أو Safari) بدل التطبيق</div>
+      <div id="pgS" hidden>
+        <div class="grp" id="accSec" hidden>
+          <div class="gl">حسابك</div>
+          <div class="note" id="accNote"></div>
+          <button class="ghost" id="accBtn"></button>
+        </div>
+        <div class="grp" id="stoSec" hidden>
+          <div class="gl">💾 التخزين والبيانات المحمّلة</div>
+          <div class="sto" id="stoInfo">جاري الحساب…</div>
+          <div class="lrows">
+            <button class="lrow" id="stoClear" type="button">🧹 مسح الملفات المؤقتة (الصور والفيديو)</button>
+            <button class="lrow danger" id="stoAll" type="button">🗑 مسح كل بيانات التطبيق وتسجيل الخروج</button>
+          </div>
+        </div>
+      </div>
     </div>
-    <div id="pErr" style="color:var(--mute);text-align:center;font-size:13px" hidden></div>
-    <button class="ghost" id="skipBtn" hidden>استخدم بروفايلي الأساسي</button>
-    <button class="ghost" id="cancelSheet" hidden>إلغاء</button>
-    <button class="send" id="saveBtn" style="padding:13px">حفظ</button>
+    <div class="shfoot">
+      <div id="pErr" hidden></div>
+      <button class="ghost" id="skipBtn" hidden>استخدم بروفايلي الأساسي</button>
+      <div class="frow">
+        <button class="ghost" id="cancelSheet" hidden>إلغاء</button>
+        <button class="send" id="saveBtn">حفظ</button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -1060,7 +1180,10 @@ function toggleReact(m, k) {
   msgCol(m.room || room).doc(m.id).update({ ["reacts." + myId]: on ? FV().delete() : k }).catch(() => setStatus("ماقدرتش أضيف التفاعل."));
 }
 let selMode = false, selDelArm = false; const sel = new Set();
-function updSel() { $("selBar").hidden = !selMode; $("selCopy").hidden = $("selFwd").hidden = fwdBlocked(); $("selCount").textContent = "تم تحديد " + sel.size; $("selDel").textContent = "🗑 حذف"; selDelArm = false; if (lastList.length) render(lastList); }
+function selLbl(id, t) { const l = $(id).querySelector(".l"); if (l) l.textContent = t; }
+function selSetCount(n) { const c = $("selCount"); if (c.textContent !== String(n)) { c.textContent = n; c.classList.remove("pop"); void c.offsetWidth; c.classList.add("pop"); } }
+function selSetDel(arm, n) { const b = $("selDel"); b.classList.toggle("arm", arm); selLbl("selDel", arm ? "تأكيد (" + n + ")" : "حذف"); }
+function updSel() { $("selBar").hidden = !selMode; $("selCopy").hidden = $("selFwd").hidden = fwdBlocked(); selSetCount(sel.size); selSetDel(false, 0); selDelArm = false; if (lastList.length) render(lastList); }
 function enterSel(id) { selMode = true; sel.clear(); sel.add(id); updSel(); }
 function exitSel() { selMode = false; sel.clear(); updSel(); }
 function toggleSel(id) { if (sel.has(id)) sel.delete(id); else sel.add(id); if (!sel.size) exitSel(); else updSel(); }
@@ -1072,13 +1195,13 @@ $("selCancel").onclick = exitSel;
 $("selCopy").onclick = async () => {
   const txt = lastList.filter(x => sel.has(x.id)).map(x => ((profileFor(x.uid) || {}).name || "مجهول") + ": " + mtext(x)).join("\n");
   const ok = await copyText(txt);
-  $("selCopy").textContent = ok ? "✓ تم" : "فشل النسخ";
-  setTimeout(() => { $("selCopy").textContent = "📋 نسخ"; if (ok) exitSel(); }, 700);
+  const cb = $("selCopy"); cb.classList.add(ok ? "ok" : "bad"); selLbl("selCopy", ok ? "تم ✓" : "فشل");
+  setTimeout(() => { cb.classList.remove("ok", "bad"); selLbl("selCopy", "نسخ"); if (ok) exitSel(); }, 700);
 };
 $("selDel").onclick = () => {
   const cr = curR(), mine = lastList.filter(x => sel.has(x.id) && ((x.uid === myId && (!cr || !cr.noDelOwn || adminOf(cr))) || adminOf(cr)));
   if (!mine.length) { setStatus("تقدر تحذف رسايلك إنت بس."); return; }
-  if (!selDelArm) { selDelArm = true; $("selDel").textContent = "تأكيد حذف " + mine.length + "؟"; setTimeout(() => { if (selDelArm) { selDelArm = false; $("selDel").textContent = "🗑 حذف"; } }, 4000); return; }
+  if (!selDelArm) { selDelArm = true; selSetDel(true, mine.length); setTimeout(() => { if (selDelArm) { selDelArm = false; selSetDel(false, 0); } }, 4000); return; }
   vcSnd("del"); Promise.all(mine.map(x => msgCol(x.room || room).doc(x.id).delete())).catch(() => setStatus("ماقدرتش أحذف بعض الرسايل."));
   exitSel();
 };
@@ -1449,7 +1572,7 @@ function accUI() {
   if (!(window.firebase && firebase.auth && firebase.auth().currentUser)) return;
   const u = firebase.auth().currentUser;
   $("accNote").textContent = u.isAnonymous ? "حسابك مؤقت على الجهاز ده. اربطه بجوجل علشان تدخل بنفس الحساب والرسايل من أي جهاز." : "مربوط بجوجل: " + (u.email || "");
-  $("accBtn").textContent = u.isAnonymous ? "🔐 ربط الحساب بجوجل" : "تسجيل الخروج";
+  $("accBtn").textContent = u.isAnonymous ? "🔐 ربط الحساب بجوجل" : "تسجيل الخروج"; $("accBtn").classList.toggle("pri", !!u.isAnonymous);
 }
 $("accBtn").onclick = async () => {
   const u = firebase.auth().currentUser, prov = new firebase.auth.GoogleAuthProvider();
@@ -1838,7 +1961,20 @@ function paintDraft() {
   document.querySelectorAll("#emojis .opt").forEach(o => o.classList.toggle("on", o.textContent === draft.emoji));
   document.querySelectorAll("#colors .opt").forEach(o => o.classList.toggle("on", o.dataset.c === draft.color));
   $("rmPhoto").hidden = !draft.photo;
+  $("hero2").style.setProperty("--dc", draft.color);
+  document.querySelectorAll("#shalla .opt").forEach(o => o.classList.toggle("on", !!draft.photo && o.dataset.p === draft.photo));
 }
+function setPg(p) {
+  $("pgP").hidden = p !== "p"; $("pgS").hidden = p !== "s";
+  document.querySelectorAll("#pgSeg button").forEach(b => b.classList.toggle("on", b.dataset.pg === p));
+  $("shBody").scrollTop = 0;
+}
+function setPk(k) {
+  $("pk-emojis").hidden = k !== "emojis"; $("pk-shalla").hidden = k !== "shalla";
+  document.querySelectorAll("#pkSeg button").forEach(b => b.classList.toggle("on", b.dataset.pk === k));
+}
+document.querySelectorAll("#pgSeg button").forEach(b => { b.onclick = () => { setPg(b.dataset.pg); try { vcSnd("tap"); } catch (e) {} }; });
+document.querySelectorAll("#pkSeg button").forEach(b => { b.onclick = () => { setPk(b.dataset.pk); try { vcSnd("tap"); } catch (e) {} }; });
 let sheetMode = "me", sheetRoom = null, rprofiles = {}, rpLoaded = false;
 function roomName(id) { const r = rooms.find(x => x.id === id); return r ? r.name : "الغرفة"; }
 function profileFor(uid, rid) { rid = rid || room; if (isDM(rid)) return profiles[uid]; const rp = (rprofiles[uid] || {})[rid]; return (rid !== "general" && rp && !rp.skip && rp) || profiles[uid]; }
@@ -1865,6 +2001,8 @@ function openSheet(mode, rid) {
   $("accSec").hidden = mode !== "me"; $("stoSec").hidden = mode !== "me"; if (mode === "me") { accUI(); stoUI(); } $("codeSec").hidden = mode !== "me"; paintMyCode();
   $("privRow").hidden = !(mode === "room" || (mode === "editroom" && rid !== "general")); $("descIn").hidden = !(mode === "room" || mode === "editroom"); $("descIn").value = mode === "editroom" ? ((src && src.desc) || "") : ""; $("privCk").checked = !!(src && src.private);
   $("nameIn").value = draft.name; $("sheet").hidden = false; perr(""); paintDraft();
+  $("pgSeg").hidden = mode !== "me"; $("shCard").classList.toggle("tall", mode === "me"); setPg("p");
+  setPk(draft.photo && draft.photo.indexOf("data:image/svg") === 0 ? "shalla" : "emojis");
 }
 function openProfile() { openSheet("me"); }
 function maybePersona() {}
@@ -1884,7 +2022,8 @@ $("myUidRow").onclick = async () => {
 $("rmPhoto").onclick = () => { draft.photo = ""; paintDraft(); };
 Object.keys(EMO).forEach(k => {
   const b = document.createElement("button"); b.className = "opt sv"; b.title = EMO[k].n; b.innerHTML = EMO[k].s;
-  b.onclick = () => { draft.photo = "data:image/svg+xml;utf8," + encodeURIComponent(EMO[k].s.replace("<svg ", "<svg xmlns='http://www.w3.org/2000/svg' ")); paintDraft(); };
+  const url = "data:image/svg+xml;utf8," + encodeURIComponent(EMO[k].s.replace("<svg ", "<svg xmlns='http://www.w3.org/2000/svg' ")); b.dataset.p = url;
+  b.onclick = () => { draft.photo = url; paintDraft(); };
   $("shalla").appendChild(b);
 });
 $("file").onchange = e => {
@@ -2234,15 +2373,22 @@ setInterval(() => { $("plusBtn").disabled = $("camBtn").disabled = !db || !!writ
 
 // ───── إدارة التخزين: عرض حجم البيانات المحمّلة ومسحها ─────
 const fmtSize = b => b >= 1048576 ? (b / 1048576).toFixed(1) + " ميجا" : Math.max(1, Math.round(b / 1024)) + " كيلو";
+const fmtParts = b => b >= 1048576 ? [(b / 1048576).toFixed(1), "ميجا"] : [String(Math.max(1, Math.round(b / 1024))), "كيلو"];
 async function stoUI() {
   const box = $("stoInfo"); box.textContent = "جاري الحساب…";
   try {
     const e = navigator.storage && navigator.storage.estimate ? await navigator.storage.estimate() : null;
     let mem = 0; MEDIA.forEach(v => { mem += (v || "").length; });
-    const parts = [];
-    if (e && e.usage != null) parts.push("المحفوظ على الجهاز: " + fmtSize(e.usage) + (e.quota ? " من " + fmtSize(e.quota) : ""));
-    parts.push("وسائط حمّلتها: " + DLD.size); parts.push("ملفات محمّلة في الجلسة: " + MEDIA.size + (mem ? " (" + fmtSize(mem) + ")" : ""));
-    box.style.whiteSpace = "pre-line"; box.textContent = parts.join("\n");
+    box.textContent = "";
+    if (e && e.usage != null) {
+      const pr = fmtParts(e.usage), top = el("div", "sto-top"); top.append(el("b", "", pr[0]), el("span", "", pr[1]));
+      if (e.quota) top.append(el("small", "", "من " + fmtSize(e.quota)));
+      const bar = el("div", "sto-bar"), fill = el("i"); fill.style.width = (e.quota ? Math.max(3, Math.min(100, e.usage / e.quota * 100)) : 3) + "%"; bar.append(fill);
+      box.append(top, bar);
+    }
+    const chip = (t, v) => { const c = el("span", "", t); c.append(el("b", "", String(v))); return c; };
+    const ch = el("div", "sto-chips"); ch.append(chip("وسائط حمّلتها", DLD.size), chip("ملفات محمّلة في الجلسة", MEDIA.size + (mem ? " (" + fmtSize(mem) + ")" : "")));
+    box.append(ch);
   } catch (err) { box.textContent = "ماقدرتش أحسب الحجم."; }
 }
 const withTimeout = (p, ms) => Promise.race([Promise.resolve(p).catch(() => {}), new Promise(r => setTimeout(r, ms))]);
@@ -2278,7 +2424,7 @@ $("stoAll").onclick = async () => {
 };
 
 // ───── تحديث تلقائي: لو في نسخة أحدث على الموقع بتتحمّل لوحدها (من غير تسجيل خروج) ─────
-const BUILD = "20261120-6";
+const BUILD = "20261121-1";
 let updating = false;
 async function checkUpdate() {
   if (updating || !/^https?:/.test(location.protocol) || !navigator.onLine) return;
