@@ -699,6 +699,77 @@ html[dir=rtl] #sendBtn svg{transform:scaleX(-1)}
 #sheet .opt.ch.on{transform:scale(1.03)}
 #sheet .opt.ch.on small{color:var(--pri)}
 #sheet .hint.tp{font-size:12.5px;font-weight:700;color:var(--ink);padding:0}
+
+/* ───── v11: إعدادات الغرفة بشكل التطبيقات العالمية ───── */
+#riBody{overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+.ri-tabs{position:sticky;top:0;z-index:4;height:60px;box-sizing:border-box;margin-top:18px;display:flex;align-items:center;gap:8px;overflow-x:auto;padding:0 14px;background:color-mix(in srgb,var(--bg) 88%,transparent);-webkit-backdrop-filter:saturate(1.6) blur(14px);backdrop-filter:saturate(1.6) blur(14px);border-bottom:1px solid var(--line);scrollbar-width:none}
+.ri-tabs::-webkit-scrollbar{display:none}
+.ri-tab{flex:none;display:flex;align-items:center;gap:6px;border:0;background:var(--card);color:var(--mute);border-radius:999px;padding:9px 15px;font:inherit;font-size:13.5px;font-weight:700;cursor:pointer;white-space:nowrap;box-shadow:inset 0 0 0 1px var(--line);transition:background .18s,color .18s,transform .12s}
+.ri-tab:active{transform:scale(.95)}
+.ri-tab.on{background:linear-gradient(135deg,var(--pri2),var(--pri));color:var(--onpri);box-shadow:0 6px 16px rgba(15,143,122,.32)}
+.ri-tab b{font-size:11.5px;font-weight:800;background:rgba(127,127,127,.22);border-radius:10px;padding:1px 7px;min-width:18px;text-align:center}
+.ri-tab.on b{background:rgba(255,255,255,.3)}
+.ri-tab b.rq{background:#e0507a;color:#fff}
+.ri-pane{padding:2px 0 8px;animation:riFade .22s ease both}
+@keyframes riFade{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.ri-sh{margin:20px 22px 8px;font-size:12.5px;font-weight:800;color:var(--mute);letter-spacing:.3px}
+.ri-pane>.ri-card:first-child{margin-top:16px}
+#riBody .ri-card{margin:0 14px;padding:2px 14px;gap:0;border:1px solid var(--line);border-radius:24px;box-shadow:var(--sh1);background:var(--card)}
+#riBody .ri-card.col{padding:14px;gap:10px}
+#riBody .ri-card.col .ri-mem{margin-top:0}
+#riBody .ri-row{display:flex;align-items:center;gap:12px;padding:14px 0;border-top:1px solid var(--line)}
+#riBody .ri-row:first-child{border-top:0}
+#riBody .ri-row.col{flex-wrap:wrap}
+#riBody .ri-row.col .seg{flex:1 1 100%;order:3;margin-top:2px;padding:4px;border-radius:14px}
+#riBody .ri-row.col .seg button{flex:1;padding:9px 4px;font-size:13px;border-radius:11px;font-family:inherit;transition:background .15s}
+.ri-ic{flex:none;width:40px;height:40px;border-radius:13px;display:flex;align-items:center;justify-content:center;font-size:20px;background:color-mix(in srgb,var(--c,#0f8f7a) 18%,transparent)}
+.ri-t{flex:1;min-width:0}
+.ri-t b{display:block;font-size:15px;font-weight:700;line-height:1.4}
+.ri-t small{display:block;margin-top:3px;color:var(--mute);font-size:12.3px;line-height:1.6}
+.ri-row.act{cursor:pointer;transition:opacity .12s}.ri-row.act:active{opacity:.6}
+.ri-chev{flex:none;color:var(--mute);font-size:26px;line-height:1}
+.ri-note{margin:2px 0 10px;padding:10px 12px;border-radius:14px;background:rgba(224,168,47,.14);color:var(--ink);font-size:12.5px;line-height:1.7}
+.ri-note.plain{background:none;padding:0;margin:0;color:var(--mute)}
+.ri-note.memlock{margin:14px 14px 0}
+.ri-note.memlock.own{background:rgba(15,143,122,.13)}
+.ri-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:16px 14px 0}
+.ri-stats.one{grid-template-columns:1fr}
+.ri-stat{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:12px 6px;text-align:center;box-shadow:var(--sh1)}
+.ri-stat i{display:block;font-style:normal;font-size:18px}
+.ri-stat b{display:block;font-size:22px;font-weight:800;color:var(--pri);line-height:1.3;font-variant-numeric:tabular-nums}
+.ri-stat span{font-size:12px;color:var(--mute)}
+.ri-pane>.ri-note.memlock+.ri-card,.ri-stats+.ri-card{margin-top:14px}
+.ri-stk{position:sticky;top:60px;z-index:3;margin-top:14px;padding:10px 14px 6px;background:var(--bg)}
+.ri-sw{position:relative}
+.ri-in{width:100%;box-sizing:border-box;padding:12px 42px;border-radius:16px;border:0;background:var(--card);color:var(--ink);font:inherit;font-size:15px;box-shadow:inset 0 0 0 1px var(--line);outline:0;-webkit-appearance:none;appearance:none}
+.ri-in:focus{box-shadow:inset 0 0 0 2px var(--pri)}
+.ri-si{position:absolute;inset-inline-start:14px;top:50%;transform:translateY(-50%);font-size:15px;pointer-events:none}
+.ri-x{position:absolute;inset-inline-end:8px;top:50%;transform:translateY(-50%);width:30px;height:30px;border:0;border-radius:50%;background:var(--bg);color:var(--mute);cursor:pointer;font-size:13px}
+.ri-fl{display:flex;gap:8px;overflow-x:auto;padding:10px 0 2px;scrollbar-width:none}.ri-fl::-webkit-scrollbar{display:none}
+.ri-fc{flex:none;border:0;border-radius:999px;padding:7px 14px;background:var(--card);color:var(--mute);font:inherit;font-size:13px;font-weight:700;cursor:pointer;box-shadow:inset 0 0 0 1px var(--line)}
+.ri-fc.on{background:var(--pri);color:var(--onpri);box-shadow:none}
+.ri-cnt{font-size:12px;color:var(--mute);text-align:end}.ri-cnt.res{text-align:start;font-weight:700}
+.ri-list{display:flex;flex-direction:column;gap:8px}
+#riBody .ri-mem{margin:0;padding:10px 12px;border-radius:18px;background:var(--bg);gap:12px}
+#riBody .ri-mem .av{flex:none}
+.ri-nm{display:flex;align-items:center;gap:6px;min-width:0;flex-wrap:wrap}
+#riBody .ri-mem .ri-nm b{display:block;flex:0 1 auto;min-width:0;font-weight:700;font-size:15px}
+.ri-bd{flex:none;font-size:11px;font-weight:800;border-radius:8px;padding:2px 8px;background:var(--line);color:var(--ink)}
+.ri-bd.own{background:rgba(224,168,47,.22)}.ri-bd.adm{background:rgba(47,144,217,.2)}.ri-bd.mut{background:rgba(214,69,69,.18)}
+.ri-code{display:inline-block;margin-inline-start:8px;padding:1px 8px;border-radius:7px;background:var(--card);box-shadow:inset 0 0 0 1px var(--line);font-family:ui-monospace,Menlo,Consolas,monospace;font-size:11.5px;letter-spacing:.5px;cursor:pointer;direction:ltr;unicode-bidi:isolate}
+.ri-more{border:0;border-radius:16px;padding:12px;background:var(--bg);color:var(--pri);font:inherit;font-weight:800;cursor:pointer;box-shadow:inset 0 0 0 1px var(--line)}
+.ri-more:active{opacity:.7}
+.ri-empty{text-align:center;color:var(--mute);padding:30px 10px;line-height:1.7}.ri-empty i{display:block;font-style:normal;font-size:38px}.ri-empty b{display:block;color:var(--ink);font-size:15px}.ri-empty small{font-size:12.5px}
+.ri-ed{display:block}
+.ri-ta{display:block;width:100%;box-sizing:border-box;padding:12px 14px;border-radius:16px;border:0;background:var(--bg);color:var(--ink);font:inherit;font-size:14.5px;line-height:1.7;resize:vertical;min-height:100px;box-shadow:inset 0 0 0 1px var(--line);outline:0}
+.ri-ta:focus{box-shadow:inset 0 0 0 2px var(--pri)}
+.ri-save{border:0;border-radius:16px;padding:13px;font:inherit;font-weight:800;font-size:15px;cursor:pointer;color:var(--onpri);background:linear-gradient(135deg,var(--pri2),var(--pri));box-shadow:0 6px 16px rgba(15,143,122,.28);transition:transform .12s}
+.ri-save:active{transform:scale(.98)}
+.ri-rules{white-space:pre-wrap;line-height:1.8;padding:12px 0;font-size:14.5px}
+#riBody .ri-danger{display:block;width:100%;border-radius:18px;padding:14px;font:inherit;font-weight:800;font-size:15px}
+#riBody .ri-card.dn{border-color:rgba(214,69,69,.45)}
+#riBody .ghost{border-radius:14px;padding:9px 14px;font:inherit;font-weight:700;font-size:13px;white-space:nowrap}
+.ri-top b{font-weight:800}
 </style>
 </head>
 <body>
@@ -1649,12 +1720,33 @@ function renderPin() {
   if (adminOf(r)) { const x = el("button", "", "✕"); x.onclick = () => upd({ pinned: FV().delete() }); box.append(x); }
 }
 async function upd(patch, rid) { try { await db.collection("rooms").doc(rid || room).update(patch); } catch (e) { setStatus(errMsg(e)); } }
+const RI_COLORS = ["#0f8f7a", "#2f90d9", "#e0507a", "#e0a82f", "#8a5cf6", "#2cae6a", "#e0702f", "#d64545"];
+const EMO_RE = /^((?:\p{Extended_Pictographic}[\uFE0F\u200D]*)+)\s*([\s\S]*)$/u;
+function setRow(title, desc, ctrl, col) {
+  const m = EMO_RE.exec(title), ico = m ? m[1] : "•", tx = m ? m[2] : title;
+  const r = el("div", "ri-row" + (col ? " col" : "")), t = el("div", "ri-t"), ic = el("div", "ri-ic", ico);
+  ic.style.setProperty("--c", RI_COLORS[tx.length % RI_COLORS.length]);
+  t.append(el("b", "", tx)); if (desc) t.append(el("small", "", desc));
+  r.append(ic, t); if (ctrl) r.append(ctrl); return r;
+}
 function swRow(title, desc, on, fn) {
-  const r = el("div", "ri-row"), t = el("div"); t.append(el("b", "", title), el("small", "", desc));
-  const sw = el("button", "sw" + (on ? " on" : "")); sw.type = "button"; sw.setAttribute("aria-pressed", on ? "true" : "false"); sw.onclick = () => fn(!on); r.append(t, sw); return r;
+  const sw = el("button", "sw" + (on ? " on" : "")); sw.type = "button"; sw.setAttribute("role", "switch"); sw.setAttribute("aria-pressed", on ? "true" : "false"); sw.onclick = () => fn(!on);
+  return setRow(title, desc, sw);
+}
+function actRow(title, desc, fn) {
+  const r = setRow(title, desc, el("span", "ri-chev", "‹")); r.classList.add("act"); r.tabIndex = 0; r.setAttribute("role", "button");
+  r.onclick = fn; r.onkeydown = e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fn(); } }; return r;
+}
+function riPaged(c, items, build, step) {
+  step = step || 8; let n = step; const wrap = el("div", "ri-list"); c.append(wrap);
+  const paint = () => {
+    wrap.textContent = ""; items.slice(0, n).forEach(u => wrap.append(build(u)));
+    if (items.length > n) { const b = el("button", "ri-more", "عرض المزيد (" + (items.length - n) + ")"); b.type = "button"; b.onclick = () => { n += step; paint(); }; wrap.append(b); }
+  };
+  paint();
 }
 let infoSig = null;
-function openInfo(id) { if (!id) return; infoId = id; infoSig = null; $("rinfo").hidden = false; renderInfo(); }
+function openInfo(id) { if (!id) return; infoId = id; infoSig = null; riTab = null; riQ = ""; riFlt = "all"; riLim = 20; riDraft = {}; $("rinfo").hidden = false; $("riBody").scrollTop = 0; renderInfo(); }
 function closeInfo() { infoId = null; $("rinfo").hidden = true; }
 function addFriend(r, mem) {
   const c = $("mcard"); c.textContent = ""; c.append(el("div", "mprev", "＋ إضافة صديق"));
@@ -1747,173 +1839,268 @@ async function wipeRoomMsgs(rid, onProg, uid) {
   }
   return { done, failed };
 }
-function renderInfo() {
+let riTab = null, riQ = "", riFlt = "all", riLim = 20, riDraft = {};
+function renderInfo(tabSwitch) {
   const G = infoId === "general", r = G ? generalRoom() : rooms.find(x => x.id === infoId), box = $("riBody");
   if (!r || (!G && !canSee(r))) { closeInfo(); return; }
-  box.textContent = "";
+  const keep = box.scrollTop, ae = document.activeElement, refocus = ae && ae.id === "riSearch", caret = refocus ? ae.selectionStart : 0;
+  box.textContent = ""; window.__memPaint = null;
   const owner = ownerOf(r), admin = adminOf(r), mem = [...new Set([...(r.members || []), ...(r.by ? [r.by] : [])])];
-  const card = title => { const c = el("div", "ri-card"); if (title) c.append(el("h3", "", title)); box.append(c); return c; };
+  /* ── الهيرو (زي الأول) ── */
   const hero = el("div", "ri-hero"); hero.style.background = "linear-gradient(160deg," + (r.color || "#5b6b78") + ",#0d1413)";
   const av = avatar(r.emoji || r.photo ? r : { emoji: "💬", color: "#5b6b78" }); av.classList.add("ri-av");
   hero.append(av, el("h2", "", r.name)); if (r.desc) hero.append(el("p", "", r.desc));
   const chips = el("div", "ri-chips"), canCode = !!r.code && (admin || !r.lockInvite);
   const chipCopy = (lb, val, done) => { const b = el("button", "ri-chip", lb); b.onclick = async () => { b.textContent = (await copyText(val)) ? done : "ماقدرتش أنسخ"; setTimeout(() => { b.textContent = lb; }, 1500); }; return b; };
   if (canCode) chips.append(chipCopy("🔑 " + r.code, r.code, "✓ اتنسخ الكود"), chipCopy("🔗 نسخ الرابط", PAGE_URL + "#r-" + r.code, "✓ اتنسخ الرابط"));
-  if (G) chips.append(el("span", "ri-chip", "🌐 مفتوحة لكل المستخدمين")); else chips.append(...(countHidden(r) ? [] : [el("span", "ri-chip", "👥 " + mem.length)]), el("span", "ri-chip", r.private ? "🔒 خاصة" : "🌐 عامة")); { const pp = profileFor(myId, r.id) || {}; chips.prepend(el("span", "ri-chip", "🙋 أنت: " + (pp.name || "—") + (owner ? " 👑" : admin ? " 🛡️" : ""))); } hero.append(chips); box.append(hero);
+  if (G) chips.append(el("span", "ri-chip", "🌐 مفتوحة لكل المستخدمين")); else chips.append(...(countHidden(r) ? [] : [el("span", "ri-chip", "👥 " + mem.length)]), el("span", "ri-chip", r.private ? "🔒 خاصة" : "🌐 عامة"));
+  { const pp = profileFor(myId, r.id) || {}; chips.prepend(el("span", "ri-chip", "🙋 أنت: " + (pp.name || "—") + (owner ? " 👑" : admin ? " 🛡️" : ""))); } hero.append(chips); box.append(hero);
   const q = el("div", "ri-quick"), qa = (ico, lb, fn) => { const b = el("button", "ri-q"); b.append(el("i", "", ico), el("span", "", lb)); b.onclick = fn; q.append(b); };
   if (canCode && (admin || !r.private)) qa("📤", "دعوة", () => shareInvite(r));
   qa("🎭", G ? "بروفايلي" : "شخصيتي", () => G ? openSheet("me") : openSheet("persona", r.id));
   if (owner) qa("✏️", "تعديل", () => openSheet("editroom", r.id));
   box.append(q);
-  if (owner) {
-    const S = (c, t, d, k) => c.append(swRow(t, d, !!r[k], v => upd({ [k]: v }, r.id)));
-    const c = card(G ? "🔐 الخصوصية" : "🔐 الخصوصية والدعوة");
-    c.append(swRow("🛡️ قائمة الأعضاء للمالك فقط", "حماية وأمان: إنت بس اللي تشوف الأعضاء وتبحث عنهم بالاسم أو الكود، وباقي الناس (حتى المشرفين) يشوفوا نفسهم بس", r.ownerOnlyMem !== false, v => upd({ ownerOnlyMem: v }, r.id)));
+
+  /* ── بيانات الأعضاء ── */
+  const base = G ? [...new Set([...Object.keys(profiles), ...(r.by ? [r.by] : [])])].filter(u => !(r.banned || []).includes(u) && !kickedLeft(r, u)) : mem;
+  const locked = memHidden(r), visible = locked ? [myId] : base, reqs = admin ? (r.requests || []) : [];
+  const memTotal = locked ? (G ? null : mem.length) : visible.length;
+
+  /* ── التابات ── */
+  const tabs = [];
+  if (owner) tabs.push(["priv", "🔐", "الخصوصية"], ["chat", "💬", "المحادثة"], ["filt", "📜", "القواعد"]);
+  else if (r.rules || (G && admin)) tabs.push(["about", "ℹ️", "نظرة عامة"]);
+  tabs.push(["mem", "👥", "الأعضاء", memTotal, reqs.length]);
+  if (G && admin) tabs.push(["staff", "🛡️", "الإدارة"]);
+  const canLeave = !owner && (r.members || []).includes(myId);
+  if (owner || canLeave) tabs.push(["more", "🧰", "المزيد"]);
+  const tab = tabs.some(t => t[0] === riTab) ? riTab : tabs[0][0];
+  const bar = el("div", "ri-tabs"); bar.setAttribute("role", "tablist");
+  tabs.forEach(([id, ic, lb, n, rq]) => {
+    const b = el("button", "ri-tab" + (id === tab ? " on" : ""), ic + " " + lb); b.type = "button"; b.setAttribute("role", "tab");
+    if (n != null) b.append(el("b", "", String(n)));
+    if (rq) b.append(el("b", "rq", "✋ " + rq));
+    b.onclick = () => { if (riTab !== id) { riTab = id; renderInfo(true); } };
+    bar.append(b);
+  });
+  box.append(bar);
+  const pane = el("div", "ri-pane"); box.append(pane);
+  const card = (title, cls) => { if (title) pane.append(el("div", "ri-sh", title)); const c = el("div", "ri-card" + (cls ? " " + cls : "")); pane.append(c); return c; };
+  const S = (c, t, d, k) => c.append(swRow(t, d, !!r[k], v => upd({ [k]: v }, r.id)));
+  const segRow = (title, desc, opts, cur, key) => {
+    const seg = el("div", "seg"); opts.forEach(([v, lb]) => { const b = el("button", cur === v ? "on" : "", lb); b.type = "button"; b.onclick = () => upd({ [key]: v }, r.id); seg.append(b); });
+    return setRow(title, desc, seg, true);
+  };
+  const editor = (draftKey, val, rows, max) => {
+    const wrap = el("div", "ri-ed"), ta = document.createElement("textarea"); ta.rows = rows; ta.dir = "auto"; ta.className = "ri-ta"; if (max) ta.maxLength = max;
+    ta.value = riDraft[draftKey] !== undefined ? riDraft[draftKey] : val; wrap.append(ta); return [wrap, ta];
+  };
+
+  /* ═══ تاب: الخصوصية ═══ */
+  if (tab === "priv") {
     if (!G) {
-    S(c, "🔒 غرفة خاصة", "مش بتظهر في البحث، بالكود أو الرابط بس", "private");
-    c.append(el("div", "note", "✋ الانضمام بموافقتك دايمًا: محدش يدخل الغرفة غير لما تقبله من «📥 الطلبات»"));
-    S(c, "🙈 إخفاء الكود والرابط عن الأعضاء", "المشرفين بس يشوفوا الكود ويدعوا", "lockInvite");
+      const c = card("الظهور والدعوة");
+      S(c, "🔒 غرفة خاصة", "مش بتظهر في البحث، بالكود أو الرابط بس", "private");
+      c.append(el("div", "ri-note", "✋ الانضمام بموافقتك دايمًا: محدش يدخل الغرفة غير لما تقبله من «📥 الطلبات»"));
+      S(c, "🙈 إخفاء الكود والرابط عن الأعضاء", "المشرفين بس يشوفوا الكود ويدعوا", "lockInvite");
+      const rg = actRow(r.code ? "🔄 تجديد كود ورابط الدعوة" : "🔗 إنشاء كود ورابط دعوة", r.code ? "الكود والرابط القدام هيبطلوا" : "ابدأ بكود جديد للغرفة", () => {
+        if (r.code && !rg.dataset.ok) { rg.dataset.ok = "1"; rg.querySelector("small").textContent = "⚠️ اضغط تاني للتأكيد"; return; } regenCode(r);
+      });
+      c.append(rg);
     }
-    S(c, "👁 إخفاء «شوهدت بواسطة»", "المشرفين بس يشوفوا مين قرا الرسالة", "hideSeen");
-    S(c, "🚫 منع النسخ والتحويل", "الأعضاء مايقدروش ينسخوا أو يحوّلوا الرسايل", "noFwd");
-    const rg = el("button", "ghost", r.code ? "🔄 تجديد كود ورابط الدعوة (القديم يبطل)" : "🔗 إنشاء كود ورابط دعوة");
-    rg.onclick = () => { if (r.code && !rg.dataset.ok) { rg.dataset.ok = "1"; rg.textContent = "اضغط تاني للتأكيد"; return; } regenCode(r); };
-    if (!G) c.append(rg);
-    const c2 = card("💬 التحكم في المحادثة");
-    S(c2, "✍️ الكتابة للمشرفين فقط", "الأعضاء يقروا بس ومايقدروش يكتبوا", "onlyAdmins");
-    S(c2, "🔗 منع الروابط", "الأعضاء مايقدروش يبعتوا روابط", "noLinks");
+    const c2 = card("الأعضاء والمحتوى");
+    c2.append(swRow("🛡️ قائمة الأعضاء للمالك فقط", "إنت بس اللي تشوف الأعضاء وتبحث عنهم بالاسم أو الكود، وباقي الناس (حتى المشرفين) يشوفوا نفسهم بس", r.ownerOnlyMem !== false, v => upd({ ownerOnlyMem: v }, r.id)));
+    S(c2, "👁 إخفاء «شوهدت بواسطة»", "المشرفين بس يشوفوا مين قرا الرسالة", "hideSeen");
+    S(c2, "🚫 منع النسخ والتحويل", "الأعضاء مايقدروش ينسخوا أو يحوّلوا الرسايل", "noFwd");
+  }
+
+  /* ═══ تاب: المحادثة ═══ */
+  if (tab === "chat") {
+    const c1 = card("مين يقدر يكتب؟");
+    S(c1, "✍️ الكتابة للمشرفين فقط", "الأعضاء يقروا بس ومايقدروش يكتبوا", "onlyAdmins");
+    S(c1, "🔗 منع الروابط", "الأعضاء مايقدروش يبعتوا روابط", "noLinks");
+    S(c1, "🎤 منع الرسائل الصوتية", "الأعضاء العاديين مايبعتوش صوت", "noVoice");
+    const c2 = card("التفاعل مع الرسايل");
     S(c2, "😀 إيقاف التفاعلات", "مفيش تفاعلات على الرسايل", "noReact");
     S(c2, "✏️ منع تعديل الرسايل", "الأعضاء مايعدّلوش رسايلهم بعد الإرسال", "noEdit");
     S(c2, "🗑 منع حذف الأعضاء لرسايلهم", "المشرفين بس يحذفوا", "noDelOwn");
-    const sl = el("div", "ri-row"), t = el("div"); t.append(el("b", "", "🐢 الوضع البطيء"), el("small", "", "الفاصل بين رسالة ورسالة للأعضاء"));
-    const seg = el("div", "seg"); [[0, "بدون"], [10, "١٠ث"], [30, "٣٠ث"], [60, "دقيقة"], [300, "٥د"]].forEach(([v, lb]) => { const b = el("button", (r.slow || 0) === v ? "on" : "", lb); b.onclick = () => upd({ slow: v }, r.id); seg.append(b); });
-    sl.append(t, seg); c2.append(sl);
-    S(c2, "🎤 منع الرسائل الصوتية", "الأعضاء العاديين مايبعتوش صوت", "noVoice");
-    const ml = el("div", "ri-row"), t2 = el("div"); t2.append(el("b", "", "📏 أقصى طول للرسالة"), el("small", "", "للأعضاء العاديين"));
-    const seg2 = el("div", "seg"); [[0, "عادي"], [100, "١٠٠"], [300, "٣٠٠"], [600, "٦٠٠"]].forEach(([v, lb]) => { const b = el("button", (r.maxLen || 0) === v ? "on" : "", lb); b.onclick = () => upd({ maxLen: v }, r.id); seg2.append(b); });
-    ml.append(t2, seg2); c2.append(ml);
-    const taStyle = "width:100%;padding:10px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font:inherit;resize:vertical";
-    const bc = card("🚫 كلمات ممنوعة");
-    bc.append(el("div", "note", "الأعضاء العاديين مش هيقدروا يبعتوا رسالة فيها أي كلمة من دي. افصل بين الكلمات بفاصلة."));
-    const ta = document.createElement("textarea"); ta.rows = 3; ta.value = (r.badWords || []).join("، "); ta.style.cssText = taStyle; ta.dir = "auto";
-    const sv = el("button", "ghost", "💾 حفظ الكلمات"); sv.type = "button";
-    sv.onclick = () => { const arr = [...new Set(ta.value.split(/[,،\n]/).map(x => x.trim().toLowerCase()).filter(Boolean))].slice(0, 100); upd({ badWords: arr }, r.id); sv.textContent = "✓ اتحفظ"; setTimeout(() => { sv.textContent = "💾 حفظ الكلمات"; }, 1500); };
-    bc.append(ta, sv);
-    const rc = card("📜 قواعد الدردشة");
-    rc.append(el("div", "note", "بتظهر لكل الأعضاء في صفحة المعلومات."));
-    const ra = document.createElement("textarea"); ra.rows = 4; ra.maxLength = 600; ra.value = r.rules || ""; ra.style.cssText = taStyle; ra.dir = "auto";
-    const rs = el("button", "ghost", "💾 حفظ القواعد"); rs.type = "button";
-    rs.onclick = () => { upd({ rules: ra.value.trim() }, r.id); rs.textContent = "✓ اتحفظت"; setTimeout(() => { rs.textContent = "💾 حفظ القواعد"; }, 1500); };
-    rc.append(ra, rs);
+    const c3 = card("الحدود");
+    c3.append(segRow("🐢 الوضع البطيء", "الفاصل بين رسالة ورسالة للأعضاء", [[0, "بدون"], [10, "١٠ث"], [30, "٣٠ث"], [60, "دقيقة"], [300, "٥د"]], r.slow || 0, "slow"));
+    c3.append(segRow("📏 أقصى طول للرسالة", "للأعضاء العاديين", [[0, "عادي"], [100, "١٠٠"], [300, "٣٠٠"], [600, "٦٠٠"]], r.maxLen || 0, "maxLen"));
   }
-  if (!owner && r.rules) { const rc2 = card("📜 قواعد الدردشة"), rt = el("div", "", r.rules); rt.style.cssText = "white-space:pre-wrap;line-height:1.6"; rt.dir = "auto"; rc2.append(rt); }
-  if (G && admin && !owner) { const qc = card("⚡ تحكم سريع"); qc.append(swRow("🔒 قفل الدردشة", "الكتابة للمشرفين بس لحد ما تفتحها", !!r.onlyAdmins, v => upd({ onlyAdmins: v }, "general"))); }
-  const reqs = r.requests || [];
-  if (admin && reqs.length) {
-    const c = card("✋ طلبات الانضمام (" + reqs.length + ")");
-    reqs.forEach(u => {
-      const row = el("div", "ri-mem"), ok = el("button", "ri-ok", "✓"), no = el("button", "ri-no", "✕");
-      ok.onclick = () => decideJoin(r, u, true); no.onclick = () => decideJoin(r, u, false);
-      row.append(avatar(profileFor(u)), el("b", "", nameOf(u)), ok, no); c.append(row);
-    });
+
+  /* ═══ تاب: القواعد والكلمات ═══ */
+  if (tab === "filt") {
+    const parse = v => [...new Set(v.split(/[,،\n]/).map(x => x.trim().toLowerCase()).filter(Boolean))].slice(0, 100);
+    const bc = card("🚫 كلمات ممنوعة", "col");
+    bc.append(el("div", "ri-note plain", "الأعضاء العاديين مش هيقدروا يبعتوا رسالة فيها أي كلمة من دي. افصل بين الكلمات بفاصلة."));
+    const [bw, ta] = editor("bw", (r.badWords || []).join("، "), 4);
+    const cnt = el("div", "ri-cnt"), paintC = () => { cnt.textContent = parse(ta.value).length + " / 100 كلمة"; }; paintC();
+    ta.addEventListener("input", () => { riDraft.bw = ta.value; paintC(); });
+    const sv = el("button", "ri-save", "💾 حفظ الكلمات"); sv.type = "button";
+    sv.onclick = () => { upd({ badWords: parse(ta.value) }, r.id); delete riDraft.bw; sv.textContent = "✓ اتحفظت"; setTimeout(() => { sv.textContent = "💾 حفظ الكلمات"; }, 1500); };
+    bc.append(bw, cnt, sv);
+    const rc = card("📜 قواعد الدردشة", "col");
+    rc.append(el("div", "ri-note plain", "بتظهر لكل الأعضاء في صفحة المعلومات."));
+    const [rw, ra] = editor("rules", r.rules || "", 5, 600);
+    const cnt2 = el("div", "ri-cnt"), paintR = () => { cnt2.textContent = ra.value.length + " / 600"; }; paintR();
+    ra.addEventListener("input", () => { riDraft.rules = ra.value; paintR(); });
+    const rs = el("button", "ri-save", "💾 حفظ القواعد"); rs.type = "button";
+    rs.onclick = () => { upd({ rules: ra.value.trim() }, r.id); delete riDraft.rules; rs.textContent = "✓ اتحفظت"; setTimeout(() => { rs.textContent = "💾 حفظ القواعد"; }, 1500); };
+    rc.append(rw, cnt2, rs);
   }
-  {
-    const base = G ? [...new Set([...Object.keys(profiles), ...(r.by ? [r.by] : [])])].filter(u => !(r.banned || []).includes(u) && !kickedLeft(r, u)) : mem;
-    const locked = memHidden(r), visible = locked ? [myId] : base;
-    const mc = card(locked ? (G ? "👥 الأعضاء" : "👥 الأعضاء (" + mem.length + ")") : "👥 الأعضاء (" + visible.length + ")");
-    if (admin && !G) { const add = el("button", "ghost", "＋ إضافة صديق"); add.onclick = () => addFriend(r, mem); mc.append(add); }
-    if (locked) mc.append(el("div", "note memlock", "🔐 قائمة الأعضاء متاحة للمالك فقط"));
-    else if (owner && r.ownerOnlyMem !== false) mc.append(el("div", "note memlock own", "🔐 القائمة دي ظاهرة ليك إنت بس"));
-    const onl = el("div", "note"), sIn = document.createElement("input"), lst = el("div");
-    sIn.type = "search"; sIn.dir = "auto"; sIn.placeholder = admin ? "🔍 ابحث بالاسم أو الكود…" : "🔍 ابحث بالاسم أو الكود الكامل…"; sIn.autocomplete = "off";
-    sIn.style.cssText = "width:100%;padding:10px 12px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--ink);margin:6px 0 8px;font:inherit";
+
+  /* ═══ تاب: نظرة عامة (لغير المالك) ═══ */
+  if (tab === "about") {
+    if (r.rules) { const rc2 = card("📜 قواعد الدردشة"), rt = el("div", "ri-rules", r.rules); rt.dir = "auto"; rc2.append(rt); }
+    if (G && admin && !owner) { const qc = card("⚡ تحكم سريع"); qc.append(swRow("🔒 قفل الدردشة", "الكتابة للمشرفين بس لحد ما تفتحها", !!r.onlyAdmins, v => upd({ onlyAdmins: v }, "general"))); }
+  }
+
+  /* ═══ تاب: الأعضاء ═══ */
+  if (tab === "mem") {
+    if (reqs.length) {
+      const c = card("✋ طلبات الانضمام (" + reqs.length + ")", "col");
+      reqs.forEach(u => {
+        const row = el("div", "ri-mem"), ok = el("button", "ri-ok", "✓"), no = el("button", "ri-no", "✕");
+        ok.onclick = () => decideJoin(r, u, true); no.onclick = () => decideJoin(r, u, false);
+        const nb = el("b", "", nameOf(u)); nb.dir = "auto"; row.append(avatar(profileFor(u)), nb, ok, no); c.append(row);
+      });
+    }
     const isOn = u => u === myId || isOnline(presence[u]);
+    const isAdm = u => u === r.by || (r.admins || []).includes(u);
+    const isMut = u => (r.muted || []).includes(u) || ((r.mutedUntil || {})[u] || 0) > Date.now();
+    let stOn = null;
+    if (!locked) {
+      const st = el("div", "ri-stats"), tile = (n, lb, ic) => { const t = el("div", "ri-stat"), b = el("b", "", String(n)); t.append(el("i", "", ic), b, el("span", "", lb)); st.append(t); return b; };
+      tile(visible.length, "عضو", "👥"); stOn = tile(0, "متصل", "🟢"); tile(visible.filter(isAdm).length, "مشرف", "🛡️");
+      pane.append(st);
+    } else if (memTotal != null) {
+      const st = el("div", "ri-stats one"), t = el("div", "ri-stat"); t.append(el("i", "", "👥"), el("b", "", String(memTotal)), el("span", "", "عضو")); st.append(t); pane.append(st);
+    }
+    if (locked) pane.append(el("div", "ri-note memlock", "🔐 قائمة الأعضاء متاحة للمالك فقط"));
+    else if (owner && r.ownerOnlyMem !== false) pane.append(el("div", "ri-note memlock own", "🔐 القائمة دي ظاهرة ليك إنت بس"));
+    if (admin && !G) { const ac = card(null); ac.append(actRow("➕ إضافة صديق", "ابعتله دعوة بكوده", () => addFriend(r, mem))); }
+    const mc = card(null, "col"), lst = el("div", "ri-list");
+    let cnt = null;
+    if (!locked && visible.length > 1) {
+      const stk = el("div", "ri-stk"), sw = el("div", "ri-sw"), sIn = document.createElement("input");
+      sIn.id = "riSearch"; sIn.type = "text"; sIn.dir = "auto"; sIn.enterKeyHint = "search"; sIn.autocomplete = "off"; sIn.spellcheck = false; sIn.className = "ri-in";
+      sIn.placeholder = admin ? "ابحث بالاسم أو الكود…" : "ابحث بالاسم أو الكود الكامل…"; sIn.value = riQ;
+      const clr = el("button", "ri-x", "✕"); clr.type = "button"; clr.hidden = !riQ; clr.setAttribute("aria-label", "مسح");
+      sw.append(el("span", "ri-si", "🔍"), sIn, clr);
+      const fl = el("div", "ri-fl"); [["all", "الكل"], ["on", "🟢 متصل"], ["adm", "🛡️ المشرفين"], ["mut", "🔇 المكتومين"]].forEach(([id, lb]) => {
+        const b = el("button", "ri-fc" + (riFlt === id ? " on" : ""), lb); b.type = "button";
+        b.onclick = () => { riFlt = id; riLim = 20; fl.querySelectorAll(".ri-fc").forEach(x => x.classList.toggle("on", x === b)); paintList(); }; fl.append(b);
+      });
+      sIn.addEventListener("input", () => { riQ = sIn.value; riLim = 20; clr.hidden = !riQ; paintList(); });
+      clr.onclick = () => { sIn.value = ""; riQ = ""; riLim = 20; clr.hidden = true; paintList(); sIn.focus(); };
+      stk.append(sw, fl); pane.insertBefore(stk, mc);
+      cnt = el("div", "ri-cnt res"); mc.append(cnt);
+    }
+    mc.append(lst);
     const paintList = () => {
-      const q = sIn.value.trim().toLowerCase(), qc = normFCode(sIn.value);
+      const qq = riQ.trim().toLowerCase(), qc = normFCode(riQ);
       lst.textContent = "";
       const rows = visible.filter(u => {
-        if (!q) return true;
-        if ((nameOf(u, r.id) + " " + ((profiles[u] || {}).name || "")).toLowerCase().includes(q)) return true;
+        if (riFlt === "on" && !isOn(u)) return false; if (riFlt === "adm" && !isAdm(u)) return false; if (riFlt === "mut" && !isMut(u)) return false;
+        if (!qq) return true;
+        if ((nameOf(u, r.id) + " " + ((profiles[u] || {}).name || "")).toLowerCase().includes(qq)) return true;
         const fc = (profiles[u] || {}).fcode || ""; if (!fc || !qc) return false;
         return admin ? (qc.length >= 3 && fc.includes(qc)) : fc === qc;
       }).sort((x, y) => (isOn(y) - isOn(x)) || ((y === r.by) - (x === r.by)) || (((r.admins || []).includes(y)) - ((r.admins || []).includes(x))) || nameOf(x, r.id).localeCompare(nameOf(y, r.id), "ar"));
-      onl.textContent = "🟢 " + visible.filter(isOn).length + " متصل من " + visible.length;
-      if (!rows.length) { lst.append(el("div", "note", "مفيش نتايج")); return; }
-      rows.forEach(u => {
-        const row = el("div", "ri-mem" + (isOn(u) ? " on" : "")), mi = el("div", "mi"), nm = el("b", "", nameOf(u, r.id) + (u === myId ? " (أنت)" : "")); row.dataset.uid = u;
+      if (stOn) stOn.textContent = String(visible.filter(isOn).length);
+      if (cnt) cnt.textContent = (qq || riFlt !== "all") ? "النتايج: " + rows.length + " من " + visible.length : "";
+      if (cnt) cnt.hidden = !cnt.textContent;
+      if (!rows.length) { const e = el("div", "ri-empty"); e.append(el("i", "", "🔍"), el("b", "", "مفيش نتايج"), el("small", "", "جرّب اسم أو كود تاني")); lst.append(e); return; }
+      rows.slice(0, riLim).forEach(u => {
+        const row = el("div", "ri-mem" + (isOn(u) ? " on" : "")), mi = el("div", "mi"), l1 = el("div", "ri-nm"), nm = el("b", "", nameOf(u, r.id) + (u === myId ? " (أنت)" : "")); nm.dir = "auto"; row.dataset.uid = u;
+        l1.append(nm);
+        if (u === r.by) l1.append(el("span", "ri-bd own", "👑 مالك")); else if ((r.admins || []).includes(u)) l1.append(el("span", "ri-bd adm", "🛡️ مشرف"));
+        if (isMut(u)) l1.append(el("span", "ri-bd mut", "🔇"));
         const sub = el("small", "", isOn(u) ? "🟢 متصل" : lastSeenText(presence[u]));
-        if (admin && (profiles[u] || {}).fcode) { const cs = el("span", "", (sub.textContent ? "  ·  " : "") + fmtFCode(profiles[u].fcode)); cs.dir = "ltr"; sub.append(cs); }
-        mi.append(nm, sub);
-        const tag = (u === r.by ? " 👑" : "") + ((r.admins || []).includes(u) ? " 🛡️" : "") + ((r.muted || []).includes(u) || ((r.mutedUntil || {})[u] || 0) > Date.now() ? " 🔇" : "");
-        row.append(avatar(profileFor(u, r.id)), mi, el("span", "ri-tag", tag));
-        if (u !== myId && u !== r.by && (owner || (admin && !(r.admins || []).includes(u)))) { const d = el("button", "ri-dots", "⋮"); d.onclick = () => memberMenu(r, u); row.append(d); }
+        if (admin && (profiles[u] || {}).fcode) { const cs = el("span", "ri-code", fmtFCode(profiles[u].fcode)); cs.dir = "ltr"; cs.onclick = async e => { e.stopPropagation(); const o = cs.textContent; if (await copyText(o)) { cs.textContent = "✓ اتنسخ"; setTimeout(() => { cs.textContent = o; }, 1200); } }; sub.append(cs); }
+        mi.append(l1, sub);
+        row.append(avatar(profileFor(u, r.id)), mi);
+        if (u !== myId && u !== r.by && (owner || (admin && !(r.admins || []).includes(u)))) { const d = el("button", "ri-dots", "⋮"); d.type = "button"; d.setAttribute("aria-label", "إدارة العضو"); d.onclick = () => memberMenu(r, u); row.append(d); }
         lst.append(row);
       });
+      if (rows.length > riLim) { const mb = el("button", "ri-more", "عرض المزيد (" + (rows.length - riLim) + ")"); mb.type = "button"; mb.onclick = () => { riLim += 20; paintList(); }; lst.append(mb); }
     };
-    sIn.addEventListener("input", paintList);
-    if (visible.length > 1) mc.append(onl, sIn);
-    mc.append(lst); paintList(); window.__memPaint = paintList;
-  }
-  if (admin && (r.banned || []).length) {
-    const c = card("⛔ المحظورون");
-    r.banned.forEach(u => { const row = el("div", "ri-mem"), b = el("button", "ghost", "إلغاء الحظر"); b.onclick = () => upd({ banned: AR(u) }, r.id); row.append(avatar(profileFor(u)), el("b", "", nameOf(u)), b); c.append(row); });
-  }
-  if (G && admin) {
-    const kd = Object.keys(r.removedUntil || {}).filter(u => kickedLeft(r, u) > 0);
-    if (kd.length) {
-      const kc = card("🚪 المُزالون مؤقتاً (" + kd.length + ")");
-      kd.forEach(u => { const row = el("div", "ri-mem"), b = el("button", "ghost", "إرجاع"); b.onclick = () => upd({ ["removedUntil." + u]: FV().delete() }, "general"); const nm = el("b", "", nameOf(u, "general")); nm.dir = "auto"; row.append(avatar(profileFor(u, "general")), nm, el("span", "ri-tag", leftTxt(kickedLeft(r, u))), b); kc.append(row); });
+    paintList(); window.__memPaint = paintList;
+    if (admin && !G && (r.banned || []).length) {
+      const c = card("⛔ المحظورون (" + r.banned.length + ")", "col");
+      riPaged(c, r.banned, u => { const row = el("div", "ri-mem"), b = el("button", "ghost", "إلغاء الحظر"); b.onclick = () => upd({ banned: AR(u) }, r.id); const nb = el("b", "", nameOf(u)); nb.dir = "auto"; row.append(avatar(profileFor(u)), nb, b); return row; });
     }
   }
-  if (G && admin) {
-    const sc = card("🛡️ المشرفين");
+
+  /* ═══ تاب: الإدارة (الغرفة العامة) ═══ */
+  if (tab === "staff") {
     const staff = [...new Set([...(r.by ? [r.by] : []), ...(r.admins || [])])];
+    const sc = card("🛡️ المشرفين (" + staff.length + ")", "col");
     staff.forEach(u => {
-      const row = el("div", "ri-mem"); row.append(avatar(profileFor(u, "general")), el("b", "", nameOf(u, "general") + (u === myId ? " (أنت)" : "")), el("span", "ri-tag", u === r.by ? " 👑" : " 🛡️"));
+      const row = el("div", "ri-mem"), nb = el("b", "", nameOf(u, "general") + (u === myId ? " (أنت)" : "")); nb.dir = "auto";
+      row.append(avatar(profileFor(u, "general")), nb, el("span", "ri-bd " + (u === r.by ? "own" : "adm"), u === r.by ? "👑 مالك" : "🛡️ مشرف"));
       if (owner && u !== r.by) { const x = el("button", "ghost", "إزالة"); x.onclick = () => upd({ admins: AR(u) }, "general"); row.append(x); }
       sc.append(row);
     });
     if (owner) sc.append(friendFinder(staff, r.banned || [], u => upd({ admins: AU(u) }, "general")));
-    sc.append(el("div", "note", "علشان تكتم أو تحظر حد: اضغط مطوّلاً على رسالته ← إدارة العضو."));
-    const bn = card("⛔ حظر بالكود");
+    sc.append(el("div", "ri-note plain", "علشان تكتم أو تحظر حد: اضغط مطوّلاً على رسالته ← إدارة العضو."));
+    const bn = card("⛔ حظر بالكود", "col");
     bn.append(friendFinder(staff, r.banned || [], u => upd({ banned: AU(u) }, "general"), "⛔ حظر", "مشرف، مينفعش"));
+    if ((r.banned || []).length) {
+      const c = card("🚷 المحظورون (" + r.banned.length + ")", "col");
+      riPaged(c, r.banned, u => { const row = el("div", "ri-mem"), b = el("button", "ghost", "إلغاء الحظر"); b.onclick = () => upd({ banned: AR(u) }, r.id); const nb = el("b", "", nameOf(u)); nb.dir = "auto"; row.append(avatar(profileFor(u)), nb, b); return row; });
+    }
+    const kd = Object.keys(r.removedUntil || {}).filter(u => kickedLeft(r, u) > 0);
+    if (kd.length) {
+      const kc = card("🚪 المُزالون مؤقتاً (" + kd.length + ")", "col");
+      riPaged(kc, kd, u => { const row = el("div", "ri-mem"), b = el("button", "ghost", "إرجاع"); b.onclick = () => upd({ ["removedUntil." + u]: FV().delete() }, "general"); const nm = el("b", "", nameOf(u, "general")); nm.dir = "auto"; row.append(avatar(profileFor(u, "general")), nm, el("span", "ri-tag", leftTxt(kickedLeft(r, u))), b); return row; });
+    }
     if ((r.muted || []).length) {
-      const mc2 = card("🔇 المكتومين");
-      r.muted.forEach(u => { const row = el("div", "ri-mem"), b = el("button", "ghost", "إلغاء الكتم"); b.onclick = () => upd({ muted: AR(u), ["mutedUntil." + u]: FV().delete() }, "general"); row.append(avatar(profileFor(u, "general")), el("b", "", nameOf(u, "general")), b); mc2.append(row); });
+      const mc2 = card("🔇 المكتومين (" + r.muted.length + ")", "col");
+      riPaged(mc2, r.muted, u => { const row = el("div", "ri-mem"), b = el("button", "ghost", "إلغاء الكتم"); b.onclick = () => upd({ muted: AR(u), ["mutedUntil." + u]: FV().delete() }, "general"); const nb = el("b", "", nameOf(u, "general")); nb.dir = "auto"; row.append(avatar(profileFor(u, "general")), nb, b); return row; });
     }
   }
-  const dc = card();
-  if (!owner && (r.members || []).includes(myId)) {
-    const lv = el("button", "ri-danger", "🚪 مغادرة الغرفة");
-    lv.onclick = async () => { try { await db.collection("rooms").doc(r.id).update({ members: AR(myId) }); closeInfo(); openRoom("general"); } catch (e) { setStatus(errMsg(e)); } };
-    dc.append(lv);
-  }
-  if (owner) {
-    const cl = el("button", "ri-danger", "🧹 مسح كل الرسايل");
-    confirmBtn(cl, "clr:" + r.id, "🧹 مسح كل الرسايل", "⚠️ اضغط تاني للتأكيد", async (busy, idle) => {
-      try {
-        busy("جاري المسح…");
-        const res = await wipeRoomMsgs(r.id, n => busy("جاري المسح… " + n));
-        setStatus(res.failed ? "اتمسح " + res.done + " ورسايل (" + res.failed + ") ماتمسحتش — راجع صلاحيات Firestore" : "✓ اتمسحت كل الرسايل (" + res.done + ")");
-        setTimeout(() => setStatus(""), 4000);
-      } catch (e) { setStatus(errMsg(e)); }
-      idle();
-    });
-    dc.append(cl);
-    if (!G) {
-    const dl = el("button", "ri-danger", "🗑 حذف الغرفة");
-    confirmBtn(dl, "del:" + r.id, "🗑 حذف الغرفة", "⚠️ اضغط تاني للتأكيد (هتتمسح الرسايل كمان)", async (busy, idle) => {
-      try {
-        busy("جاري الحذف…");
-        await wipeRoomMsgs(r.id);
-        await dropCode(r); await db.collection("rooms").doc(r.id).delete(); closeInfo(); openRoom("general");
-      } catch (e) { setStatus(errMsg(e)); }
-      idle();
-    });
-    dc.append(dl);
+
+  /* ═══ تاب: المزيد ═══ */
+  if (tab === "more") {
+    const dc = card("منطقة الخطر", "col dn");
+    if (canLeave) {
+      const lv = el("button", "ri-danger", "🚪 مغادرة الغرفة");
+      lv.onclick = async () => { try { await db.collection("rooms").doc(r.id).update({ members: AR(myId) }); closeInfo(); openRoom("general"); } catch (e) { setStatus(errMsg(e)); } };
+      dc.append(lv);
+    }
+    if (owner) {
+      const cl = el("button", "ri-danger", "🧹 مسح كل الرسايل");
+      confirmBtn(cl, "clr:" + r.id, "🧹 مسح كل الرسايل", "⚠️ اضغط تاني للتأكيد", async (busy, idle) => {
+        try {
+          busy("جاري المسح…");
+          const res = await wipeRoomMsgs(r.id, n => busy("جاري المسح… " + n));
+          setStatus(res.failed ? "اتمسح " + res.done + " ورسايل (" + res.failed + ") ماتمسحتش — راجع صلاحيات Firestore" : "✓ اتمسحت كل الرسايل (" + res.done + ")");
+          setTimeout(() => setStatus(""), 4000);
+        } catch (e) { setStatus(errMsg(e)); }
+        idle();
+      });
+      dc.append(cl);
+      if (!G) {
+        const dl = el("button", "ri-danger", "🗑 حذف الغرفة");
+        confirmBtn(dl, "del:" + r.id, "🗑 حذف الغرفة", "⚠️ اضغط تاني للتأكيد (هتتمسح الرسايل كمان)", async (busy, idle) => {
+          try {
+            busy("جاري الحذف…");
+            await wipeRoomMsgs(r.id);
+            await dropCode(r); await db.collection("rooms").doc(r.id).delete(); closeInfo(); openRoom("general");
+          } catch (e) { setStatus(errMsg(e)); }
+          idle();
+        });
+        dc.append(dl);
+      }
     }
   }
-  if (!dc.children.length) dc.remove();
+
+  /* ── تثبيت التاب والسكرول ── */
+  try { const on = bar.querySelector(".on"); if (on) bar.scrollLeft = on.offsetLeft - (bar.clientWidth - on.offsetWidth) / 2; } catch (_) {}
+  box.scrollTop = tabSwitch ? Math.min(keep, Math.max(0, bar.offsetTop - box.offsetTop)) : keep;
+  if (refocus) { const s = $("riSearch"); if (s) { s.focus(); try { s.setSelectionRange(caret, caret); } catch (_) {} } }
 }
 $("riBack").onclick = closeInfo;
 function openRoomMenu(r) {
