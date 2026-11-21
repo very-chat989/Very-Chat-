@@ -494,6 +494,11 @@ form.bar{margin:6px 10px calc(8px + env(safe-area-inset-bottom,0px)*0);padding:6
 form.bar:focus-within{box-shadow:var(--sh),0 0 0 2px color-mix(in srgb,var(--pri) 55%,transparent)}
 #recFx{flex:none;border:0;border-radius:14px;padding:7px 12px;font-size:13px;font-weight:700;background:var(--bg);color:var(--ink);cursor:pointer}
 #recFx.on{background:var(--pri);color:var(--onpri)}
+.b.jumbo{background:none!important;border:0;box-shadow:none;padding:0 4px;min-width:0;animation:pop .45s cubic-bezier(.2,1.5,.4,1) both}
+.jumbo .tx{line-height:1.2;filter:drop-shadow(0 4px 8px rgba(0,0,0,.18))}
+.jumbo .t{background:color-mix(in srgb,var(--card) 85%,transparent);color:var(--ink);border-radius:10px;padding:1px 7px;width:fit-content;margin-inline-start:auto;opacity:.8}
+#emoPanel.out{animation:emoOut .17s ease-in both}
+@keyframes emoOut{to{transform:translateY(30px);opacity:0}}
 </style>
 </head>
 <body>
@@ -853,7 +858,7 @@ function render(list) {
       if (m.mid || m.img || m.vid) b.appendChild(mediaBox(m));
       if (m.share) b.appendChild(roomCard(m.share));
       if (m.ucard) b.appendChild(userCard(m.ucard));
-      if (m.text) { linkify(tx, m.text); if (m.mid || m.img || m.vid) tx.classList.add("mcap"); b.appendChild(tx); }
+      if (m.text) { linkify(tx, m.text); if (m.mid || m.img || m.vid) tx.classList.add("mcap"); b.appendChild(tx); const jn = jumboN(m); if (jn) { b.classList.add("jumbo"); tx.style.fontSize = [0, 64, 52, 44][jn] + "px"; } }
       else if (!m.mid && !m.img && !m.vid && !m.share && !m.ucard) { linkify(tx, m.text || ""); b.appendChild(tx); }
     }
     const rc = {}; Object.values(m.reacts || {}).forEach(k => { if (EMO[k]) rc[k] = (rc[k] || 0) + 1; });
@@ -2067,6 +2072,13 @@ const EMO_CATS = [
   ["⚽", "⚽ 🏀 🏈 ⚾ 🎾 🏐 🏓 🥊 🎮 🕹️ 🎯 🎲 🎧 🎤 🎸 🎹 🥁 🎬 📷 📱 💻 ⌚ 💡 🔋 🚗 🚕 🏍️ ✈️ 🚀 🛸 🏠 🏝️ 🕌 🕋 ⏰ 💰 📚 ✏️ 🔒 🔑"]
 ];
 const EMO_NAMES = ["وجوه ومشاعر", "إيدين وجسم", "قلوب ورموز", "حيوانات وطبيعة", "أكل وشرب", "أنشطة وأشياء"];
+function jumboN(m) {
+  if (m.mid || m.img || m.vid || m.share || m.ucard || m.reply || m.fwd || m.audio) return 0;
+  const t = String(m.text || "").trim(); if (!t || t.length > 40) return 0;
+  try { if (!/^(?:\p{Extended_Pictographic}|\p{Regional_Indicator}|\p{Emoji_Modifier}|[\u200d\ufe0f\u20e3\s])+$/u.test(t)) return 0; } catch (_) { return 0; }
+  const n = window.Intl && Intl.Segmenter ? Array.from(new Intl.Segmenter(undefined, { granularity: "grapheme" }).segment(t.replace(/\s+/g, ""))).length : Array.from(t).length;
+  return n >= 1 && n <= 3 ? n : 0;
+}
 let emoRec = []; try { emoRec = JSON.parse(localStorage.getItem("emoRec") || "[]"); } catch (_) {}
 function insEmo(e) {
   const i = $("inp"), a = i.selectionStart == null ? i.value.length : i.selectionStart, z = i.selectionEnd == null ? a : i.selectionEnd;
@@ -2093,7 +2105,10 @@ function drawEmo() {
   grid.onscroll = () => { let k = 0; es.forEach((s, i) => { if (s.offsetTop <= grid.scrollTop + 12) k = i; }); ts.forEach((t, i) => t.classList.toggle("on", i === k)); };
   grid.scrollTop = emoRec.length ? 0 : 0;
 }
-$("emoBtn").onclick = () => { const p = $("emoPanel"); p.hidden = !p.hidden; if (!p.hidden) drawEmo(); };
+function closeEmo() { const p = $("emoPanel"); if (p.hidden || p.classList.contains("out")) return; p.classList.add("out"); $("emoBtn").textContent = "😊"; setTimeout(() => { p.hidden = true; p.classList.remove("out"); }, 170); }
+$("emoBtn").onclick = () => { const p = $("emoPanel"); if (!p.hidden) { closeEmo(); $("inp").focus(); return; } $("inp").blur(); p.hidden = false; drawEmo(); $("emoBtn").textContent = "⌨️"; const m = $("msgs"); setTimeout(() => { m.scrollTop = m.scrollHeight; }, 60); };
+$("f").addEventListener("submit", closeEmo, true);
+$("inp").addEventListener("focus", closeEmo);
 
 $("f").onsubmit = async e => {
   e.preventDefault();
