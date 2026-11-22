@@ -1592,10 +1592,13 @@ setInterval(() => {
 const MAX_DOC = 900000; // حد حجم الرسالة في Firestore (~1MB)
 $("pvX").onclick = () => { $("pview").hidden = true; $("pvImg").removeAttribute("src"); };
 $("pview").onclick = e => { if (e.target === $("pview")) $("pvX").click(); };
-function mediaGuard() {
+document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("pview").hidden) $("pvX").click(); });
+function mediaGuard(rid) {
+  rid = rid || room;
   if (!db) { setStatus("لسه مش متصل."); return false; }
-  const why = writeBlock(curR()); if (why) { setStatus(why); return false; }
-  const cr = curR(), wait = cr && !adminOf(cr) && cr.slow ? cr.slow - (Date.now() - (lastSent[room] || 0)) / 1000 : 0;
+  const cr = rid === "general" ? generalRoom() : isDM(rid) ? dmRoom(rid) : rooms.find(x => x.id === rid);
+  const why = writeBlock(cr); if (why) { setStatus(why); return false; }
+  const wait = cr && !adminOf(cr) && cr.slow ? cr.slow - (Date.now() - (lastSent[rid] || 0)) / 1000 : 0;
   if (wait > 0) { setStatus("🐢 وضع بطيء: استنى " + Math.ceil(wait) + " ثانية"); return false; }
   return true;
 }
@@ -1613,10 +1616,11 @@ function mkThumb(src, w, h) { try { const k = Math.min(1, 28 / Math.max(w, h)), 
 function videoMeta(file) {
   return new Promise(res => {
     const u = URL.createObjectURL(file), v = document.createElement("video"); v.muted = true; v.playsInline = true; v.preload = "metadata";
-    const fin = r => { URL.revokeObjectURL(u); res(r); };
-    v.onloadeddata = () => { try { v.currentTime = Math.min(0.2, (v.duration || 1) / 2); } catch (e) { fin({ w: v.videoWidth, h: v.videoHeight, thumb: "" }); } };
-    v.onseeked = () => fin({ w: v.videoWidth, h: v.videoHeight, thumb: mkThumb(v, v.videoWidth, v.videoHeight) });
-    v.onerror = () => fin({ w: 0, h: 0, thumb: "" }); v.src = u; setTimeout(() => fin({ w: v.videoWidth || 0, h: v.videoHeight || 0, thumb: "" }), 4000);
+    let done = false; const fin = r => { if (done) return; done = true; URL.revokeObjectURL(u); res(r); };
+    const info = t => ({ w: v.videoWidth || 0, h: v.videoHeight || 0, d: isFinite(v.duration) ? v.duration : 0, thumb: t || "" });
+    v.onloadeddata = () => { try { v.currentTime = Math.min(0.2, (v.duration || 1) / 2); } catch (e) { fin(info()); } };
+    v.onseeked = () => fin(info(mkThumb(v, v.videoWidth, v.videoHeight)));
+    v.onerror = () => fin(info()); v.src = u; setTimeout(() => fin(info()), 6000);
   });
 }
 // بيحفظ الملف في مجموعة media مرة واحدة، والرسالة بتشاور عليه بس. لو القواعد منعت بيرجع للطريقة القديمة.
@@ -1630,17 +1634,49 @@ async function saveMedia(kind, data, meta) {
 // الوسائط ما بتتحمّل لوحدها: لازم تضغط عليها. اللي اتحمّل بإيدك بيفضل ظاهر، ولما تمسح بيانات التطبيق بيرجع يحتاج ضغطة
 const DLD = (() => { try { return new Set(JSON.parse(localStorage.getItem("vc_dl") || "[]")); } catch (e) { return new Set(); } })();
 const dlSave = () => { try { localStorage.setItem("vc_dl", JSON.stringify([...DLD].slice(-1500))); } catch (e) {} };
-function getMedia(id) {
+// ───── تخزين دائم على الجهاز: اللي بتحمّله بيفضل لحد ما تمسحه من «الحساب والتخزين» (زي واتساب/تيليجرام) ─────
+const IDBN = "vc-media";
+let _idb = null;
+const idbOpen = () => _idb || (_idb = new Promise(res => { try { const q = indexedDB.open(IDBN, 1); q.onupgradeneeded = () => q.result.createObjectStore("m"); q.onsuccess = () => res(q.result); q.onerror = q.onblocked = () => res(null); } catch (e) { res(null); } }));
+const idbTx = async (mode, fn) => { const d = await idbOpen(); if (!d) return null; return new Promise(res => { try { const t = d.transaction("m", mode), r = fn(t.objectStore("m")); t.oncomplete = () => res(r && "result" in r ? r.result : true); t.onerror = t.onabort = () => res(null); } catch (e) { res(null); } }); };
+const idbGet = k => idbTx("readonly", st => st.get(k));
+const idbPut = async (k, v) => { const ok = await idbTx("readwrite", st => st.put(v, k)); if (ok) { DLD.add(k); dlSave(); } return !!ok; };
+async function idbStats() { const d = await idbOpen(); if (!d) return { n: 0, bytes: 0 }; return new Promise(res => { let n = 0, bytes = 0; try { const q = d.transaction("m").objectStore("m").openCursor(); q.onsuccess = () => { const c = q.result; if (c) { n++; const v = c.value; bytes += v && v.size != null ? v.size : String(v || "").length; c.continue(); } else res({ n, bytes }); }; q.onerror = () => res({ n, bytes }); } catch (e) { res({ n, bytes }); } }); }
+const idbClear = async () => { await idbTx("readwrite", st => st.clear()); };
+try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (_) {}
+// الفيديو الكبير بيتقسّم لقطع (كل قطعة document في media). أول قطعة header: data:video/..;vcn=N;base64,
+const VCN = /^data:(video\/[a-z0-9.+-]+);vcn=(\d+);base64,/i, MEDIA_CB = new Map(), sleep = ms => new Promise(r => setTimeout(r, ms));
+const b64Bytes = b => { const bin = atob(b), u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return u; };
+async function loadChunked(id, first, mm) {
+  const n = +mm[2], parts = new Array(n); parts[0] = first.slice(mm[0].length); let done = 1, next = 1;
+  const tell = () => (MEDIA_CB.get(id) || []).forEach(f => { try { f(done / n); } catch (_) {} });
+  const one = async i => { for (let t = 0; t < 4; t++) { try { const d = await db.collection("media").doc(id + "_" + i).get(); if (d.exists && typeof d.data().data === "string") return d.data().data; } catch (e) {} await sleep(500 * (t + 1)); } throw new Error("chunk " + i); };
+  await Promise.all(Array.from({ length: Math.min(4, n - 1) }, async () => { while (next < n) { const i = next++; parts[i] = await one(i); done++; tell(); } }));
+  return new Blob(parts.map(b64Bytes), { type: mm[1].toLowerCase() });
+}
+function getMedia(id, onp) {
+  if (onp) { if (!MEDIA_CB.has(id)) MEDIA_CB.set(id, []); MEDIA_CB.get(id).push(onp); }
   if (MEDIA.has(id)) return Promise.resolve(MEDIA.get(id));
   if (MEDIA_P.has(id)) return MEDIA_P.get(id);
-  const p = db.collection("media").doc(id).get().then(d => { const v = d.exists ? d.data().data : null; if (v) { MEDIA.set(id, v); while (MEDIA.size > 40) MEDIA.delete(MEDIA.keys().next().value); } MEDIA_P.delete(id); return v; }).catch(() => { MEDIA_P.delete(id); return null; });
+  const fin = v => { if (v) { MEDIA.set(id, v); while (MEDIA.size > 40) MEDIA.delete(MEDIA.keys().next().value); } MEDIA_P.delete(id); MEDIA_CB.delete(id); return v; };
+  const p = (async () => {
+    const loc = await idbGet(id);
+    if (loc) return fin(typeof loc === "string" ? loc : URL.createObjectURL(loc));
+    const d = await db.collection("media").doc(id).get(); let v = d.exists ? d.data().data : null;
+    if (typeof v === "string") {
+      const mm = VCN.exec(v);
+      if (mm) { const blob = await loadChunked(id, v, mm); idbPut(id, blob); v = URL.createObjectURL(blob); }
+      else idbPut(id, v);
+    }
+    return fin(v);
+  })().catch(() => fin(null));
   MEDIA_P.set(id, p); return p;
 }
 const MIO = "IntersectionObserver" in window ? new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { MIO.unobserve(e.target); if (e.target._load) e.target._load(); } }), { rootMargin: "400px" }) : null;
 function mediaBox(m) {
   const vid = m.mk === "vid" || !!m.vid, w0 = +m.w || 4, h0 = +m.h || 3; let W = 240, H = W * h0 / w0; if (H > 320) { H = 320; W = H * w0 / h0; } if (W < 120) W = 120;
   const box = el("div", "mwrap"); box.style.width = Math.round(W) + "px"; box.style.height = Math.round(H) + "px";
-  const key = m.mid || m.id, auto = DLD.has(key) || (m.uid === myId && (!m.mid || MEDIA.has(m.mid)));
+  const key = m.mid || m.id, auto = DLD.has(key) || (m.mid && MEDIA.has(m.mid)) || (m.uid === myId && !m.mid && Date.now() - (m.ts || 0) < 120000);
   const ph = el("div", "mph"); if (okSrc(m.thumb, "image")) ph.style.backgroundImage = "url(" + m.thumb + ")"; else ph.style.background = "linear-gradient(135deg,#3a4a46,#25332f)"; box.append(ph);
   if (auto) box.append(el("div", "msp"));
   const show = data => {
@@ -1648,11 +1684,11 @@ function mediaBox(m) {
     box.querySelectorAll(".mretry").forEach(x => x.remove());
     if (!data) { const r = el("button", "mretry", "تعذّر التحميل · اضغط للإعادة"); r.type = "button"; r.onclick = e => { e.stopPropagation(); r.remove(); box.append(el("div", "msp")); box._load(); }; box.querySelectorAll(".msp").forEach(x => x.remove()); box.append(r); return; }
     let node;
-    if (vid) { node = el("video", "mvid"); node.src = data; node.controls = true; node.playsInline = true; node.preload = "metadata"; if (okSrc(m.thumb, "image")) node.poster = m.thumb; node.onclick = e => e.stopPropagation(); node.onloadeddata = () => box.classList.add("ok"); }
+    if (vid) { node = el("video", "mvid"); node.src = data; node.controls = true; node.playsInline = true; node.preload = "metadata"; if (okSrc(m.thumb, "image")) node.poster = m.thumb; node.controls = false; node.onclick = e => { e.stopPropagation(); if (!selMode) openVideo(data, okSrc(m.thumb, "image") ? m.thumb : ""); }; node.onloadeddata = () => box.classList.add("ok"); const pl = el("div", "mplay"); pl.innerHTML = '<svg viewBox="0 0 24 24"><path d="M8 5.5v13l11-6.5z" fill="currentColor"/></svg>'; pl.onclick = e => { e.stopPropagation(); if (!selMode) openVideo(data, okSrc(m.thumb, "image") ? m.thumb : ""); }; box.append(pl); }
     else { node = el("img", "mimg"); node.alt = "صورة"; node.decoding = "async"; node.onload = () => box.classList.add("ok"); node.onclick = e => { e.stopPropagation(); if (!selMode) { $("pvImg").src = data; $("pview").hidden = false; } }; node.src = data; }
-    box.append(node); if (key && !DLD.has(key)) { DLD.add(key); dlSave(); }
+    box.querySelectorAll(".mpct").forEach(x => x.remove()); box.append(node); if (key && !DLD.has(key) && !String(data).startsWith("blob:")) { DLD.add(key); dlSave(); }
   };
-  box._load = () => { if (m.mid) getMedia(m.mid).then(show); else show(m.img || m.vid); };
+  box._load = () => { if (m.mid) getMedia(m.mid, vid ? f => { let pc = box.querySelector(".mpct"); if (!pc) { pc = el("div", "mpct"); box.append(pc); } pc.textContent = Math.round(f * 100) + "%"; } : null).then(show); else show(m.img || m.vid); };
   if (!auto) {
     const g = el("button", "mdl"); g.type = "button"; g.setAttribute("aria-label", vid ? "تحميل الفيديو" : "تحميل الصورة");
     const ic = el("span", "mdl-i"); ic.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11m0 0-4.5-4.5M12 15l4.5-4.5M5 20h14"/></svg>';
@@ -1677,64 +1713,129 @@ async function shrinkImage(file) {
   }
   return null;
 }
-async function sendImages(files) {
-  if (!mediaGuard()) return;
+(() => {
+  const o = document.createElement("div"); o.id = "vview"; o.hidden = true;
+  const x = document.createElement("button"); x.type = "button"; x.id = "vvX"; x.setAttribute("aria-label", "إغلاق"); x.textContent = "✕";
+  const v = document.createElement("video"); v.id = "vvV"; v.controls = true; v.playsInline = true; v.setAttribute("playsinline", ""); v.setAttribute("webkit-playsinline", ""); v.setAttribute("controlslist", "nofullscreen nodownload"); v.disablePictureInPicture = false;
+  o.append(v, x); document.body.append(o);
+  const close = () => { try { v.pause(); } catch (_) {} v.removeAttribute("src"); try { v.load(); } catch (_) {} o.hidden = true; };
+  x.onclick = close; o.addEventListener("click", e => { if (e.target === o) close(); });
+  document.addEventListener("keydown", e => { if (e.key === "Escape" && !o.hidden) close(); });
+  window.openVideo = (src, poster) => { if (!src) return; v.poster = poster || ""; v.src = src; o.hidden = false; const p = v.play(); if (p && p.catch) p.catch(() => {}); };
+})();
+async function sendImages(files, rid) {
+  rid = rid || room;
+  if (!mediaGuard(rid)) return;
   const cap = $("inp").value.trim(); let n = 0;
   for (const f of files) {
     setStatus("جاري تجهيز الصورة…");
     try {
       const r = await shrinkImage(f); if (!r) { setStatus("الصورة كبيرة جدًا."); continue; }
       setStatus("جاري الإرسال…");
-      await postMedia({ ...(await saveMedia("img", r.url, r)), ...(cap && !n ? { text: cap.slice(0, 300) } : {}) }); n++;
+      await postMedia({ ...(await saveMedia("img", r.url, r)), ...(cap && !n ? { text: cap.slice(0, 300) } : {}) }, rid); n++;
     } catch (e) { setStatus("الصورة ماتبعتتش."); }
   }
-  if (n) { if (cap) $("inp").value = ""; setStatus(""); }
+  if (n) { if (cap && rid === room) $("inp").value = ""; if (!$("status").textContent.startsWith("جاري تحميل")) setStatus(""); }
 }
-// ضغط الفيديو: بيعيد ترميزه بجودة قليلة علشان يدخل في حد الرسالة
-async function shrinkVideo(file) {
+// ───── الفيديو: بيتبعت بجودته الأصلية وكامل (مقسّم لقطع)، ولو أكبر من الحد بيتعمل ضغط بجودة عالية وبنفس الطول ─────
+const VID_MAX = 48 * 1024 * 1024, VID_MAX_SEC = 300, RAW_CH = 562500; // RAW_CH بايت لكل قطعة (يساوي 750000 حرف base64)
+const roomLabel = rid => rid === "general" ? "العام" : isDM(rid) ? dmRoom(rid).name : ((rooms.find(x => x.id === rid) || {}).name || "الغرفة");
+function upChip(rid, kind) {
+  let host = $("ups"); if (!host) { host = el("div"); host.id = "ups"; document.body.append(host); }
+  const c = el("div", "upc"), t = el("span", "upt"), bar = el("i", "upb"), x = el("button", "upx", "✕"); x.type = "button"; x.setAttribute("aria-label", "إلغاء");
+  const f = el("b", "upf"); bar.append(f); c.append(t, bar, x); host.append(c);
+  const o = { cancel: false, set(txt, pct) { t.textContent = txt; f.style.width = Math.max(0, Math.min(100, pct || 0)) + "%"; }, done() { c.remove(); } };
+  x.onclick = () => { o.cancel = true; t.textContent = "بيتلغي…"; }; o.set("⏫ " + kind + " لـ " + roomLabel(rid) + "…", 0); return o;
+}
+const b64Slice = (blob, a, b) => new Promise(res => { const fr = new FileReader(); fr.onload = () => { const r = String(fr.result || ""); res(r.slice(r.indexOf(",") + 1)); }; fr.onerror = () => res(null); fr.readAsDataURL(blob.slice(a, b)); });
+const withTO = (p, ms) => Promise.race([p, new Promise((_, no) => setTimeout(() => no(new Error("timeout")), ms))]);
+async function uploadChunks(blob, mime, ui, label) {
+  const n = Math.max(1, Math.ceil(blob.size / RAW_CH)), id = db.collection("media").doc().id, ref = i => db.collection("media").doc(i ? id + "_" + i : id);
+  let done = 0, next = 0, fail = null; const written = [];
+  const put = async i => {
+    const b = await b64Slice(blob, i * RAW_CH, (i + 1) * RAW_CH); if (b === null) throw new Error("read");
+    const data = (i === 0 ? "data:" + mime + ";vcn=" + n + ";base64," : "") + b;
+    await withTO(ref(i).set({ data, kind: "vid", uid: myId, ts: Date.now() }), 120000); written.push(i);
+  };
+  // القطعة الأولى (الـ header) آخر حاجة، علشان محدش يلاقي فيديو ناقص
+  const order = []; for (let i = 1; i < n; i++) order.push(i); order.push(0);
+  await Promise.all(Array.from({ length: Math.min(3, n) }, async () => {
+    while (!fail && !ui.cancel && next < order.length) {
+      const i = order[next++]; if (i === 0 && done < n - 1) { await sleep(100); next--; if (next < order.length) continue; }
+      try { await put(i); done++; ui.set("⏫ " + label + " لـ " + ui.name + " · " + Math.round(done / n * 100) + "%", done / n * 100); } catch (e) { fail = e; }
+    }
+  }));
+  if (fail || ui.cancel) { written.forEach(i => ref(i).delete().catch(() => {})); throw fail || new Error("cancel"); }
+  return id;
+}
+// ضغط بجودة عالية وبنفس الطول (بيشتغل بالزمن الحقيقي، فسيب التطبيق مفتوح). بيتستخدم بس لو الملف أكبر من الحد.
+async function shrinkVideo(file, ui) {
   const src = URL.createObjectURL(file), v = document.createElement("video");
   v.muted = true; v.playsInline = true; v.preload = "auto"; v.src = src;
   try {
     await new Promise((ok, no) => { v.onloadedmetadata = ok; v.onerror = no; });
-    if (!window.MediaRecorder || !v.captureStream && !document.createElement("canvas").captureStream) return null;
-    const MAXS = 15, dur = Math.min(v.duration || MAXS, MAXS), k = Math.min(1, 360 / Math.min(v.videoWidth, v.videoHeight || 360));
-    const cv = document.createElement("canvas"); cv.width = Math.round(v.videoWidth * k / 2) * 2 || 320; cv.height = Math.round(v.videoHeight * k / 2) * 2 || 240;
-    const g = cv.getContext("2d"), out = cv.captureStream(20);
+    const cvT = document.createElement("canvas"); if (!window.MediaRecorder || !cvT.captureStream) return null;
+    const dur = v.duration; if (!isFinite(dur) || dur <= 0) return null;
+    if (dur > VID_MAX_SEC) return { tooLong: true };
+    const k = Math.min(1, 720 / Math.min(v.videoWidth, v.videoHeight || 720)), cv = cvT;
+    cv.width = Math.round(v.videoWidth * k / 2) * 2 || 640; cv.height = Math.round(v.videoHeight * k / 2) * 2 || 360;
+    const g = cv.getContext("2d"), out = cv.captureStream(30), abps = 96000;
     try { v.muted = false; v.volume = 1; const ac = new (window.AudioContext || window.webkitAudioContext)(), sc = ac.createMediaElementSource(v), dst = ac.createMediaStreamDestination(); sc.connect(dst); out.addTrack(dst.stream.getAudioTracks()[0]); await ac.resume(); } catch (e) { v.muted = true; }
-    const mt = ["video/webm;codecs=vp8,opus", "video/webm;codecs=vp8", "video/webm", "video/mp4"].find(t => MediaRecorder.isTypeSupported(t)); if (!mt) return null;
-    const mr = new MediaRecorder(out, { mimeType: mt, videoBitsPerSecond: 280000, audioBitsPerSecond: 32000 }), parts = [];
+    const mt = ["video/mp4;codecs=avc1,mp4a.40.2", "video/webm;codecs=vp9,opus", "video/webm;codecs=vp8,opus", "video/webm"].find(t => MediaRecorder.isTypeSupported(t)); if (!mt) return null;
+    const vbps = Math.max(700000, Math.min(8000000, Math.floor((VID_MAX * 0.85 * 8) / dur - abps)));
+    const mr = new MediaRecorder(out, { mimeType: mt, videoBitsPerSecond: vbps, audioBitsPerSecond: abps }), parts = [];
     mr.ondataavailable = e => { if (e.data && e.data.size) parts.push(e.data); };
     const done = new Promise(r => { mr.onstop = r; });
     let raf; const draw = () => { g.drawImage(v, 0, 0, cv.width, cv.height); raf = requestAnimationFrame(draw); };
-    mr.start(500);
+    mr.start(1000);
     try { await v.play(); } catch (e) { v.muted = true; await v.play(); }
     draw();
-    await new Promise(r => { const t = setInterval(() => { setStatus("جاري ضغط الفيديو… " + Math.min(99, Math.round(v.currentTime / dur * 100)) + "%"); if (v.ended || v.currentTime >= dur) { clearInterval(t); r(); } }, 200); });
+    await new Promise(r => { const t = setInterval(() => { ui.set("🎞 بجهّز الفيديو (سيب التطبيق مفتوح) · " + Math.min(99, Math.round(v.currentTime / dur * 100)) + "%", v.currentTime / dur * 100); if (v.ended || ui.cancel) { clearInterval(t); r(); } }, 250); });
     cancelAnimationFrame(raf); v.pause(); if (mr.state !== "inactive") mr.stop(); await done;
-    return await readURL(new Blob(parts, { type: mt.split(";")[0] }));
+    if (ui.cancel) return null;
+    return new Blob(parts, { type: mt.split(";")[0] });
   } catch (e) { return null; }
   finally { URL.revokeObjectURL(src); }
 }
-async function sendVideo(file) {
-  if (!mediaGuard()) return;
-  const cap = $("inp").value.trim();
+async function sendVideo(file, rid) {
+  rid = rid || room;
+  if (!mediaGuard(rid)) return;
+  const cap = $("inp").value.trim(); if (cap && rid === room) { $("inp").value = ""; try { localStorage.removeItem(draftKey(rid)); } catch (_) {} }
+  const ui = upChip(rid, "فيديو"); ui.name = roomLabel(rid);
   try {
-    let url = file.size < 650000 ? await readURL(file) : null;
-    if (!url || url.length > MAX_DOC) { setStatus("جاري تجهيز الفيديو…"); url = await shrinkVideo(file); }
-    if (!url || url.length > MAX_DOC) { setStatus("الفيديو كبير. اختار مقطع أقصر (حوالي 15 ثانية أو أقل)."); return; }
-    setStatus("جاري الإرسال…"); const meta = await videoMeta(file);
-    await postMedia({ ...(await saveMedia("vid", url, meta)), ...(cap ? { text: cap.slice(0, 300) } : {}) }); if (cap) $("inp").value = ""; setStatus("");
-  } catch (e) { setStatus("الفيديو ماتبعتش."); }
+    const meta = await videoMeta(file);
+    if (file.size < 650000) {   // صغير جدًا: رسالة واحدة زي الأول
+      const url = await readURL(file); if (!url) throw new Error("read");
+      await postMedia({ ...(await saveMedia("vid", url, meta)), ...(cap ? { text: cap.slice(0, 300) } : {}) }, rid);
+    } else {
+      let blob = file, mime = (file.type || "video/mp4").split(";")[0]; if (!/^video\//i.test(mime)) mime = "video/mp4";
+      if (file.size > VID_MAX) {
+        const r = await shrinkVideo(file, ui);
+        if (ui.cancel) throw new Error("cancel");
+        if (r && r.tooLong) { flash("🎥 الفيديو أطول من " + Math.round(VID_MAX_SEC / 60) + " دقايق، قصّره وجرّب تاني"); return; }
+        if (!r) { flash("ماقدرتش أجهّز الفيديو الكبير ده على المتصفح. جرّب مقطع أصغر."); return; }
+        blob = r; mime = (r.type || "video/webm").split(";")[0];
+        if (blob.size > VID_MAX * 1.08) { flash("الفيديو لسه كبير بعد الضغط. قصّره شوية."); return; }
+      }
+      const id = await uploadChunks(blob, mime, ui, "فيديو");
+      MEDIA.set(id, URL.createObjectURL(blob)); idbPut(id, blob);
+      await postMedia({ mid: id, mk: "vid", thumb: meta.thumb || "", w: meta.w || 0, h: meta.h || 0, ...(cap ? { text: cap.slice(0, 300) } : {}) }, rid);
+    }
+  } catch (e) {
+    if (e && e.message === "cancel") flash("اتلغى رفع الفيديو");
+    else if (e && e.code === "permission-denied") flash("⚠️ قواعد Firebase مش مسمحة بحفظ الفيديو الكبير (collection media). راجع القواعد.");
+    else flash("الفيديو ماتبعتش، اتأكد من النت وجرّب تاني.");
+  } finally { ui.done(); }
 }
 $("aMix").onchange = async e => {
-  const f = [...e.target.files]; e.target.value = ""; if (!f.length) return;
+  const rid = room, f = [...e.target.files]; e.target.value = ""; if (!f.length) return;
   const im = f.filter(x => (x.type || "").startsWith("image")).slice(0, 5), vd = f.filter(x => (x.type || "").startsWith("video")).slice(0, 3);
-  if (im.length) await sendImages(im);
-  for (const v of vd) await sendVideo(v);
+  if (im.length) await sendImages(im, rid);
+  for (const v of vd) await sendVideo(v, rid);
   if (f.length > im.length + vd.length) flash("اتبعت أول ٥ صور و٣ فيديوهات بس");
 };
-$("aCam").onchange = e => { const f = e.target.files[0]; e.target.value = ""; if (!f) return; if ((f.type || "").startsWith("video")) sendVideo(f); else sendImages([f]); };
-$("aCamV").onchange = e => { const f = e.target.files[0]; e.target.value = ""; if (f) sendVideo(f); };
+$("aCam").onchange = e => { const rid = room, f = e.target.files[0]; e.target.value = ""; if (!f) return; if ((f.type || "").startsWith("video")) sendVideo(f, rid); else sendImages([f], rid); };
+$("aCamV").onchange = e => { const rid = room, f = e.target.files[0]; e.target.value = ""; if (f) sendVideo(f, rid); };
 
 // ───── زرار الكاميرا: ضغطة = كاميرا الموبايل للصور، ضغطة مطوّلة = تصوير فيديو ─────
 (() => {
@@ -1817,7 +1918,7 @@ async function stoUI() {
       box.append(top, bar);
     }
     const chip = (t, v) => { const c = el("span", "", t); c.append(el("b", "", String(v))); return c; };
-    const ch = el("div", "sto-chips"); ch.append(chip("وسائط حمّلتها", DLD.size), chip("ملفات محمّلة في الجلسة", MEDIA.size + (mem ? " (" + fmtSize(mem) + ")" : "")));
+    const st = await idbStats(), ch = el("div", "sto-chips"); ch.append(chip("وسائط حمّلتها", DLD.size), chip("محفوظة على جهازك", st.n + (st.bytes ? " (" + fmtSize(st.bytes) + ")" : "")));
     box.append(ch);
   } catch (err) { box.textContent = "ماقدرتش أحسب الحجم."; }
 }
@@ -1835,7 +1936,7 @@ async function preWipe() {
   if (flag === "all") { try { localStorage.clear(); sessionStorage.clear(); } catch (e) {} }
 }
 async function wipeStorage(everything) {
-  MEDIA.clear(); MEDIA_P.clear(); DLD.clear(); try { localStorage.removeItem("vc_dl"); } catch (e) {}
+  await withTimeout(idbClear(), 3000); MEDIA.clear(); MEDIA_P.clear(); DLD.clear(); try { localStorage.removeItem("vc_dl"); } catch (e) {}
   try { localStorage.setItem("vc_wipe", everything ? "all" : "cache"); } catch (e) {}
   await withTimeout((async () => { if (window.caches) await Promise.all((await caches.keys()).map(k => caches.delete(k))); })(), 1500);
   if (everything) await withTimeout((async () => { const rs = await navigator.serviceWorker.getRegistrations(); await Promise.all(rs.map(r => r.unregister())); })(), 1500);
@@ -1963,7 +2064,7 @@ function showPic(av, name) {
   else { pic.classList.add("emo"); pic.style.background = av.style.background || "var(--line)"; pic.textContent = av.textContent; }
   $("lbName").textContent = name || av.dataset.name || ""; $("lb").hidden = false;
 }
-const closePic = () => { $("lb").hidden = true; };
+const closePic = () => { $("lb").hidden = true; if (!$("pview").hidden) $("pvX").click(); };
 $("lb").onclick = closePic;
 document.addEventListener("keydown", e => { if (e.key === "Escape") closePic(); });
 document.addEventListener("click", e => {
@@ -1978,10 +2079,10 @@ document.addEventListener("click", e => {
 
 // ───── زرار الرجوع: يقفل اللي مفتوح بدل ما يطلع من التطبيق ─────
 (function () {
-  const ids = ["lb", "msheet", "sheet", "drawer", "rinfo", "selBar", "emoPanel"];
+  const ids = ["vview", "pview", "lb", "msheet", "reqView", "sheet", "drawer", "rinfo", "selBar", "emoPanel"];
   const open = id => { const e = $(id); return !!e && !e.hidden; };
   const forced = () => open("sheet") && sheetMode === "me" && !$("cancelSheet").offsetParent;
-  const closers = { lb: () => { $("lb").hidden = true; }, msheet: () => { $("msheet").hidden = true; }, sheet: () => { $("sheet").hidden = true; }, drawer: () => closeDrawer(), rinfo: () => closeInfo(), selBar: () => exitSel(), emoPanel: () => { $("emoPanel").hidden = true; } };
+  const closers = { vview: () => { $("vvX").click(); }, pview: () => { $("pvX").click(); }, reqView: () => { $("reqView").hidden = true; }, lb: () => { $("lb").hidden = true; }, msheet: () => { $("msheet").hidden = true; }, sheet: () => { $("sheet").hidden = true; }, drawer: () => closeDrawer(), rinfo: () => closeInfo(), selBar: () => exitSel(), emoPanel: () => { $("emoPanel").hidden = true; } };
   let pushed = 0, skip = 0;
   const count = () => ids.filter(open).length + (room !== "general" ? 1 : 0);
   window.syncHistory = function () {
