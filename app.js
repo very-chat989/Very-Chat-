@@ -1004,21 +1004,28 @@ function openFriends() {
     const p = profiles[u] || {}, nm = p.name || "مجهول", ch = nzq(nm).charAt(0).toUpperCase();
     fr.push({ u, p, name: nm, fcode: p.fcode || "", keys: normFCode(p.fcode), hid: !!d.last && d.last.ts <= dmClearedAt(d), ch: /[\u0621-\u064Aa-zA-Z]/.test(ch) ? ch : "#" });
   });
-  fr.sort((x, y) => (x.ch === "#") - (y.ch === "#") || x.name.localeCompare(y.name, "ar"));
+  const grp = ch => /[\u0621-\u064A]/.test(ch) ? 0 : ch === "#" ? 2 : 1;
+  fr.sort((x, y) => grp(x.ch) - grp(y.ch) || x.name.localeCompare(y.name, "ar"));
   const root = el("div", "fw"), head = el("div", "fwh"), x = el("button", "fwx", "✕"); x.type = "button"; x.setAttribute("aria-label", "إغلاق"); x.onclick = () => { $("msheet").hidden = true; };
-  const ht = el("div", "fwt"); ht.append(el("b", "", "💬 محادثة جديدة"), el("small", "", fr.length ? fr.length + (fr.length > 10 ? " صديق" : " أصدقاء") : "لسه مفيش أصدقاء")); head.append(ht, x);
-  const sbox = el("div", "fws"), si = el("input"), sic = el("span", "fwsi"), sx = el("button", "fwsc", "✕"); sic.innerHTML = FW_SEARCH; sx.type = "button"; sx.hidden = true;
+  const ht = el("div", "fwt"), cnt = el("small", "", fr.length ? (fr.length === 1 ? "صديق واحد" : fr.length === 2 ? "صديقين" : fr.length + (fr.length > 10 ? " صديق" : " أصدقاء")) : "لسه مفيش أصدقاء");
+  ht.append(el("b", "", "💬 محادثة جديدة"), cnt); head.append(ht, x);
+  const sbox = el("div", "fws big"), si = el("input"), sic = el("span", "fwsi"), sx = el("button", "fwsc", "✕"); sic.innerHTML = FW_SEARCH; sx.type = "button"; sx.hidden = true;
   si.type = "search"; si.placeholder = "ابحث بالاسم أو اكتب كود صديق…"; si.autocomplete = "off"; si.autocapitalize = "none"; si.spellcheck = false; si.enterKeyHint = "search"; si.setAttribute("aria-label", "بحث"); sbox.append(sic, si, sx);
-  const q3 = el("div", "fwq");
-  [["👥", "غرفة جديدة", () => { $("msheet").hidden = true; openSheet("room"); }], ["🔑", "أضف بالكود", () => { openDiscover(); }], ["📨", "دعوة للتطبيق", () => { $("msheet").hidden = true; openInvite(); }]].forEach(([ic, tx, fn]) => { const b = el("button", ""); b.type = "button"; b.append(el("i", "", ic), el("span", "", tx)); b.onclick = fn; q3.appendChild(b); });
-  const list = el("div", "fwl"); root.append(head, sbox, q3, list); c.append(root);
+  const wrap = el("div", "fwlw"), list = el("div", "fwl"), idx = el("div", "fwidx"); idx.hidden = true; wrap.append(list, idx);
+  root.append(head, sbox, wrap); c.append(root);
   let tok = 0, extra = null, extraQ = "";
-  function mkRow(t, viaCode) {
-    const row = el("button", "fwrow nc"), tx = el("div", "fwrt"), aw = el("span", "fwav"), sb = el("small", "");
-    row.type = "button"; const on = !viaCode && isOnline(presence[t.u]);
-    sb.append(viaCode ? "اضغط لإرسال طلب محادثة" : on ? "🟢 متصل" : presence[t.u] ? lastSeenText(presence[t.u]) : "صديق"); if (t.hid) sb.append(" · 🧹 مخفية");
-    if (t.fcode) { const bd = document.createElement("bdi"); bd.textContent = fmtFCode(t.fcode); sb.append(" · ", bd); }
-    tx.append(el("b", "", t.name), sb); aw.append(avatar(t.p)); if (on) aw.append(el("span", "fwdot")); row.append(aw, tx, el("span", "fwgo", "‹"));
+  function hl(name, q) {
+    const f = document.createDocumentFragment(), nn = nzq(name), qn = nzq(q);
+    const i = q && qn && nn.length === name.length ? nn.indexOf(qn) : -1;
+    if (i < 0) { f.append(name); return f; }
+    f.append(name.slice(0, i)); f.append(el("mark", "", name.slice(i, i + qn.length))); f.append(name.slice(i + qn.length)); return f;
+  }
+  function mkRow(t, q, viaCode) {
+    const row = el("button", "fwrow nc"), tx = el("div", "fwrt"), aw = el("span", "fwav"), sb = el("small", ""), nm = el("b", ""), pr = presence[t.u];
+    row.type = "button"; const on = !viaCode && isOnline(pr);
+    sb.textContent = viaCode ? "اضغط لإرسال طلب محادثة" : on ? "🟢 متصل" : pr ? lastSeenText(pr) : "صديق"; if (on) sb.classList.add("on");
+    nm.append(hl(t.name, q)); tx.append(nm, sb); aw.append(avatar(t.p)); if (on) aw.append(el("span", "fwdot")); row.append(aw, tx);
+    if (t.fcode || t.hid) { const m = el("span", "fwmeta"); if (t.hid) m.append(el("i", "", "🧹")); if (t.fcode) { const bd = document.createElement("bdi"); bd.textContent = fmtFCode(t.fcode); m.append(bd); } row.append(m); }
     row.onclick = () => { $("msheet").hidden = true; openDM(t.u); }; return row;
   }
   async function lookup(code, q) {
@@ -1031,26 +1038,32 @@ function openFriends() {
     extraQ = q; paint();
   }
   function paint() {
-    const q = si.value, qn = nzq(q), qc = nzc(q), qf = normFCode(q); sx.hidden = !q; q3.hidden = !!q; list.textContent = "";
+    const q = si.value, qn = nzq(q), qc = nzc(q), qf = normFCode(q); sx.hidden = !q; list.textContent = ""; idx.textContent = ""; idx.hidden = true;
     const hit = fr.filter(t => !q || nzq(t.name).includes(qn) || (qc.length >= 2 && t.keys.toLowerCase().includes(qc)));
-    let last = null; hit.forEach(t => { if (!q && t.ch !== last) { last = t.ch; list.appendChild(el("div", "fwsec fwltr", t.ch)); } list.appendChild(mkRow(t)); });
+    if (q && hit.length) list.appendChild(el("div", "fwsec", "نتايج البحث (" + hit.length + ")"));
+    let last = null; const heads = {};
+    hit.forEach(t => { if (!q && t.ch !== last) { last = t.ch; const h = el("div", "fwsec fwltr", t.ch); heads[t.ch] = h; list.appendChild(h); } list.appendChild(mkRow(t, q)); });
+    const letters = Object.keys(heads);
+    if (!q && fr.length >= 10 && letters.length >= 4) {
+      letters.forEach(L => { const b = el("button", "", L); b.type = "button"; b.onclick = () => { list.scrollTop += heads[L].getBoundingClientRect().top - list.getBoundingClientRect().top; }; idx.appendChild(b); }); idx.hidden = false;
+    }
     if (qf.length === 8 && !fr.some(t => t.keys === qf)) {
       list.appendChild(el("div", "fwsec", "🔎 نتيجة البحث بالكود"));
-      if (extra && extraQ === q && extra.u) list.appendChild(mkRow(extra, true));
+      if (extra && extraQ === q && extra.u) list.appendChild(mkRow(extra, "", true));
       else if (extra && extraQ === q && extra.err) list.appendChild(el("div", "dnone", "ماقدرتش أبحث دلوقتي، جرّب تاني."));
       else if (extra && extraQ === q) list.appendChild(el("div", "dnone", extra.self ? "ده كودك أنت 🙂" : "مفيش حد بالكود ده، اتأكد منه."));
       else { list.appendChild(el("div", "dnone", "⏳ بدوّر…")); lookup(qf, q); }
     } else if (!hit.length) {
-      list.appendChild(el("div", "dnone", q ? "مفيش صديق بالاسم ده. لو معاك كوده اكتبه كامل (8 حروف وأرقام) وهيظهرلك." : "لسه معندكش أصدقاء. اضغط «أضف بالكود» وابعت طلب محادثة لصاحبك."));
+      list.appendChild(el("div", "dnone", q ? "مفيش صديق بالاسم ده. لو معاك كوده اكتبه كامل (8 حروف وأرقام) وهيظهرلك." : "لسه معندكش أصدقاء. اكتب كود صاحبك في البحث فوق وابعتله طلب محادثة."));
     }
   }
-  si.oninput = () => { tok++; extra = null; paint(); };
+  si.oninput = () => { tok++; extra = null; list.scrollTop = 0; paint(); };
   sx.onclick = () => { si.value = ""; si.oninput(); si.focus(); };
   si.addEventListener("keydown", e => { if (e.key === "Escape") { if (si.value) { si.value = ""; si.oninput(); } else $("msheet").hidden = true; } });
   paint(); $("msheet").hidden = false;
   if (matchMedia("(pointer:fine)").matches) setTimeout(() => si.focus(), 60);
 }
-$("newChatBtn").onclick = openFriends; $("dNew").onclick = openFriends;
+$("dNew").onclick = openFriends;
 const GEN_KICK = [["⏱️", "ساعة", 3600000], ["🌙", "24 ساعة", 86400000], ["📅", "7 أيام", 604800000]];
 const kickedLeft = (r, u) => Math.max(0, ((r.removedUntil || {})[u] || 0) - Date.now());
 function leftTxt(ms) { const m = Math.ceil(ms / 60000); return m < 90 ? m + " دقيقة" : m < 2880 ? Math.round(m / 60) + " ساعة" : Math.round(m / 1440) + " يوم"; }

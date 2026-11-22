@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <title>Very Chat</title>
 <meta name="description" content="Very Chat — شات الشلة: غرف ورسايل خاصة وصوت وصور في تطبيق واحد">
-<meta name="vc-build" content="20261122-15">
+<meta name="vc-build" content="20261122-16">
 <link rel="manifest" href="manifest.webmanifest">
 <meta http-equiv="Content-Security-Policy" content="object-src 'none'; base-uri 'self'; form-action 'self'; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://apis.google.com https://www.google.com">
 <meta name="referrer" content="no-referrer">
@@ -15,7 +15,7 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <link rel="icon" href="icon-192.png">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
-<link rel="stylesheet" href="style.css?v=20261122-15">
+<link rel="stylesheet" href="style.css?v=20261122-16">
 </head>
 <body>
 <div id="splash"><div id="sLogo"></div><div class="sn">Very Chat</div><div class="ss">شات الشلة</div></div>
@@ -25,7 +25,6 @@
   <header>
     <button class="hb" id="menuBtn" aria-label="الغرف">☰</button>
     <div id="hRoom"></div>
-    <button class="hb nc" id="newChatBtn" type="button" aria-label="محادثة جديدة" title="أصدقائي"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8.5" r="3.3"/><path d="M3 19.5c.6-3.3 3-5 6-5s5.4 1.7 6 5"/><circle cx="17" cy="9.5" r="2.5"/><path d="M16.2 14.6c2.6.1 4.3 1.6 4.8 4.4"/></svg><i class="ncp">＋</i></button>
     <button class="me-btn" id="meBtn" title="شخصيتك"><div class="av" id="meAv">👤</div></button>
     <div id="selBar" hidden><button class="sx" id="selCancel" aria-label="إلغاء التحديد"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button><div class="sc"><span id="selCount">0</span><small>تم التحديد</small></div><button class="sa" id="selFwd"><svg viewBox="0 0 24 24"><path d="M10 5l-7 7 7 7M3 12h12a6 6 0 0 1 6 6v1"/></svg><span class="l">توجيه</span></button><button class="sa" id="selCopy"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2.5"/><path d="M5 15V6.5A2.5 2.5 0 0 1 7.5 4H15"/></svg><span class="l">نسخ</span></button><button class="sa del" id="selDel"><svg viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/></svg><span class="l">حذف</span></button></div>
   </header>
@@ -75,7 +74,7 @@
       <div id="dmList" style="display:flex;flex-direction:column;gap:2px"></div>
       <div class="dsub tg" id="rmSub" data-k="rooms" role="button" tabindex="0" aria-expanded="true"><span>🏠 الغرف</span><i class="chev"></i><span class="cnt"></span><small>· اضغط مطوّلاً للتعديل</small></div>
       <div id="dlist"></div>
-      <div class="dfabw"><button class="dfab" id="dNew" type="button"><span class="dfi"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8.5" r="3.3"/><path d="M3 19.5c.6-3.3 3-5 6-5s5.4 1.7 6 5"/><circle cx="17" cy="9.5" r="2.5"/><path d="M16.2 14.6c2.6.1 4.3 1.6 4.8 4.4"/></svg></span><span>محادثة جديدة</span></button></div>
+      <div class="dfabw"><button class="dfab" id="dNew" type="button" aria-label="محادثة جديدة" title="محادثة جديدة"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8.5" r="3.3"/><path d="M3 19.5c.6-3.3 3-5 6-5s5.4 1.7 6 5"/><circle cx="17" cy="9.5" r="2.5"/><path d="M16.2 14.6c2.6.1 4.3 1.6 4.8 4.4"/></svg><i class="ncp">＋</i></button></div>
     </div>
     <div class="dfoot">
       <button class="dnotif" id="dNotif" type="button" hidden>🔔 فعّل الإشعارات علشان توصلك الرسايل</button>
@@ -163,7 +162,7 @@
 <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-check-compat.js"></script>
-<script defer src="app.js?v=20261122-15"></script>
-<!-- const BUILD = "20261122-15" (متساب للتوافق مع النسخ القديمة اللي بتقرا التحديث من هنا) -->
+<script defer src="app.js?v=20261122-16"></script>
+<!-- const BUILD = "20261122-16" (متساب للتوافق مع النسخ القديمة اللي بتقرا التحديث من هنا) -->
 </body>
 </html>
