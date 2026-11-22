@@ -876,3 +876,21 @@ html[dir=rtl] #sendBtn svg{transform:scaleX(-1)}
 .fwrow.dis{opacity:.5;cursor:default}.fwrow.dis .fwrt small{color:var(--mute)}
 .fwgi.add svg{transform:none}
 .rrow.hid{opacity:.72}.rrow.hid .rt small{font-style:normal}
+
+/* ───── زرار محادثة جديدة (الهيدر + الدرج) ───── */
+.hb.nc{width:42px;height:42px;border-radius:16px;background:linear-gradient(135deg,#34d3b6,#0f8f7a);color:#fff;display:grid;place-items:center;padding:0;box-shadow:0 6px 14px rgba(15,143,122,.38)}
+.hb.nc svg{width:23px;height:23px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.ncp{position:absolute;inset-block-end:-4px;inset-inline-start:-4px;width:19px;height:19px;border-radius:50%;background:#ffb547;color:#3b2500;font-style:normal;font-size:13px;font-weight:900;line-height:1;display:grid;place-items:center;border:2px solid var(--card);box-shadow:0 2px 6px rgba(0,0,0,.25)}
+.dscroll{padding-bottom:0}
+.dfabw{position:sticky;bottom:6px;display:flex;justify-content:flex-end;padding:10px 2px 4px;pointer-events:none;margin-top:auto}
+.dfab{pointer-events:auto;display:flex;align-items:center;gap:10px;height:54px;padding:0 20px 0 8px;border:0;border-radius:27px;background:linear-gradient(135deg,#34d3b6,#0f8f7a);color:#fff;font-weight:800;font-size:15px;cursor:pointer;box-shadow:0 10px 24px rgba(15,143,122,.5);transition:transform .15s}
+.dfab:active{transform:scale(.94)}
+.dfi{width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,.22);display:grid;place-items:center}
+.dfi svg{width:23px;height:23px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.fwq{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:2px 14px 6px}
+.fwq button{display:flex;flex-direction:column;align-items:center;gap:6px;border:0;border-radius:18px;background:var(--bg);color:var(--ink);padding:12px 4px;font-size:12.5px;font-weight:700;cursor:pointer;transition:transform .15s}
+.fwq button:active{transform:scale(.95)}
+.fwq i{font-style:normal;font-size:22px;width:44px;height:44px;border-radius:15px;display:grid;place-items:center;background:color-mix(in srgb,var(--pri) 18%,transparent)}
+.fwltr{color:var(--mute)!important;font-size:13px;padding-block:10px 4px}
+.fwrow.nc .fwgo{flex:none;color:var(--mute);font-size:24px;line-height:1}
+.fwdot{position:absolute;inset-block-end:0;inset-inline-end:0;width:14px;height:14px;border-radius:50%;background:#3ddc84;border:2.5px solid var(--card)}

@@ -994,6 +994,63 @@ function addFriend(r, mem) {
   paint(); sync(); $("msheet").hidden = false;
   if (matchMedia("(pointer:fine)").matches) setTimeout(() => si.focus(), 60);
 }
+/* ───── أصدقائي / محادثة جديدة ───── */
+function openFriends() {
+  if (!db || !myId) { flash("استنى لحظة وجرّب تاني"); return; }
+  closeDrawer(); const c = $("mcard"); c.textContent = "";
+  const seenU = new Set(), fr = [];
+  Object.values(dms).filter(d => dmEstablished(d) && !pendingIn(d) && !(d.blockedBy || []).length).forEach(d => {
+    const u = dmPeerOf(d.id); if (!u || u === myId || seenU.has(u)) return; seenU.add(u);
+    const p = profiles[u] || {}, nm = p.name || "مجهول", ch = nzq(nm).charAt(0).toUpperCase();
+    fr.push({ u, p, name: nm, fcode: p.fcode || "", keys: normFCode(p.fcode), hid: !!d.last && d.last.ts <= dmClearedAt(d), ch: /[\u0621-\u064Aa-zA-Z]/.test(ch) ? ch : "#" });
+  });
+  fr.sort((x, y) => (x.ch === "#") - (y.ch === "#") || x.name.localeCompare(y.name, "ar"));
+  const root = el("div", "fw"), head = el("div", "fwh"), x = el("button", "fwx", "✕"); x.type = "button"; x.setAttribute("aria-label", "إغلاق"); x.onclick = () => { $("msheet").hidden = true; };
+  const ht = el("div", "fwt"); ht.append(el("b", "", "💬 محادثة جديدة"), el("small", "", fr.length ? fr.length + (fr.length > 10 ? " صديق" : " أصدقاء") : "لسه مفيش أصدقاء")); head.append(ht, x);
+  const sbox = el("div", "fws"), si = el("input"), sic = el("span", "fwsi"), sx = el("button", "fwsc", "✕"); sic.innerHTML = FW_SEARCH; sx.type = "button"; sx.hidden = true;
+  si.type = "search"; si.placeholder = "ابحث بالاسم أو اكتب كود صديق…"; si.autocomplete = "off"; si.autocapitalize = "none"; si.spellcheck = false; si.enterKeyHint = "search"; si.setAttribute("aria-label", "بحث"); sbox.append(sic, si, sx);
+  const q3 = el("div", "fwq");
+  [["👥", "غرفة جديدة", () => { $("msheet").hidden = true; openSheet("room"); }], ["🔑", "أضف بالكود", () => { openDiscover(); }], ["📨", "دعوة للتطبيق", () => { $("msheet").hidden = true; openInvite(); }]].forEach(([ic, tx, fn]) => { const b = el("button", ""); b.type = "button"; b.append(el("i", "", ic), el("span", "", tx)); b.onclick = fn; q3.appendChild(b); });
+  const list = el("div", "fwl"); root.append(head, sbox, q3, list); c.append(root);
+  let tok = 0, extra = null, extraQ = "";
+  function mkRow(t, viaCode) {
+    const row = el("button", "fwrow nc"), tx = el("div", "fwrt"), aw = el("span", "fwav"), sb = el("small", "");
+    row.type = "button"; const on = !viaCode && isOnline(presence[t.u]);
+    sb.append(viaCode ? "اضغط لإرسال طلب محادثة" : on ? "🟢 متصل" : presence[t.u] ? lastSeenText(presence[t.u]) : "صديق"); if (t.hid) sb.append(" · 🧹 مخفية");
+    if (t.fcode) { const bd = document.createElement("bdi"); bd.textContent = fmtFCode(t.fcode); sb.append(" · ", bd); }
+    tx.append(el("b", "", t.name), sb); aw.append(avatar(t.p)); if (on) aw.append(el("span", "fwdot")); row.append(aw, tx, el("span", "fwgo", "‹"));
+    row.onclick = () => { $("msheet").hidden = true; openDM(t.u); }; return row;
+  }
+  async function lookup(code, q) {
+    const my = ++tok; let uid = null, data = null;
+    const loc = Object.keys(profiles).find(u => profiles[u] && profiles[u].fcode === code);
+    if (loc) { uid = loc; data = profiles[loc]; }
+    else { try { const sn = await db.collection("profiles").where("fcode", "==", code).limit(1).get(); if (!sn.empty) { uid = sn.docs[0].id; data = sn.docs[0].data(); } } catch (e) { if (my === tok) { extra = { err: true }; extraQ = q; paint(); } return; } }
+    if (my !== tok) return;
+    if (uid && uid !== myId) { if (!profiles[uid]) profiles[uid] = data; extra = { u: uid, p: data, name: data.name || "مجهول", fcode: data.fcode || "" }; } else extra = { none: true, self: uid === myId };
+    extraQ = q; paint();
+  }
+  function paint() {
+    const q = si.value, qn = nzq(q), qc = nzc(q), qf = normFCode(q); sx.hidden = !q; q3.hidden = !!q; list.textContent = "";
+    const hit = fr.filter(t => !q || nzq(t.name).includes(qn) || (qc.length >= 2 && t.keys.toLowerCase().includes(qc)));
+    let last = null; hit.forEach(t => { if (!q && t.ch !== last) { last = t.ch; list.appendChild(el("div", "fwsec fwltr", t.ch)); } list.appendChild(mkRow(t)); });
+    if (qf.length === 8 && !fr.some(t => t.keys === qf)) {
+      list.appendChild(el("div", "fwsec", "🔎 نتيجة البحث بالكود"));
+      if (extra && extraQ === q && extra.u) list.appendChild(mkRow(extra, true));
+      else if (extra && extraQ === q && extra.err) list.appendChild(el("div", "dnone", "ماقدرتش أبحث دلوقتي، جرّب تاني."));
+      else if (extra && extraQ === q) list.appendChild(el("div", "dnone", extra.self ? "ده كودك أنت 🙂" : "مفيش حد بالكود ده، اتأكد منه."));
+      else { list.appendChild(el("div", "dnone", "⏳ بدوّر…")); lookup(qf, q); }
+    } else if (!hit.length) {
+      list.appendChild(el("div", "dnone", q ? "مفيش صديق بالاسم ده. لو معاك كوده اكتبه كامل (8 حروف وأرقام) وهيظهرلك." : "لسه معندكش أصدقاء. اضغط «أضف بالكود» وابعت طلب محادثة لصاحبك."));
+    }
+  }
+  si.oninput = () => { tok++; extra = null; paint(); };
+  sx.onclick = () => { si.value = ""; si.oninput(); si.focus(); };
+  si.addEventListener("keydown", e => { if (e.key === "Escape") { if (si.value) { si.value = ""; si.oninput(); } else $("msheet").hidden = true; } });
+  paint(); $("msheet").hidden = false;
+  if (matchMedia("(pointer:fine)").matches) setTimeout(() => si.focus(), 60);
+}
+$("newChatBtn").onclick = openFriends; $("dNew").onclick = openFriends;
 const GEN_KICK = [["⏱️", "ساعة", 3600000], ["🌙", "24 ساعة", 86400000], ["📅", "7 أيام", 604800000]];
 const kickedLeft = (r, u) => Math.max(0, ((r.removedUntil || {})[u] || 0) - Date.now());
 function leftTxt(ms) { const m = Math.ceil(ms / 60000); return m < 90 ? m + " دقيقة" : m < 2880 ? Math.round(m / 60) + " ساعة" : Math.round(m / 1440) + " يوم"; }
