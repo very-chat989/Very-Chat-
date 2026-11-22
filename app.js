@@ -570,25 +570,77 @@ function copyBtn(label, text, cls) {
   b.onclick = async () => { const ok = await copyText(text); b.textContent = ok ? "✓ تم النسخ" : "ماقدرتش أنسخ، انسخه يدوياً: " + text; if (ok) setTimeout(() => { b.textContent = label; }, 1600); };
   return b;
 }
-function openForward(msgs) {
-  const c = $("mcard"); c.textContent = ""; const pick = new Set();
-  c.append(el("div", "mprev", "↪️ حوّل " + (msgs.length > 1 ? msgs.length + " رسائل" : "الرسالة") + " إلى…"));
-  const list = el("div", "acts"); list.style.cssText = "display:flex;flex-direction:column;gap:6px;max-height:48vh;overflow-y:auto";
-  [generalRoom(), ...rooms.filter(canSee)].filter(r => !writeBlock(r)).forEach(r => {
-    const b = el("button", "rrow"), ck = el("span", "ck"); ck.style.marginInlineStart = "auto";
-    b.append(avatar(r.emoji || r.photo ? r : { emoji: "💬", color: "#5b6b78" }), el("b", "", r.name), ck);
-    b.onclick = () => { if (pick.has(r.id)) pick.delete(r.id); else pick.add(r.id); ck.textContent = pick.has(r.id) ? "✓" : ""; b.classList.toggle("on", pick.has(r.id)); };
-    list.appendChild(b);
+const FW_CK = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
+const FW_SEARCH = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg>';
+const FW_SEND = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 3 10 14"/><path d="m21 3-7 18-4-7-7-4z"/></svg>';
+function fwdTargets() {
+  const out = [], seen = new Set();
+  const add = (t) => { if (!seen.has(t.id)) { seen.add(t.id); out.push(t); } };
+  const g = generalRoom(); if (!writeBlock(g)) add({ id: g.id, kind: "room", name: g.name, sub: "الدردشة العامة", av: g, keys: "", sec: 0 });
+  Object.values(dms).filter(d => dmEstablished(d) && !pendingIn(d)).sort((a, b) => ((b.last || {}).ts || 0) - ((a.last || {}).ts || 0)).forEach(d => {
+    const r = dmRoom(d.id); if (writeBlock(r)) return;
+    const p = profiles[dmPeerOf(d.id)] || {};
+    add({ id: d.id, kind: "dm", name: r.name, sub: p.fcode ? "رسالة خاصة · " + fmtFCode(p.fcode) : "رسالة خاصة", av: r, keys: normFCode(p.fcode), sec: 1 });
   });
-  const go = el("button", "send", "إرسال"); go.style.padding = "13px";
+  rooms.filter(canSee).forEach(r => {
+    if (writeBlock(r)) return;
+    add({ id: r.id, kind: "room", name: r.name, sub: (r.private ? "🔒 غرفة خاصة" : "غرفة") + (r.code ? " · " + r.code : ""), av: r.emoji || r.photo ? r : { emoji: "💬", color: "#5b6b78" }, keys: nzc(r.code), sec: 2 });
+  });
+  return out;
+}
+function openForward(msgs) {
+  const c = $("mcard"); c.textContent = ""; const pick = new Map(), all = fwdTargets();
+  const root = el("div", "fw"), head = el("div", "fwh"), x = el("button", "fwx", "✕"); x.type = "button"; x.setAttribute("aria-label", "إغلاق");
+  const ht = el("div", "fwt"); ht.append(el("b", "", "↪️ تحويل إلى…"), el("small", "", msgs.length > 1 ? msgs.length + " رسائل" : "رسالة واحدة"));
+  head.append(ht, x); x.onclick = () => { $("msheet").hidden = true; };
+  const sbox = el("div", "fws"), si = el("input"), sic = el("span", "fwsi"), sx = el("button", "fwsc", "✕"); sic.innerHTML = FW_SEARCH; sx.type = "button"; sx.hidden = true;
+  si.type = "search"; si.placeholder = "ابحث بالاسم أو الكود…"; si.autocomplete = "off"; si.autocapitalize = "none"; si.enterKeyHint = "search"; si.setAttribute("aria-label", "بحث");
+  sbox.append(sic, si, sx);
+  const chips = el("div", "fwc"); chips.hidden = true;
+  const list = el("div", "fwl"), foot = el("div", "fwf"), names = el("div", "fwn", "اختار واحد أو أكتر"), go = el("button", "fwg"); go.type = "button"; go.disabled = true;
+  const goI = el("span", "fwgi"), goN = el("span", "fwgn"); goI.innerHTML = FW_SEND; go.append(goI, goN); foot.append(names, go);
+  root.append(head, sbox, chips, list, foot); c.append(root);
+  function sync() {
+    const n = pick.size; go.disabled = !n; goN.textContent = n || ""; goN.hidden = !n; go.setAttribute("aria-label", "إرسال");
+    names.textContent = n ? [...pick.values()].map(t => t.name).join("، ") : "اختار واحد أو أكتر"; names.classList.toggle("on", !!n);
+    chips.hidden = !n; chips.textContent = "";
+    [...pick.values()].forEach(t => {
+      const ch = el("button", "fwchip"); ch.type = "button"; const av = avatar(t.av), rm = el("i", "", "✕"); const w = el("span", "fwchw"); w.append(av, rm);
+      ch.append(w, el("small", "", t.name)); ch.onclick = () => { pick.delete(t.id); paint(); sync(); }; chips.appendChild(ch);
+    });
+  }
+  function toggle(t, row) { if (pick.has(t.id)) pick.delete(t.id); else pick.set(t.id, t); row.classList.toggle("on", pick.has(t.id)); row.setAttribute("aria-checked", pick.has(t.id)); sync(); }
+  const SEC = ["", "💬 محادثات خاصة", "👥 الغرف"];
+  function paint() {
+    const q = si.value, qn = nzq(q), qc = nzc(q), qf = normFCode(q); sx.hidden = !q; list.textContent = "";
+    const hit = all.filter(t => !q || nzq(t.name).includes(qn) || (qc.length >= 2 && t.keys.includes(qc)) || (qf.length >= 2 && t.keys.includes(qf)));
+    let last = -1;
+    hit.forEach(t => {
+      if (t.sec !== last) { last = t.sec; if (SEC[t.sec]) list.appendChild(el("div", "fwsec", SEC[t.sec])); }
+      const row = el("button", "fwrow" + (pick.has(t.id) ? " on" : "")), tx = el("div", "fwrt"), ck = el("span", "fwck"), aw = el("span", "fwav");
+      row.type = "button"; row.setAttribute("role", "checkbox"); row.setAttribute("aria-checked", pick.has(t.id));
+      ck.innerHTML = FW_CK; const nm = el("b", "", t.name); nm.dir = "auto"; tx.append(nm, el("small", "", t.sub));
+      aw.append(avatar(t.av)); const bd = el("span", "fwbd"); bd.innerHTML = FW_CK; aw.append(bd);
+      row.append(aw, tx, ck); row.onclick = () => toggle(t, row); list.appendChild(row);
+    });
+    if (!hit.length) {
+      const n = el("div", "dnone", q ? "مفيش نتيجة بالاسم أو الكود ده." : "مفيش محادثات تقدر تحوّل ليها."); list.appendChild(n);
+      const pu = qf.length === 8 ? Object.keys(profiles).find(u => u !== myId && profiles[u] && profiles[u].fcode === qf) : null;
+      if (pu) n.textContent = "«" + (profiles[pu].name || "مجهول") + "» لسه ما بينكوش محادثة مفتوحة. ابعتله طلب محادثة الأول من «🔑 غرفة أو صديق بالكود».";
+    }
+  }
+  si.oninput = paint; sx.onclick = () => { si.value = ""; paint(); si.focus(); };
+  si.addEventListener("keydown", e => { if (e.key === "Escape") { if (si.value) { si.value = ""; paint(); } else $("msheet").hidden = true; } });
+  const mkDoc = (rid, m, ts) => ({ ...mBase(rid), text: m.text || "", ...(m.audio ? { audio: m.audio, dur: m.dur || 0 } : {}), ...(m.mid ? { mid: m.mid, mk: m.mk || "img", thumb: m.thumb || "", w: m.w || 0, h: m.h || 0 } : {}), ...(m.img ? { img: m.img, thumb: m.thumb || "", w: m.w || 0, h: m.h || 0 } : {}), ...(m.vid ? { vid: m.vid, thumb: m.thumb || "", w: m.w || 0, h: m.h || 0 } : {}), ...(m.share ? { share: m.share } : {}), uid: myId, ts, fwd: m.fwd || nameOf(m.uid) });
   go.onclick = async () => {
-    if (!pick.size) return; go.disabled = true; let i = 0;
-    try {
-      for (const rid of pick) for (const m of msgs) await db.collection("msgs").add({ room: rid, text: m.text || "", ...(m.audio ? { audio: m.audio, dur: m.dur || 0 } : {}), ...(m.mid ? { mid: m.mid, mk: m.mk || "img", thumb: m.thumb || "", w: m.w || 0, h: m.h || 0 } : {}), ...(m.img ? { img: m.img, thumb: m.thumb || "", w: m.w || 0, h: m.h || 0 } : {}), ...(m.vid ? { vid: m.vid, thumb: m.thumb || "", w: m.w || 0, h: m.h || 0 } : {}), ...(m.share ? { share: m.share } : {}), uid: myId, ts: Date.now() + (i++), fwd: m.fwd || nameOf(m.uid) });
-      $("msheet").hidden = true; if (selMode) exitSel(); setStatus("✓ تم التحويل");
-    } catch (e) { go.disabled = false; setStatus("ماقدرتش أحوّل الرسالة."); }
+    if (!pick.size || go.disabled) return; go.disabled = true; go.classList.add("busy"); let i = 0, bad = 0, why = "";
+    for (const t of pick.values()) { for (const m of msgs) { try { await sendDoc(mkDoc(t.id, m, Date.now() + (i++))); } catch (e) { bad++; if (e && e.custom) why = e.message; } } }
+    $("msheet").hidden = true; if (selMode) exitSel();
+    if (!bad) setStatus("✓ تم التحويل" + (pick.size > 1 ? " إلى " + pick.size : "")); else setStatus(why || "ماقدرتش أحوّل بعض الرسايل.");
+    setTimeout(() => { if (/^✓ تم التحويل/.test($("status").textContent)) setStatus(""); }, 3000);
   };
-  c.append(list, go); $("msheet").hidden = false;
+  paint(); sync(); $("msheet").hidden = false;
+  if (matchMedia("(pointer:fine)").matches) setTimeout(() => si.focus(), 60);
 }
 
 const FCA = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
