@@ -9,6 +9,7 @@ const FIREBASE_CONFIG = {
   apiKey: "AIzaSyA2G05p10GHyhFR8hOfdx0f__pYRw8fG9s",
   authDomain: "very-chat-c7e65.firebaseapp.com",
   projectId: "very-chat-c7e65",
+  messagingSenderId: "351423421163",
   appId: "1:351423421163:web:f61b829b9b65deb38abcae"
 };
 const $ = id => document.getElementById(id);
