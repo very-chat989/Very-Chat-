@@ -846,3 +846,21 @@ html[dir=rtl] #sendBtn svg{transform:scaleX(-1)}
 .fwgi svg{width:26px;height:26px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;display:block;transform:scaleX(-1)}
 .fwgn{position:absolute;inset-block-start:-4px;inset-inline-start:-4px;min-width:22px;height:22px;padding:0 5px;border-radius:11px;background:var(--ink);color:var(--card);font-size:12px;font-weight:800;display:grid;place-items:center;border:2px solid var(--card)}
 @media (min-width:600px){#msheet:has(.fw){align-items:center}#msheet:has(.fw) .card{border-radius:26px}}
+
+/* ───── التحويل v2: العام مثبّت + تبويبين (خاصة | الغرف) ───── */
+.fwrt{gap:1px}
+.fwrt b{line-height:1.35;text-align:start;unicode-bidi:isolate}
+.fwrt small{direction:rtl;unicode-bidi:isolate;text-align:start;line-height:1.35;direction:inherit}
+.fwrt small bdi{direction:ltr;font-variant-numeric:tabular-nums;letter-spacing:.2px}
+.fwpin{margin:0 8px 2px;padding:2px;border-radius:18px;background:var(--bg)}
+.fwpin .fwrow{padding:7px 10px}.fwpin .fwrow.on{background:color-mix(in srgb,var(--pri) 16%,var(--bg))}
+.fwpin .fwav .av{width:42px;height:42px;font-size:21px}
+.fwtabs{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:8px 14px 4px;padding:4px;border-radius:16px;background:var(--bg)}
+.fwtab{position:relative;display:flex;align-items:center;justify-content:center;gap:6px;height:40px;border:0;border-radius:12px;background:none;color:var(--mute);font-size:14.5px;font-weight:700;cursor:pointer;transition:background .18s,color .18s,box-shadow .18s}
+.fwtab em{font-style:normal;font-size:11.5px;font-weight:800;min-width:20px;padding:1px 6px;border-radius:10px;background:rgba(127,127,127,.2);text-align:center;font-variant-numeric:tabular-nums}
+.fwtab i{position:absolute;inset-block-start:-5px;inset-inline-start:-3px;min-width:20px;height:20px;padding:0 5px;border-radius:10px;background:var(--pri);color:var(--onpri);font-style:normal;font-size:11.5px;font-weight:800;display:grid;place-items:center;border:2px solid var(--card);animation:pop .22s both}
+.fwtab.on{background:var(--card);color:var(--ink);box-shadow:0 2px 8px rgba(0,0,0,.18)}
+.fwtab.on em{background:var(--pri);color:var(--onpri)}
+.fwl{touch-action:pan-y;animation:rise .18s both}
+.fwl .ghost{display:block;margin:6px auto}
+.fwc{padding-top:6px}

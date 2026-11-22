@@ -576,20 +576,22 @@ const FW_SEND = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 3 10 1
 function fwdTargets() {
   const out = [], seen = new Set();
   const add = (t) => { if (!seen.has(t.id)) { seen.add(t.id); out.push(t); } };
-  const g = generalRoom(); if (!writeBlock(g)) add({ id: g.id, kind: "room", name: g.name, sub: "الدردشة العامة", av: g, keys: "", sec: 0 });
+  const g = generalRoom(); if (!writeBlock(g)) add({ id: g.id, name: g.name, sub: ["الدردشة العامة", ""], av: g, keys: "", sec: 0 });
   Object.values(dms).filter(d => dmEstablished(d) && !pendingIn(d)).sort((a, b) => ((b.last || {}).ts || 0) - ((a.last || {}).ts || 0)).forEach(d => {
     const r = dmRoom(d.id); if (writeBlock(r)) return;
     const p = profiles[dmPeerOf(d.id)] || {};
-    add({ id: d.id, kind: "dm", name: r.name, sub: p.fcode ? "رسالة خاصة · " + fmtFCode(p.fcode) : "رسالة خاصة", av: r, keys: normFCode(p.fcode), sec: 1 });
+    add({ id: d.id, name: r.name, sub: ["رسالة خاصة", p.fcode ? fmtFCode(p.fcode) : ""], av: r, keys: normFCode(p.fcode), sec: 1 });
   });
   rooms.filter(canSee).forEach(r => {
     if (writeBlock(r)) return;
-    add({ id: r.id, kind: "room", name: r.name, sub: (r.private ? "🔒 غرفة خاصة" : "غرفة") + (r.code ? " · " + r.code : ""), av: r.emoji || r.photo ? r : { emoji: "💬", color: "#5b6b78" }, keys: nzc(r.code), sec: 2 });
+    add({ id: r.id, name: r.name, sub: [r.private ? "🔒 غرفة خاصة" : "غرفة", r.code || ""], av: r.emoji || r.photo ? r : { emoji: "💬", color: "#5b6b78" }, keys: nzc(r.code), sec: 2 });
   });
   return out;
 }
 function openForward(msgs) {
   const c = $("mcard"); c.textContent = ""; const pick = new Map(), all = fwdTargets();
+  const gen = all.find(t => t.sec === 0), dmAll = all.filter(t => t.sec === 1), rmAll = all.filter(t => t.sec === 2);
+  let tab = dmAll.length || !rmAll.length ? 1 : 2;
   const root = el("div", "fw"), head = el("div", "fwh"), x = el("button", "fwx", "✕"); x.type = "button"; x.setAttribute("aria-label", "إغلاق");
   const ht = el("div", "fwt"); ht.append(el("b", "", "↪️ تحويل إلى…"), el("small", "", msgs.length > 1 ? msgs.length + " رسائل" : "رسالة واحدة"));
   head.append(ht, x); x.onclick = () => { $("msheet").hidden = true; };
@@ -597,38 +599,54 @@ function openForward(msgs) {
   si.type = "search"; si.placeholder = "ابحث بالاسم أو الكود…"; si.autocomplete = "off"; si.autocapitalize = "none"; si.enterKeyHint = "search"; si.setAttribute("aria-label", "بحث");
   sbox.append(sic, si, sx);
   const chips = el("div", "fwc"); chips.hidden = true;
+  const pin = el("div", "fwpin");
+  const tabs = el("div", "fwtabs"); tabs.setAttribute("role", "tablist");
+  const mkTab = (id, label) => { const b = el("button", "fwtab"), l = el("span", "fwtl", label), n = el("em", "", "0"), k = el("i", "", "0"); b.type = "button"; b.setAttribute("role", "tab"); b.append(l, n, k); b.onclick = () => { tab = id; paint(); list.scrollTop = 0; }; b._n = n; b._k = k; return b; };
+  const tDm = mkTab(1, "💬 خاصة"), tRm = mkTab(2, "👥 الغرف"); tabs.append(tDm, tRm);
   const list = el("div", "fwl"), foot = el("div", "fwf"), names = el("div", "fwn", "اختار واحد أو أكتر"), go = el("button", "fwg"); go.type = "button"; go.disabled = true;
   const goI = el("span", "fwgi"), goN = el("span", "fwgn"); goI.innerHTML = FW_SEND; go.append(goI, goN); foot.append(names, go);
-  root.append(head, sbox, chips, list, foot); c.append(root);
+  root.append(head, sbox, chips, pin, tabs, list, foot); c.append(root);
+  const rowEls = new Map();
   function sync() {
     const n = pick.size; go.disabled = !n; goN.textContent = n || ""; goN.hidden = !n; go.setAttribute("aria-label", "إرسال");
     names.textContent = n ? [...pick.values()].map(t => t.name).join("، ") : "اختار واحد أو أكتر"; names.classList.toggle("on", !!n);
     chips.hidden = !n; chips.textContent = "";
     [...pick.values()].forEach(t => {
       const ch = el("button", "fwchip"); ch.type = "button"; const av = avatar(t.av), rm = el("i", "", "✕"); const w = el("span", "fwchw"); w.append(av, rm);
-      ch.append(w, el("small", "", t.name)); ch.onclick = () => { pick.delete(t.id); paint(); sync(); }; chips.appendChild(ch);
+      ch.append(w, el("small", "", t.name)); ch.onclick = () => { pick.delete(t.id); const r = rowEls.get(t.id); if (r) { r.classList.remove("on"); r.setAttribute("aria-checked", "false"); } sync(); }; chips.appendChild(ch);
     });
+    [[tDm, 1], [tRm, 2]].forEach(([b, k]) => { const m = [...pick.values()].filter(t => t.sec === k).length; b._k.textContent = m; b._k.hidden = !m; });
   }
   function toggle(t, row) { if (pick.has(t.id)) pick.delete(t.id); else pick.set(t.id, t); row.classList.toggle("on", pick.has(t.id)); row.setAttribute("aria-checked", pick.has(t.id)); sync(); }
-  const SEC = ["", "💬 محادثات خاصة", "👥 الغرف"];
+  function mkRow(t) {
+    const row = el("button", "fwrow" + (pick.has(t.id) ? " on" : "")), tx = el("div", "fwrt"), ck = el("span", "fwck"), aw = el("span", "fwav");
+    row.type = "button"; row.setAttribute("role", "checkbox"); row.setAttribute("aria-checked", pick.has(t.id));
+    ck.innerHTML = FW_CK; const nm = el("b", "", t.name); const sb = el("small", ""); sb.append(t.sub[0]); if (t.sub[1]) { const bd = document.createElement("bdi"); bd.textContent = t.sub[1]; sb.append(" · ", bd); }
+    tx.append(nm, sb); aw.append(avatar(t.av)); const bd = el("span", "fwbd"); bd.innerHTML = FW_CK; aw.append(bd);
+    row.append(aw, tx, ck); row.onclick = () => toggle(t, row); rowEls.set(t.id, row); return row;
+  }
+  let lastQ = "";
   function paint() {
-    const q = si.value, qn = nzq(q), qc = nzc(q), qf = normFCode(q); sx.hidden = !q; list.textContent = "";
-    const hit = all.filter(t => !q || nzq(t.name).includes(qn) || (qc.length >= 2 && t.keys.includes(qc)) || (qf.length >= 2 && t.keys.includes(qf)));
-    let last = -1;
-    hit.forEach(t => {
-      if (t.sec !== last) { last = t.sec; if (SEC[t.sec]) list.appendChild(el("div", "fwsec", SEC[t.sec])); }
-      const row = el("button", "fwrow" + (pick.has(t.id) ? " on" : "")), tx = el("div", "fwrt"), ck = el("span", "fwck"), aw = el("span", "fwav");
-      row.type = "button"; row.setAttribute("role", "checkbox"); row.setAttribute("aria-checked", pick.has(t.id));
-      ck.innerHTML = FW_CK; const nm = el("b", "", t.name); nm.dir = "auto"; tx.append(nm, el("small", "", t.sub));
-      aw.append(avatar(t.av)); const bd = el("span", "fwbd"); bd.innerHTML = FW_CK; aw.append(bd);
-      row.append(aw, tx, ck); row.onclick = () => toggle(t, row); list.appendChild(row);
-    });
+    const q = si.value, qn = nzq(q), qc = nzc(q), qf = normFCode(q); sx.hidden = !q; list.textContent = ""; pin.textContent = ""; rowEls.clear();
+    const ok = t => !q || nzq(t.name).includes(qn) || (qc.length >= 2 && t.keys.includes(qc)) || (qf.length >= 2 && t.keys.includes(qf));
+    const gHit = gen && ok(gen) ? gen : null, dHit = dmAll.filter(ok), rHit = rmAll.filter(ok);
+    if (q !== lastQ) { lastQ = q; if (tab === 1 && !dHit.length && rHit.length) tab = 2; else if (tab === 2 && !rHit.length && dHit.length) tab = 1; }
+    tDm._n.textContent = dHit.length; tRm._n.textContent = rHit.length;
+    tDm.classList.toggle("on", tab === 1); tRm.classList.toggle("on", tab === 2); tDm.setAttribute("aria-selected", tab === 1); tRm.setAttribute("aria-selected", tab === 2);
+    if (gHit) pin.appendChild(mkRow(gHit)); pin.hidden = !gHit;
+    const hit = tab === 1 ? dHit : rHit; hit.forEach(t => list.appendChild(mkRow(t)));
     if (!hit.length) {
-      const n = el("div", "dnone", q ? "مفيش نتيجة بالاسم أو الكود ده." : "مفيش محادثات تقدر تحوّل ليها."); list.appendChild(n);
-      const pu = qf.length === 8 ? Object.keys(profiles).find(u => u !== myId && profiles[u] && profiles[u].fcode === qf) : null;
+      const other = tab === 1 ? rHit.length : dHit.length, n = el("div", "dnone");
+      n.textContent = q ? "مفيش نتيجة بالاسم أو الكود ده هنا." + (other ? " فيه " + other + " نتيجة في «" + (tab === 1 ? "الغرف" : "خاصة") + "»." : "") : tab === 1 ? "مفيش محادثات خاصة تقدر تحوّل ليها." : "مفيش غرف تقدر تحوّل ليها.";
+      list.appendChild(n);
+      const pu = tab === 1 && qf.length === 8 ? Object.keys(profiles).find(u => u !== myId && profiles[u] && profiles[u].fcode === qf) : null;
       if (pu) n.textContent = "«" + (profiles[pu].name || "مجهول") + "» لسه ما بينكوش محادثة مفتوحة. ابعتله طلب محادثة الأول من «🔑 غرفة أو صديق بالكود».";
+      if (q && other) { const sw = el("button", "ghost", "اعرض النتائج في «" + (tab === 1 ? "الغرف" : "خاصة") + "»"); sw.type = "button"; sw.onclick = () => { tab = tab === 1 ? 2 : 1; paint(); }; list.appendChild(sw); }
     }
   }
+  let tx0 = 0, ty0 = 0;
+  list.addEventListener("touchstart", e => { const t = e.touches[0]; tx0 = t.clientX; ty0 = t.clientY; }, { passive: true });
+  list.addEventListener("touchend", e => { const t = e.changedTouches[0], dx = t.clientX - tx0, dy = t.clientY - ty0; if (Math.abs(dx) > 70 && Math.abs(dy) < 40) { const nt = dx > 0 ? 2 : 1; if (nt !== tab) { tab = nt; paint(); list.scrollTop = 0; } } }, { passive: true });
   si.oninput = paint; sx.onclick = () => { si.value = ""; paint(); si.focus(); };
   si.addEventListener("keydown", e => { if (e.key === "Escape") { if (si.value) { si.value = ""; paint(); } else $("msheet").hidden = true; } });
   const mkDoc = (rid, m, ts) => ({ ...mBase(rid), text: m.text || "", ...(m.audio ? { audio: m.audio, dur: m.dur || 0 } : {}), ...(m.mid ? { mid: m.mid, mk: m.mk || "img", thumb: m.thumb || "", w: m.w || 0, h: m.h || 0 } : {}), ...(m.img ? { img: m.img, thumb: m.thumb || "", w: m.w || 0, h: m.h || 0 } : {}), ...(m.vid ? { vid: m.vid, thumb: m.thumb || "", w: m.w || 0, h: m.h || 0 } : {}), ...(m.share ? { share: m.share } : {}), uid: myId, ts, fwd: m.fwd || nameOf(m.uid) });
