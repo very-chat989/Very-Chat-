@@ -108,7 +108,8 @@ function openPeer(u) {
 function dmRow(d) {
   const u = dmPeerOf(d.id), p = profiles[u] || {}, row = el("button", "rrow" + (d.id === room ? " on" : "")); row.type = "button"; row.style.setProperty("--rc", p.color || "#5b6b78");
   const tx = el("div", "rt"), sb = el("small"); sb.dir = "rtl";
-  sb.textContent = ((d.blockedBy || []).length ? "🚫 " : "") + (d.req === myId && !d.acc ? "⏳ " : "") + (d.last ? (d.last.uid === myId ? "أنت: " : "") + d.last.text : "");
+  const hid = !!d.last && d.last.ts <= dmClearedAt(d); if (hid) row.classList.add("hid");
+  sb.textContent = hid ? "🧹 مخفية من القائمة · اضغط للمراسلة" : ((d.blockedBy || []).length ? "🚫 " : "") + (d.req === myId && !d.acc ? "⏳ " : "") + (d.last ? (d.last.uid === myId ? "أنت: " : "") + d.last.text : "");
   tx.append(el("b", "", p.name || "مجهول"), sb); row.append(avatar(p), tx);
   const un = unreadOf(d.id); if (un) row.append(el("span", "bdg", un > 99 ? "99+" : String(un)));
   let tm, fired = false;
@@ -139,7 +140,7 @@ function openDMMenu(d) {
   act("💬", "فتح", "linear-gradient(135deg,#5aa9ff,#2f6fed)", () => { close(); closeDrawer(); openDM(u); });
   act("🧹", "مسح من عندي", "linear-gradient(135deg,#6bd0c0,#2a9d8f)", async (b, sp) => {
     if (!sure(b, sp)) return; close();
-    try { await db.collection("dms").doc(d.id).update({ ["cleared." + myId]: Math.max(Date.now(), ((d.last || {}).ts || 0) + 1), ["unread." + myId]: 0 }); flash("🧹 اتمسحت المحادثة من عندك"); } catch (e) { flash(errMsg(e)); }
+    try { await db.collection("dms").doc(d.id).update({ ["cleared." + myId]: Math.max(Date.now(), ((d.last || {}).ts || 0) + 1), ["unread." + myId]: 0 }); flash("🧹 اتمسحت من القايمة · لسه صديقك وتلاقيه بالبحث"); } catch (e) { flash(errMsg(e)); }
   });
   act("🗑", "حذف رسايلي للطرفين", "linear-gradient(135deg,#ff7a7a,#d64545)", async (b, sp) => {
     if (!sure(b, sp)) return; close();
@@ -153,7 +154,7 @@ function openDMMenu(d) {
 }
 function buildDMs(q) {
   const box = $("dmList"), sub = $("dmSub"), qn = nzq(q), qc = normFCode(q); box.textContent = "";
-  const list = Object.values(dms).filter(d => d.last && d.last.ts > dmClearedAt(d) && !pendingIn(d) && !(d.req === myId && !d.acc)).sort((a, b) => b.last.ts - a.last.ts).filter(d => { if (!q) return true; const p = profiles[dmPeerOf(d.id)] || {}; return nzq(p.name).includes(qn) || (qc.length >= 2 && String(p.fcode || "").includes(qc)); });
+  const list = Object.values(dms).filter(d => d.last && (q ? dmEstablished(d) : d.last.ts > dmClearedAt(d)) && !pendingIn(d) && !(d.req === myId && !d.acc)).sort((a, b) => b.last.ts - a.last.ts).filter(d => { if (!q) return true; const p = profiles[dmPeerOf(d.id)] || {}; return nzq(p.name).includes(qn) || (qc.length >= 2 && String(p.fcode || "").includes(qc)); });
   list.forEach(d => box.appendChild(dmRow(d)));
   const pu = qc.length === 8 ? Object.keys(profiles).find(u => u !== myId && profiles[u] && profiles[u].fcode === qc) : null;
   if (pu && !list.some(d => dmPeerOf(d.id) === pu)) {
@@ -908,11 +909,89 @@ function riPaged(c, items, build, step) {
 let infoSig = null;
 function openInfo(id) { if (!id) return; infoId = id; infoSig = null; riTab = null; riQ = ""; riFlt = "all"; riLim = 20; riDraft = {}; $("rinfo").hidden = false; $("riBody").scrollTop = 0; renderInfo(); }
 function closeInfo() { infoId = null; $("rinfo").hidden = true; }
+const FW_ADD = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9.5" cy="8" r="3.8"/><path d="M2.5 20c.8-3.6 3.5-5.5 7-5.5s6.2 1.9 7 5.5M19 8v6M16 11h6"/></svg>';
 function addFriend(r, mem) {
-  const c = $("mcard"); c.textContent = ""; c.append(el("div", "mprev mh", "＋ إضافة صديق"));
-  const box = el("div", "acts"); box.style.cssText = "display:flex;flex-direction:column;gap:6px;max-height:55vh;overflow-y:auto";
-  box.append(friendFinder(mem, [...(r.banned || []), ...(r.invites || [])], async u => { $("msheet").hidden = true; try { await db.collection("rooms").doc(r.id).update({ invites: AU(u) }); notifyUser(u, r, "invite"); reqFlash("✓ اتبعتله دعوة، هيدخل أول ما يوافق"); } catch (e) { flash(errMsg(e)); } }));
-  c.append(box); $("msheet").hidden = false;
+  const c = $("mcard"); c.textContent = "";
+  const inRoom = new Set(mem), banned = new Set(r.banned || []), invited = new Set(r.invites || []);
+  const seenU = new Set(), friends = [];
+  Object.values(dms).filter(d => dmEstablished(d) && !pendingIn(d) && !(d.blockedBy || []).length).sort((x, y) => ((y.last || {}).ts || 0) - ((x.last || {}).ts || 0)).forEach(d => {
+    const u = dmPeerOf(d.id); if (!u || u === myId || seenU.has(u)) return; seenU.add(u);
+    friends.push(mkFr(u));
+  });
+  function mkFr(u, viaCode) {
+    const p = profiles[u] || {}, dis = inRoom.has(u) ? "✓ موجود في الغرفة" : banned.has(u) ? "🚫 محظور" : invited.has(u) ? "⏳ اتبعتله دعوة" : "";
+    return { id: u, name: p.name || "مجهول", fcode: p.fcode || "", av: p, keys: normFCode(p.fcode), dis, viaCode: !!viaCode };
+  }
+  const pick = new Map(); let extra = null, extraQ = "", busy = false, tok = 0;
+  const root = el("div", "fw"), head = el("div", "fwh"), x = el("button", "fwx", "✕"); x.type = "button"; x.setAttribute("aria-label", "إغلاق");
+  const ht = el("div", "fwt"); ht.append(el("b", "", "➕ إضافة أصدقاء"), el("small", "", "إلى غرفة «" + (r.name || "") + "»")); head.append(ht, x); x.onclick = () => { $("msheet").hidden = true; };
+  const sbox = el("div", "fws"), si = el("input"), sic = el("span", "fwsi"), sx = el("button", "fwsc", "✕"); sic.innerHTML = FW_SEARCH; sx.type = "button"; sx.hidden = true;
+  si.type = "search"; si.placeholder = "ابحث بالاسم أو اكتب كود صديق…"; si.autocomplete = "off"; si.autocapitalize = "none"; si.spellcheck = false; si.enterKeyHint = "search"; si.setAttribute("aria-label", "بحث"); sbox.append(sic, si, sx);
+  const chips = el("div", "fwc"); chips.hidden = true;
+  const list = el("div", "fwl"), foot = el("div", "fwf"), names = el("div", "fwn", "اختار صديق أو أكتر"), go = el("button", "fwg"); go.type = "button"; go.disabled = true;
+  const goI = el("span", "fwgi add"), goN = el("span", "fwgn"); goI.innerHTML = FW_ADD; go.append(goI, goN); foot.append(names, go);
+  root.append(head, sbox, chips, list, foot); c.append(root);
+  const rowEls = new Map();
+  function sync() {
+    const n = pick.size; go.disabled = !n || busy; goN.textContent = n || ""; goN.hidden = !n; go.setAttribute("aria-label", "إرسال الدعوة");
+    names.textContent = n ? [...pick.values()].map(t => t.name).join("، ") : "اختار صديق أو أكتر"; names.classList.toggle("on", !!n);
+    chips.hidden = !n; chips.textContent = "";
+    [...pick.values()].forEach(t => {
+      const ch = el("button", "fwchip"); ch.type = "button"; const w = el("span", "fwchw"), rm = el("i", "", "✕"); w.append(avatar(t.av), rm); ch.append(w, el("small", "", t.name));
+      ch.onclick = () => { pick.delete(t.id); const e = rowEls.get(t.id); if (e) { e.classList.remove("on"); e.setAttribute("aria-checked", "false"); } sync(); paintHead(); }; chips.appendChild(ch);
+    });
+  }
+  function mkRow(t) {
+    const row = el("button", "fwrow" + (t.dis ? " dis" : "") + (pick.has(t.id) ? " on" : "")), tx = el("div", "fwrt"), aw = el("span", "fwav"), sb = el("small", "");
+    row.type = "button"; const nm = el("b", "", t.name); sb.append(t.dis || "صديق"); if (t.fcode) { const bd = document.createElement("bdi"); bd.textContent = fmtFCode(t.fcode); sb.append(" · ", bd); }
+    tx.append(nm, sb); aw.append(avatar(t.av)); const bk = el("span", "fwbd"); bk.innerHTML = FW_CK; aw.append(bk); row.append(aw, tx);
+    if (t.dis) { row.disabled = true; } else {
+      const ck = el("span", "fwck"); ck.innerHTML = FW_CK; row.append(ck); row.setAttribute("role", "checkbox"); row.setAttribute("aria-checked", pick.has(t.id));
+      row.onclick = () => { if (pick.has(t.id)) pick.delete(t.id); else pick.set(t.id, t); row.classList.toggle("on", pick.has(t.id)); row.setAttribute("aria-checked", pick.has(t.id)); sync(); paintHead(); }; rowEls.set(t.id, row);
+    }
+    return row;
+  }
+  let hdBtn = null, hdTxt = null, vis = [];
+  function paintHead() { if (!hdBtn) return; const av = vis.filter(t => !t.dis), all = av.length && av.every(t => pick.has(t.id)); hdBtn.textContent = all ? "إلغاء تحديد الكل" : "تحديد الكل"; hdBtn.hidden = av.length < 2; }
+  async function lookup(code, q) {
+    const my = ++tok; busy = true; sync(); let uid = null, data = null;
+    const loc = Object.keys(profiles).find(u => profiles[u] && profiles[u].fcode === code);
+    if (loc) { uid = loc; data = profiles[loc]; }
+    else { try { const sn = await db.collection("profiles").where("fcode", "==", code).limit(1).get(); if (!sn.empty) { uid = sn.docs[0].id; data = sn.docs[0].data(); } } catch (e) { if (my === tok) { busy = false; extra = { err: true }; extraQ = q; sync(); paint(); } return; } }
+    if (my !== tok) return; busy = false;
+    if (uid && uid !== myId) { if (!profiles[uid]) profiles[uid] = data; extra = mkFr(uid, true); } else extra = { none: true, self: uid === myId };
+    extraQ = q; sync(); paint();
+  }
+  function paint() {
+    const q = si.value, qn = nzq(q), qf = normFCode(q), qc = nzc(q); sx.hidden = !q; list.textContent = ""; rowEls.clear();
+    vis = friends.filter(t => !q || nzq(t.name).includes(qn) || (qc.length >= 2 && t.keys.toLowerCase().includes(qc)));
+    vis.sort((p, o) => (p.dis ? 1 : 0) - (o.dis ? 1 : 0));
+    if (vis.length) {
+      const hd = el("div", "fwsec fwsech"); hdTxt = el("span", "", q ? "نتايج البحث (" + vis.length + ")" : "👥 أصدقائك (" + vis.length + ")"); hdBtn = el("button", "fwall"); hdBtn.type = "button";
+      hdBtn.onclick = () => { const av = vis.filter(t => !t.dis), all = av.every(t => pick.has(t.id)); av.forEach(t => { if (all) pick.delete(t.id); else pick.set(t.id, t); }); paint(); sync(); };
+      hd.append(hdTxt, hdBtn); list.appendChild(hd); vis.forEach(t => list.appendChild(mkRow(t))); paintHead();
+    } else hdBtn = null;
+    const byCode = qf.length === 8 && !friends.some(t => t.keys === qf);
+    if (byCode) {
+      list.appendChild(el("div", "fwsec", "🔎 نتيجة البحث بالكود"));
+      if (extra && extraQ === q && extra.id) list.appendChild(mkRow(extra));
+      else if (extra && extraQ === q && extra.err) list.appendChild(el("div", "dnone", "ماقدرتش أبحث دلوقتي، جرّب تاني."));
+      else if (extra && extraQ === q) list.appendChild(el("div", "dnone", extra.self ? "ده كودك أنت 🙂" : "مفيش حد بالكود ده، اتأكد منه."));
+      else { list.appendChild(el("div", "dnone", "⏳ بدوّر…")); if (!busy || extraQ !== q) lookup(qf, q); }
+    } else if (!vis.length) {
+      list.appendChild(el("div", "dnone", q ? "مفيش صديق بالاسم ده. لو معاك كوده اكتبه كامل (8 حروف وأرقام) وهيظهرلك." : "لسه معندكش أصدقاء هنا. اكتب كود صديقك في البحث فوق وهيظهرلك."));
+    }
+  }
+  si.oninput = () => { tok++; busy = false; extra = null; paint(); sync(); };
+  sx.onclick = () => { si.value = ""; si.oninput(); si.focus(); };
+  si.addEventListener("keydown", e => { if (e.key === "Escape") { if (si.value) { si.value = ""; si.oninput(); } else $("msheet").hidden = true; } });
+  go.onclick = async () => {
+    const ids = [...pick.keys()]; if (!ids.length || go.disabled) return; go.disabled = true; go.classList.add("busy");
+    try { await db.collection("rooms").doc(r.id).update({ invites: FV().arrayUnion(...ids) }); ids.forEach(u => notifyUser(u, r, "invite")); $("msheet").hidden = true; reqFlash(ids.length > 1 ? "✓ اتبعتلهم " + ids.length + " دعوات، هيدخلوا أول ما يوافقوا" : "✓ اتبعتله دعوة، هيدخل أول ما يوافق"); }
+    catch (e) { go.disabled = false; go.classList.remove("busy"); flash(errMsg(e)); }
+  };
+  paint(); sync(); $("msheet").hidden = false;
+  if (matchMedia("(pointer:fine)").matches) setTimeout(() => si.focus(), 60);
 }
 const GEN_KICK = [["⏱️", "ساعة", 3600000], ["🌙", "24 ساعة", 86400000], ["📅", "7 أيام", 604800000]];
 const kickedLeft = (r, u) => Math.max(0, ((r.removedUntil || {})[u] || 0) - Date.now());
@@ -1154,7 +1233,7 @@ function renderInfo(tabSwitch) {
     }
     if (locked) pane.append(el("div", "ri-note memlock", "🔐 قائمة الأعضاء متاحة للمالك فقط"));
     else if (owner && r.ownerOnlyMem !== false) pane.append(el("div", "ri-note memlock own", "🔐 القائمة دي ظاهرة ليك إنت بس"));
-    if (admin && !G) { const ac = card(null); ac.append(actRow("➕ إضافة صديق", "ابعتله دعوة بكوده", () => addFriend(r, mem))); }
+    if (admin && !G) { const ac = card(null); ac.append(actRow("➕ إضافة أصدقاء", "اختار من أصدقائك أو ابحث بالكود", () => addFriend(r, mem))); }
     const mc = card(null, "stack"), lst = el("div", "ri-list");
     let cnt = null;
     if (!locked && visible.length > 1) {

@@ -869,3 +869,10 @@ html[dir=rtl] #sendBtn svg{transform:scaleX(-1)}
 .seen-r .nm{flex:1;min-width:0;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;direction:rtl;text-align:start;unicode-bidi:isolate}
 .n,.qt b,.rt b,.rt small,.mi b,.mi small,.ri-nm b,.ri-mem b,.ri-row b,.ri-row small,.fwrt b,.fwrt small,.fwt b,.fwchip small,#hRoom b,#hRoom small{direction:rtl;text-align:start;unicode-bidi:isolate}
 .qt{direction:rtl;text-align:start}
+
+/* ───── إضافة أصدقاء للغرفة + أصدقاء مخفيين ───── */
+.fwsech{display:flex;align-items:center;justify-content:space-between;gap:8px;padding-inline-end:6px}
+.fwall{border:0;background:none;color:var(--pri);font-weight:800;font-size:13px;padding:6px 10px;border-radius:12px;cursor:pointer}.fwall:active{background:var(--bg)}
+.fwrow.dis{opacity:.5;cursor:default}.fwrow.dis .fwrt small{color:var(--mute)}
+.fwgi.add svg{transform:none}
+.rrow.hid{opacity:.72}.rrow.hid .rt small{font-style:normal}
