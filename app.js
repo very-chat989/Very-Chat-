@@ -840,7 +840,7 @@ $("dNotif").onclick = async () => { try { if (Notification.permission === "defau
 let pushReady = false;
 async function pushCall(path, body) {
   const u = firebase.auth().currentUser; if (!u) return { ok: false, status: 0, err: "مش مسجّل دخول" };
-  const r = await fetch(PUSH_URL.replace(/\/+$/, "") + path, { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + await u.getIdToken() }, body: JSON.stringify(body), keepalive: true });
+  const r = await fetch(PUSH_URL.replace(/\/+$/, "") + path, { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + await u.getIdToken() }, body: JSON.stringify(body) });
   let j = null; try { j = await r.json(); } catch (_) {}
   return { ok: r.ok, status: r.status, err: j && j.error };
 }
@@ -859,7 +859,7 @@ async function pushInit(manual) {
     if (!tok) return say("⚠️ مفيش توكن للجهاز");
     const key = tok + "|" + myId + "|" + Math.floor(Date.now() / 6048e5); let last = ""; try { last = localStorage.getItem("vc_ptok") || ""; } catch (_) {}
     if (manual || last !== key) {
-      let rr; try { rr = await pushCall("/register", { token: tok }); } catch (e) { return say("⚠️ ماقدرتش أوصل للـ Worker (" + (e.message || "النت؟") + ")"); }
+      let rr; try { rr = await pushCall("/register", { token: tok }); } catch (e) { let up = false; try { await Promise.race([fetch(PUSH_URL, { mode: "no-cors", cache: "no-store" }), new Promise((_, no) => setTimeout(no, 6000))]); up = true; } catch (_) {} return say(up ? "⚠️ الـ Worker شغال بس المتصفح منع الطلب (CORS). اتأكد إن الدومين في worker.js هو " + location.origin : "⚠️ الرابط ده مش بيفتح: " + PUSH_URL + " (مش منشور أو غلط)"); }
       if (!rr.ok) return say("⚠️ الـ Worker رفض التسجيل (" + rr.status + (rr.err ? ": " + rr.err : "") + ")");
       try { localStorage.setItem("vc_ptok", key); localStorage.setItem("vc_ptok_raw", tok); } catch (_) {}
     }
