@@ -1,15 +1,13 @@
 /* Very Chat — service worker
  * الاستراتيجية: الملفات بتتفتح فورًا من الكاش وبتتحدّث في الخلفية (stale-while-revalidate)،
  * ومكتبات Firebase (نسخة ثابتة) بتتخزّن مرة واحدة وتتقدّم من الكاش.
- * لما تطلّع نسخة جديدة شغّل:  python3 tools/release.py   (بيحدّث رقم النسخة في كل مكان). */
+ * لما تعدّل أي ملف: غيّر رقم BUILD هنا وفي index.html (meta vc-build و ?v= و التعليق الأخير). */
 "use strict";
-const BUILD = "20261122-2";
+const BUILD = "20261122-5";
 const PREFIX = "verychat-";
 const CACHE = PREFIX + BUILD;
 const V = "?v=" + BUILD;
-const JS = ["01-core", "02-dm", "03-drawer", "04-render", "05-msgmenu", "06-rooms", "07-roominfo", "08-profile", "09-media", "10-app", "11-sync", "12-sound"];
-const SHELL = ["./", "index.html", "manifest.webmanifest", "icon-192.png",
-  "base.css" + V, "app.css" + V, ...JS.map(n => n + ".js" + V)];
+const SHELL = ["./", "index.html", "manifest.webmanifest", "icon-192.png", "style.css" + V, "app.js" + V];
 const FB = ["app", "auth", "firestore", "app-check"].map(n => "https://www.gstatic.com/firebasejs/10.12.2/firebase-" + n + "-compat.js");
 
 const isFirebaseSDK = u => u.hostname === "www.gstatic.com" && u.pathname.startsWith("/firebasejs/");
