@@ -1,6 +1,9 @@
 /* Very Chat — الإعدادات والأدوات الأساسية */
 // ═══ إعدادات Firebase: الصق هنا القيم من Firebase Console ← Project settings ← Your apps ← Web app ═══
 // App Check: حط مفتاح reCAPTCHA v3 هنا بعد ما تفعّله من Firebase → App Check (فاضي = متوقف)
+// الإشعارات (Push): الصق هنا رابط الـ Worker ومفتاح VAPID (Firebase ← Project settings ← Cloud Messaging ← Web Push certificates). فاضي = متوقفة
+const PUSH_URL = "https://verychat-push.adhamemaad14.workers.dev";
+const VAPID_KEY = "BLUhjxf71Ma_N_REq1eyVUo1-Pwl6j96_Cmkh05pvz2l_K3fnXeyPTsKp6AiL0xsbfHPKu1vzpVtr0OGDPk1iu0";
 const APPCHECK_KEY = "6LdvzCsuAAAAAHvmMunzSxfkhomq9hmeyc4W9598";
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyA2G05p10GHyhFR8hOfdx0f__pYRw8fG9s",
@@ -65,7 +68,8 @@ const mBase = rid => isDM(rid) ? { room: rid, members: dmMembers(rid) } : { room
 const dmRoom = id => { const p = profiles[dmPeerOf(id)] || {}; return { id, dm: true, name: p.name || "مجهول", emoji: p.emoji, color: p.color, photo: p.photo, blocked: (dms[id] || {}).blockedBy || [] }; };
 function flash(t) { flashSnd(t); setStatus(t); setTimeout(() => { if ($("status").textContent === t) setStatus(""); }, 3500); }
 const dmEstablished = d => !!d && (!!d.acc || (!!d.last && !d.req));
-async function sendDoc(doc) {
+function sendDoc(doc) { const p = sendDoc0(doc); p.then(() => pushMsg(doc), () => {}); return p; }
+async function sendDoc0(doc) {
   if (!isDM(doc.room)) return db.collection("msgs").add(doc);
   { const g = dms[doc.room]; if (!dmEstablished(g) && !(g && g.req && g.req !== myId)) { const x = new Error("⏳ مينفعش تبعت رسايل لحد ما يوافق على طلب المحادثة"); x.custom = true; throw x; } }
   const rp = db.collection("dmsgs").add(doc), r = navigator.onLine === false ? rp : await rp, d0 = dms[doc.room], ex = !d0 && !dmFirst ? { req: myId } : d0 && d0.req && d0.req !== myId && !d0.acc ? { acc: true } : {};
@@ -88,6 +92,7 @@ async function openDM(u) {
   if (d && d.req === myId && !d.acc && d.last && ((d.cleared || {})[u] || 0) < d.last.ts) { flash("⏳ طلبك لسه معلّق، استنى موافقته"); return; }
   try {
     await db.collection("dms").doc(key).set({ members: [myId, u].sort(), req: myId, last: { uid: myId, ts: Date.now(), text: "👋 طلب محادثة" }, unread: { [u]: FV().increment(1) } }, { merge: true });
+    pushTo(u, "dm_req", myName(), "");
     reqFlash("✓ اتبعت طلب المحادثة، هيوصلك إشعار أول ما يوافق");
   } catch (e) { flash(errMsg(e)); }
 }
@@ -824,11 +829,52 @@ $("accBtn").onclick = async () => {
     if (u.isAnonymous) {
       try { await u.linkWithPopup(prov); }
       catch (e) { if (e.code === "auth/credential-already-in-use" && e.credential) await firebase.auth().signInWithCredential(e.credential); else throw e; }
-    } else await firebase.auth().signOut();
+    } else { await pushUnreg(); await firebase.auth().signOut(); }
     location.reload();
   } catch (e) { perr("ماقدرتش أكمل (" + (e.code || e.message) + "). اتأكد إن تسجيل جوجل متفعل في Firebase."); }
 };
-$("dNotif").onclick = async () => { try { await Notification.requestPermission(); } catch (e) {} $("dNotif").hidden = !("Notification" in window) || Notification.permission !== "default"; };
+$("dNotif").onclick = async () => { try { await Notification.requestPermission(); } catch (e) {} $("dNotif").hidden = !("Notification" in window) || Notification.permission !== "default"; pushInit(); };
+/* Very Chat — إشعارات الـ Push (Firebase Cloud Messaging عن طريق Cloudflare Worker) */
+// بتوصلك الإشعارات حتى والتطبيق مقفول. لو PUSH_URL أو VAPID_KEY فاضيين، الميزة دي متوقفة والباقي شغال عادي.
+let pushReady = false;
+async function pushCall(path, body) {
+  const u = firebase.auth().currentUser; if (!u) return false;
+  const r = await fetch(PUSH_URL.replace(/\/+$/, "") + path, { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + await u.getIdToken() }, body: JSON.stringify(body), keepalive: true });
+  return r.ok;
+}
+async function pushInit() {
+  if (pushReady || !PUSH_URL || !VAPID_KEY || !myId || !("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window) || Notification.permission !== "granted" || !/^https?:/.test(location.protocol)) return;
+  try {
+    if (!(firebase.messaging && await Promise.resolve(firebase.messaging.isSupported()))) return;
+    const reg = await Promise.race([navigator.serviceWorker.ready, new Promise((_, no) => setTimeout(no, 8000))]);
+    const tok = await firebase.messaging().getToken({ vapidKey: VAPID_KEY, serviceWorkerRegistration: reg });
+    if (!tok) return;
+    const key = tok + "|" + myId + "|" + Math.floor(Date.now() / 6048e5); let last = ""; try { last = localStorage.getItem("vc_ptok") || ""; } catch (_) {}
+    if (last !== key) { if (!(await pushCall("/register", { token: tok }))) return; try { localStorage.setItem("vc_ptok", key); localStorage.setItem("vc_ptok_raw", tok); } catch (_) {} }
+    pushReady = true;
+  } catch (e) {}
+}
+async function pushUnreg() {   // قبل تسجيل الخروج: الجهاز ده ميستقبلش إشعارات الحساب ده تاني
+  try { const t = localStorage.getItem("vc_ptok_raw"); if (!PUSH_URL || !t) return; await Promise.race([pushCall("/unregister", { token: t }), new Promise(r => setTimeout(r, 2500))]); localStorage.removeItem("vc_ptok"); localStorage.removeItem("vc_ptok_raw"); } catch (_) {}
+}
+function pushMsg(doc) {
+  if (!PUSH_URL || !myId) return;
+  const rid = doc.room, dm = isDM(rid);
+  pushCall("/notify", { kind: "msg", room: rid, title: dm ? "💬 " + myName() : rid === "general" ? "عام" : roomName(rid), body: dm ? mtext(doc).slice(0, 60) : nameOf(myId, rid) + ": " + mtext(doc) }).catch(() => {});
+}
+function pushTo(to, type, name, roomName) {
+  if (!PUSH_URL || !myId || !to || to === myId) return;
+  pushCall("/notify", { kind: "to", to, type, name, roomName }).catch(() => {});
+}
+// فتح الغرفة/المحادثة اللي جاي منها الإشعار
+function openByTag(t, tries) {
+  t = String(t || ""); if (!t || t === "info") return;
+  if (t === "join" || t === "req") { openReqs(); return; }
+  if (!started) { if ((tries || 0) < 20) setTimeout(() => openByTag(t, (tries || 0) + 1), 500); return; }
+  if (t === "general" || isDM(t) || rooms.some(r => r.id === t && canSee(r))) { try { closeDrawer(); } catch (_) {} openRoom(t); }
+  else if ((tries || 0) < 16) setTimeout(() => openByTag(t, (tries || 0) + 1), 500);
+}
+try { const q = new URLSearchParams(location.search), o = q.get("open"); if (o) { history.replaceState(null, "", location.pathname + location.hash); setTimeout(() => openByTag(o), 400); } } catch (_) {}
 function softReload() {
   if (document.getElementById("updov")) return; const o = document.createElement("div"); o.id = "updov";
   o.style.cssText = "position:fixed;inset:0;z-index:99;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:var(--ink);font-weight:800;font-size:20px";
@@ -2341,7 +2387,7 @@ if (APPCHECK_KEY && firebase.appCheck) { try { firebase.appCheck().activate(APPC
     refreshMe(); if (!rpLoaded) { rpLoaded = true; maybePersona(); }
     if (lastList.length) render(lastList);
   }, () => { rpLoaded = true; });
-  syncRecent();
+  syncRecent(); pushInit();
   document.addEventListener("visibilitychange", () => { if (!document.hidden && lastList.length) render(lastList); });
   db.collection("reads").onSnapshot(s => {
     reads = {}; s.docs.forEach(d => { reads[d.id] = d.data(); });
@@ -2415,7 +2461,7 @@ const dmReqs = () => Object.values(dms).filter(pendingIn).sort((a, b) => b.last.
 const myInvites = () => rooms.filter(r => (r.invites || []).includes(myId) && !(r.members || []).includes(myId) && !(r.banned || []).includes(myId));
 const myWaiting = () => rooms.filter(r => (r.requests || []).includes(myId) && !canSee(r));
 const reqCount = () => joinReqs().reduce((n, x) => n + x.us.length, 0) + dmReqs().length + myInvites().length;
-function notifyUser(u, r, kind) { if (db && u && u !== myId) db.collection("joins").add({ owner: u, uid: myId, name: myName(), room: r.id, roomName: r.name || "", kind, ts: Date.now() }).catch(() => {}); }
+function notifyUser(u, r, kind) { if (db && u && u !== myId) pushTo(u, kind, myName(), r.name || ""); if (db && u && u !== myId) db.collection("joins").add({ owner: u, uid: myId, name: myName(), room: r.id, roomName: r.name || "", kind, ts: Date.now() }).catch(() => {}); }
 async function decideJoin(r, u, ok) {
   const cur = rooms.find(x => x.id === r.id);
   if (!cur || !(cur.requests || []).includes(u)) { flash("الطلب ده مبقاش موجود"); return; }
@@ -2427,6 +2473,7 @@ async function decideInvite(r, ok) {
   if (!cur || !(cur.invites || []).includes(myId)) { flash("الدعوة دي اتلغت"); return; }
   try {
     await db.collection("rooms").doc(r.id).update(ok ? { members: AU(myId), invites: AR(myId) } : { invites: AR(myId) });
+    if (r.by && r.by !== myId) pushTo(r.by, ok ? "inv_ok" : "inv_no", myName(), r.name || "");
     if (r.by && r.by !== myId) db.collection("joins").add({ owner: r.by, uid: myId, name: myName(), room: r.id, roomName: r.name || "", kind: ok ? "inv_ok" : "inv_no", ts: Date.now() }).catch(() => {});
     reqFlash(ok ? "✓ انضميت لغرفة " + r.name : "✕ اترفضت الدعوة");
   } catch (e) { flash(errMsg(e)); }
@@ -2484,7 +2531,7 @@ function renderReqs() {
   box.scrollTop = top;
 }
 $("dReq").onclick = openReqs; $("reqBack").onclick = () => { $("reqView").hidden = true; };
-if (navigator.serviceWorker) navigator.serviceWorker.addEventListener("message", e => { const t = e.data && e.data.tag; if (t === "join" || t === "req") openReqs(); });
+if (navigator.serviceWorker) navigator.serviceWorker.addEventListener("message", e => { openByTag(e.data && e.data.tag); });
 // ═══ المتصلين / بيكتب / إشعار الانضمام للمالك ═══
 const PRES_TTL = 90000, PRES_BEAT = 30000, TYPE_TTL = 5000;
 let presence = {}, presOn = false, typingSent = 0, typingActive = false;
@@ -2522,6 +2569,7 @@ function toast(t, quiet) {
 function logJoin(r, kind) {
   if (!db || !myId || !r) return;
   const owner = r.id === "general" ? OWNER_UID : r.by; if (!owner || owner === myId) return;
+  pushTo(owner, kind, (profiles[myId] || {}).name || gName() || "مجهول", r.id === "general" ? "" : r.name || "");
   db.collection("joins").add({ owner, uid: myId, name: (profiles[myId] || {}).name || gName() || "مجهول", room: r.id, roomName: r.name || "عام", kind, ts: Date.now() }).catch(() => {});
 }
 const joinText = j => j.kind === "dm_ok" ? "✅ " + j.name + " قبل طلب محادثتك، تقدر تراسله دلوقتي" : j.kind === "dm_no" ? "❌ " + j.name + " رفض طلب محادثتك" : j.kind === "request" ? "✋ " + j.name + " طلب الانضمام لغرفة «" + j.roomName + "»" : j.kind === "invite" ? "📨 " + j.name + " دعاك لغرفة «" + j.roomName + "»" : j.kind === "inv_ok" ? "✅ " + j.name + " قبل دعوتك لغرفة «" + j.roomName + "»" : j.kind === "inv_no" ? "❌ " + j.name + " رفض دعوتك لغرفة «" + j.roomName + "»" : j.kind === "approved" ? "✅ اتقبل طلب انضمامك لغرفة «" + j.roomName + "»" : j.kind === "declined" ? "❌ طلب انضمامك لغرفة «" + j.roomName + "» اترفض" : j.room === "general" ? "👋 " + j.name + " انضم للدردشة العامة" : "👋 " + j.name + " انضم لغرفة «" + j.roomName + "»";

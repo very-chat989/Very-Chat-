@@ -3,12 +3,12 @@
  * ومكتبات Firebase (نسخة ثابتة) بتتخزّن مرة واحدة وتتقدّم من الكاش.
  * لما تعدّل أي ملف: غيّر رقم BUILD هنا وفي index.html (meta vc-build و ?v= و التعليق الأخير). */
 "use strict";
-const BUILD = "20261122-17";
+const BUILD = "20261122-19";
 const PREFIX = "verychat-";
 const CACHE = PREFIX + BUILD;
 const V = "?v=" + BUILD;
 const SHELL = ["./", "index.html", "manifest.webmanifest", "icon-192.png", "style.css" + V, "app.js" + V];
-const FB = ["app", "auth", "firestore", "app-check"].map(n => "https://www.gstatic.com/firebasejs/10.12.2/firebase-" + n + "-compat.js");
+const FB = ["app", "auth", "firestore", "app-check", "messaging"].map(n => "https://www.gstatic.com/firebasejs/10.12.2/firebase-" + n + "-compat.js");
 
 const isFirebaseSDK = u => u.hostname === "www.gstatic.com" && u.pathname.startsWith("/firebasejs/");
 
@@ -75,10 +75,24 @@ self.addEventListener("fetch", e => {
   })());
 });
 
+// إشعارات الـ Push (من Firebase Cloud Messaging): بتوصل والتطبيق مقفول
+self.addEventListener("push", e => {
+  let p = {}; try { p = e.data ? e.data.json() : {}; } catch (_) { try { p = { data: { body: e.data.text() } }; } catch (__) {} }
+  const d = p.data || p.notification || p || {};
+  const title = String(d.title || "Very Chat"), body = String(d.body || ""), tag = String(d.tag || "vc");
+  e.waitUntil((async () => {
+    const cs = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+    if (cs.some(c => c.visibilityState === "visible")) return;          // التطبيق مفتوح قدامك، مش محتاج إشعار
+    const ex = await self.registration.getNotifications({ tag });       // نفس الإشعار اتعرض لسه من التطبيق نفسه
+    if (ex.some(n => n.title === title && n.body === body && Date.now() - n.timestamp < 20000)) return;
+    await self.registration.showNotification(title, { body, tag, renotify: true, icon: "icon-192.png", badge: "icon-192.png", dir: "auto", lang: "ar", data: { tag } });
+  })());
+});
+
 self.addEventListener("notificationclick", e => {
   const tag = e.notification.tag; e.notification.close();
   e.waitUntil(self.clients.matchAll({ type: "window", includeUncontrolled: true }).then(cs => {
-    if (!cs.length) return self.clients.openWindow("./");
+    if (!cs.length) return self.clients.openWindow("./?open=" + encodeURIComponent(tag || ""));
     const c = cs.find(x => x.visibilityState === "visible") || cs[0];
     c.postMessage({ type: "open", tag });
     return c.focus();
