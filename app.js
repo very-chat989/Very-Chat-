@@ -911,6 +911,7 @@ function openInfo(id) { if (!id) return; infoId = id; infoSig = null; riTab = nu
 function closeInfo() { infoId = null; $("rinfo").hidden = true; }
 const FW_ADD = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9.5" cy="8" r="3.8"/><path d="M2.5 20c.8-3.6 3.5-5.5 7-5.5s6.2 1.9 7 5.5M19 8v6M16 11h6"/></svg>';
 function addFriend(r, mem) {
+  if (!r || r.id === "general" || r.dm) return;   // العام مفتوح للكل: مفيهوش دعوات
   const c = $("mcard"); c.textContent = "";
   const inRoom = new Set(mem), banned = new Set(r.banned || []), invited = new Set(r.invites || []);
   const seenU = new Set(), friends = [];
