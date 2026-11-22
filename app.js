@@ -277,57 +277,23 @@ function jumpBottom(smooth) {
 $("toBottom").onclick = () => { jumpBottom(true); if (lastList.length) setSeen(room, lastList[lastList.length - 1].ts); setTimeout(boxScrolled, 350); };
 ["touchstart", "wheel", "mousedown"].forEach(ev => $("msgs").addEventListener(ev, () => { $("msgs")._pin = 0; }, { passive: true }));
 /* Very Chat — رسم الرسايل والتفاعلات والتحديد */
-/* ───── رسم الرسايل: تحديث تدريجي (بيعيد بناء الرسالة اللي اتغيّرت بس) + نافذة CAP رسالة ───── */
-const CAP = 400;   // أقصى رسايل بتفضل محمّلة ومعروضة في الغرفة؛ الأقدم بتتشال تلقائيًا وبسلاسة
-function msgSig(m, first, dayTxt, unrCnt, p, seenN) {
-  const rx = m.reacts ? JSON.stringify(m.reacts) : "";
-  const ph = p && p.photo ? p.photo.length + ":" + String(p.photo).slice(-10) : "";
-  return [m.text || "", m.edited ? 1 : 0, rx, m._p ? 1 : 0, seenN, first ? 1 : 0, dayTxt, unrCnt, sel.has(m.id) ? 1 : 0, selMode ? 1 : 0, p ? (p.name || "") + "|" + (p.emoji || "") + "|" + (p.color || "") + "|" + ph : ""].join("\u0001");
-}
-function ghostNode(n) {
-  n._gone = 1; const h = n.offsetHeight; n.style.height = h + "px"; n.style.overflow = "hidden"; n.style.pointerEvents = "none"; n.getBoundingClientRect();
-  n.style.transition = "height .26s ease,opacity .2s ease,margin .26s ease"; n.style.height = "0"; n.style.opacity = "0"; n.style.marginTop = n.style.marginBottom = "0";
-  setTimeout(() => n.remove(), 320);
-}
 function render(list) {
   lastList = list;
   const box = $("msgs");
   const fresh = box._room !== room;
-  if (fresh) {
-    box._room = room; box._unr = 0; box._lim = 60; box._cache = new Map(); box._ids = null; clearTimeout(box._more); box.replaceChildren();
-    const s0 = getSeen(room); if (s0) { const f0 = list.find(m => m.uid !== myId && m.ts > s0); if (f0) box._unr = f0.ts; } else if (list.length) setSeen(room, list[list.length - 1].ts);
-    if (box._unr) box._lim = Math.min(CAP, Math.max(60, list.filter(x => x.ts >= box._unr).length + 8));
-  }
-  const cache = box._cache || (box._cache = new Map());
+  if (fresh) { box._room = room; box._unr = 0; const s0 = getSeen(room); if (s0) { const f0 = list.find(m => m.uid !== myId && m.ts > s0); if (f0) box._unr = f0.ts; } else if (list.length) setSeen(room, list[list.length - 1].ts); }
+  // لو في فيديو شغّال، نأجّل إعادة الرسم علشان ما يقفلش في وشك
+  if ([...box.querySelectorAll("video")].some(v => !v.paused && !v.ended)) { clearTimeout(render._t); render._t = setTimeout(() => render(lastList), 1500); return; }
   const near = box.scrollHeight - box.scrollTop - box.clientHeight < 90;
-  // مرساة: أول رسالة ظاهرة، علشان الشاشة ماتقفزش لو اتشالت/اتضافت رسايل فوق
-  let anchor = null, aTop = 0;
-  if (!fresh && !near) { const bt = box.getBoundingClientRect().top; for (const c of box.children) { if (c._gone) continue; const rc = c.getBoundingClientRect(); if (rc.bottom > bt + 1) { anchor = c; aTop = rc.top; break; } } }
-  const oldIds = box._ids, vis = list.length > box._lim ? list.slice(-box._lim) : list, base = list.length - vis.length;
-  const want = [], used = new Set(); let added = 0, retry = false;
-  const todayS = new Date().toDateString();
-  vis.forEach((m, k) => { try {
-    const i = base + k, prev = list[i - 1], mine = m.uid === myId, p = profileFor(m.uid);
-    const d0 = new Date(m.ts), newDay = !prev || new Date(prev.ts).toDateString() !== d0.toDateString();
-    const dayTxt = newDay ? (d0.toDateString() === todayS ? "اليوم" : d0.toLocaleDateString("ar-EG", { day: "numeric", month: "long" })) : "";
+  const frag = document.createDocumentFragment(), oldIds = !fresh && box._ids ? box._ids : null;
+  list.forEach((m, i) => { try {
+    const prev = list[i - 1], mine = m.uid === myId, p = profileFor(m.uid);
+    const newDay = !prev || new Date(prev.ts).toDateString() !== new Date(m.ts).toDateString();
+    if (newDay) { const dv = document.createElement("div"), d0 = new Date(m.ts); dv.className = "day"; dv.textContent = d0.toDateString() === new Date().toDateString() ? "اليوم" : d0.toLocaleDateString("ar-EG", { day: "numeric", month: "long" }); frag.appendChild(dv); }
     const first = newDay || prev.uid !== m.uid || m.ts - prev.ts > 300000;
-    const unrMark = !!(box._unr && m.ts >= box._unr && !(prev && prev.ts >= box._unr));
-    const unrCnt = unrMark ? list.filter(x => x.uid !== myId && x.ts >= box._unr).length : -1;
-    const seenN = mine && !m._p && seenOK() ? seenBy(m).length : 0;
-    const sig = msgSig(m, first, dayTxt, unrCnt, p, seenN);
-    let ent = cache.get(m.id);
-    if (ent && ent.sig !== sig) {
-      // ما نكسرش فيديو شغّال: نأجّل إعادة بناء الصف ده بس
-      if (ent.nodes.some(n => n.querySelector && [...n.querySelectorAll("video")].some(v => !v.paused && !v.ended))) { retry = true; }
-      else { ent.nodes.forEach(n => n.remove()); ent = null; }
-    }
-    if (!ent) {
-      const nodes = [];
-      if (newDay) { const dv = document.createElement("div"); dv.className = "day"; dv.textContent = dayTxt; nodes.push(dv); }
-      if (unrMark) { const u = document.createElement("div"); u.className = "unr"; u.id = "unrDiv"; u.textContent = "⬇ " + unrCnt + " رسالة غير مقروءة"; nodes.push(u); }
     const row = document.createElement("div"); row.className = "row" + (mine ? " me" : "") + (first ? " first" : "") + (sel.has(m.id) ? " sel" : "");
     row.dataset.uid = m.uid; row.dataset.ts = m.ts;
-    if (first) row.appendChild(avatar(p)); else { const s = document.createElement("div"); s.className = "sp"; row.appendChild(s); }
+    if (box._unr && m.ts >= box._unr && !(prev && prev.ts >= box._unr)) { const u = document.createElement("div"); u.className = "unr"; u.id = "unrDiv"; const cnt = list.filter(x => x.uid !== myId && x.ts >= box._unr).length; u.textContent = "⬇ " + cnt + " رسالة غير مقروءة"; frag.appendChild(u); } if (first) row.appendChild(avatar(p)); else { const s = document.createElement("div"); s.className = "sp"; row.appendChild(s); }
     const b = document.createElement("div"); b.className = "b";
     if (first && !mine) { const n = document.createElement("div"); n.className = "n"; n.dir = "auto"; n.textContent = (p && p.name) || "مجهول"; n.style.cursor = "pointer"; n.onclick = e => { e.stopPropagation(); if (Date.now() - (b._f || 0) > 800) peerTap(m.uid, m.room || room); }; b.appendChild(n); }
     if (m.fwd) b.appendChild(el("div", "fw", "↪️ محوّلة من " + m.fwd));
@@ -353,30 +319,12 @@ function render(list) {
     const tm = document.createElement("span"); tm.textContent = new Date(m.ts).toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit" }); t.appendChild(tm);
     b.appendChild(t); holdMenu(b, m); row.appendChild(b);
     if (selMode) { const ck = document.createElement("span"); ck.className = "ck"; ck.textContent = sel.has(m.id) ? "✓" : ""; row.appendChild(ck); }
-    row.onclick = () => { if (selMode) toggleSel(m.id); };
-      const isNew = !!oldIds && !oldIds.has(m.id);
-      if (isNew) { added++; if (added <= 6 && (near || mine)) { row.classList.add("in"); row.addEventListener("animationend", () => row.classList.remove("in"), { once: true }); } }
-      nodes.push(row); ent = { sig, nodes }; cache.set(m.id, ent);
-    }
-    used.add(m.id); ent.nodes.forEach(n => want.push(n));
+    row.onclick = () => { if (selMode) toggleSel(m.id); }; frag.appendChild(row);
   } catch (err) { console.warn("رسالة تالفة اتخطّت", err); } });
-  // رسايل اتمسحت أو خرجت برّه النافذة
-  const gone = []; for (const [id, ent] of cache) if (!used.has(id)) { cache.delete(id); gone.push(ent); }
-  const soft = !fresh && gone.length <= 3 && near;
-  gone.forEach(ent => ent.nodes.forEach(n => { if (!n.isConnected) return; if (soft && n.classList.contains("row")) ghostNode(n); else n.remove(); }));
-  // ترتيب العناصر بأقل حركات ممكنة في الـ DOM
-  let cur = box.firstChild;
-  for (const n of want) { while (cur && cur._gone) cur = cur.nextSibling; if (cur === n) cur = cur.nextSibling; else box.insertBefore(n, cur); }
-  while (cur) { const nx = cur.nextSibling; if (!cur._gone) cur.remove(); cur = nx; }
-  box._ids = new Set(list.map(x => x.id));
+  box.replaceChildren(frag); box._ids = new Set(list.map(x => x.id));
   const lm = list[list.length - 1], mineNew = lm && lm.uid === myId && Date.now() - lm.ts < 5000;
   if (fresh) { box.scrollTop = box.scrollHeight; box._pin = 1; requestAnimationFrame(() => { if (box._pin) box.scrollTop = box.scrollHeight; setTimeout(() => { if (box._pin) box.scrollTop = box.scrollHeight; box._pin = 0; }, 400); }); }
-  else if (near || mineNew || list.length < 4) { if (added && !fresh) jumpBottom(added <= 3 && box.scrollHeight - box.scrollTop - box.clientHeight < box.clientHeight * 0.6); else box.scrollTop = box.scrollHeight; }
-  else if (anchor && anchor.isConnected) { const dlt = anchor.getBoundingClientRect().top - aTop; if (dlt) box.scrollTop += dlt; }
-  // باقي الرسايل القديمة بتتحمّل على دفعات في الخلفية علشان فتح الغرفة يبقى فوري
-  clearTimeout(box._more);
-  if (list.length > box._lim) box._more = setTimeout(() => { if (box._room === room) { box._lim = Math.min(CAP, box._lim + 70); render(lastList); } }, 90);
-  if (retry) { clearTimeout(render._t); render._t = setTimeout(() => render(lastList), 1500); }
+  else if (near || mineNew || list.length < 4) box.scrollTop = box.scrollHeight;
   try { netUI(); } catch (_) {} boxScrolled(); _spMsg = true; if (_spMin) hideSplash();
   markSeen(list); updateTotal();
   setStatus(list.length ? "" : "مفيش رسايل لسه. ابدأ إنت!");
@@ -749,30 +697,17 @@ function errMsg(e) {
   if (c === "failed-precondition") return "فيه إعداد ناقص في Firebase: " + ((e && e.message) || "");
   return "حصلت مشكلة: " + ((e && e.message) || c || "غير معروفة");
 }
-const NET = { cache: false, was: false, t: 0, ok: 0, since: 0, kick: 0 };
-// fromCache بيبقى true لحظات عادية (فتح الغرفة، الرجوع من الخلفية، إعادة اتصال سريعة) — فمنظهرش البانر إلا لو الحالة دي استمرت
+const NET = { cache: false, was: false, t: 0, ok: 0 };
 function netUI() {
   const el = $("net"); if (!el) return;
   const off = navigator.onLine === false, n = (typeof lastList !== "undefined" ? lastList : []).filter(m => m._p).length, tail = n ? " · " + n + (n === 1 ? " رسالة منتظرة" : " رسايل منتظرة") : "";
   clearTimeout(NET.t);
-  const show = (cls, txt) => { if (el.className !== cls) el.className = cls; if (el.textContent !== txt) el.textContent = txt; el.hidden = false; };
+  const show = (cls, txt) => { el.className = cls; el.textContent = txt; el.hidden = false; };
   if (off) { NET.was = true; clearTimeout(NET.ok); show("off", "⚠️ مفيش اتصال بالنت · رسايلك هتتبعت أول ما يرجع" + tail); return; }
-  if (NET.cache) {
-    if (document.hidden) { if (el.className === "con") el.hidden = true; return; }
-    const need = NET.was ? 2500 : n ? 5000 : 10000, left = need - (Date.now() - (NET.since || (NET.since = Date.now())));
-    const paint = () => show("con", (NET.was || !n ? "🔄 جاري الاتصال…" : "🔄 جاري الإرسال…") + tail);
-    if (!el.hidden && el.className === "con") paint();
-    else if (left <= 0) paint();
-    else NET.t = setTimeout(() => { if (NET.cache && navigator.onLine !== false && !document.hidden) { paint(); } }, left + 20);
-    // لو الاتصال علّق فترة طويلة: نعيد تشغيل الشبكة تلقائيًا (من غير ما المستخدم يعمل حاجة)
-    if (db && Date.now() - NET.since > 15000 && Date.now() - NET.kick > 40000) { NET.kick = Date.now(); db.disableNetwork().then(() => db.enableNetwork()).catch(() => { try { db.enableNetwork(); } catch (_) {} }); }
-    return;
-  }
-  NET.since = 0;
+  if (NET.cache) { if (NET.was) show("con", "🔄 جاري الاتصال…" + tail); else if (n) show("con", "🔄 جاري الإرسال…" + tail); else NET.t = setTimeout(() => { if (NET.cache && navigator.onLine !== false) show("con", "🔄 جاري الاتصال…"); }, 4000); return; }
   if (NET.was) { NET.was = false; show("ok", "✅ رجع الاتصال"); clearTimeout(NET.ok); NET.ok = setTimeout(() => { if (el.className === "ok") el.hidden = true; }, 2200); return; }
   if (el.className !== "ok") el.hidden = true;
 }
-document.addEventListener("visibilitychange", () => { if (!document.hidden) { NET.since = Date.now(); try { if (db) db.enableNetwork().catch(() => {}); } catch (_) {} } netUI(); });
 window.addEventListener("online", () => { try { if (db) db.enableNetwork().catch(() => {}); } catch (_) {} netUI(); }); window.addEventListener("offline", netUI);
 setTimeout(netUI, 0);
 function unreadOf(rid) { if (isDM(rid)) return ((dms[rid] || {}).unread || {})[myId] || 0; return readsLoaded ? recent.filter(m => m.room === rid && m.uid !== myId && m.ts > (myReads[rid] || 0)).length : 0; }
@@ -1301,31 +1236,6 @@ function openRoomMenu(r) {
   c.appendChild(acts); $("msheet").hidden = false;
 }
 
-/* ───── تنضيف الرسايل القديمة من القاعدة: أي رسالة أقدم من آخر CAP بتتمسح (هي والصورة/الفيديو بتاعها) ───── */
-const PRUNE = { at: {}, deny: false, busy: false };
-async function pruneOld(rid, oldestTs) {
-  if (!db || rid !== "general" || PRUNE.deny || PRUNE.busy || navigator.onLine === false || document.hidden) return;
-  { const rr = rid === "general" ? generalRoom() : rooms.find(x => x.id === rid); if (!(myId === OWNER_UID || (rr && adminOf(rr)))) return; }   // الحذف مسموح للمالك ومشرفي الغرفة بس
-  if (Date.now() - (PRUNE.at[rid] || 0) < 300000) return;
-  PRUNE.at[rid] = Date.now(); PRUNE.busy = true;
-  try {
-    for (let round = 0; round < 6; round++) {
-      const q = await db.collection("msgs").where("room", "==", rid).where("ts", "<", oldestTs).orderBy("ts", "asc").limit(200).get({ source: "server" });
-      if (q.empty) break;
-      const refs = []; q.docs.forEach(d => { refs.push(d.ref); const mid = d.data().mid; if (mid) refs.push(db.collection("media").doc(String(mid))); });
-      try { const b = db.batch(); refs.forEach(r => b.delete(r)); await b.commit(); }
-      catch (e) {
-        const rs = await Promise.allSettled(refs.map(r => r.delete()));
-        if (!rs.some(x => x.status === "fulfilled")) { PRUNE.deny = true; break; }   // مفيش صلاحية حذف: نبطّل المحاولة في الجلسة دي
-        if (rs.some(x => x.status === "rejected")) break;
-      }
-      if (q.size < 200) break;
-      await new Promise(r => setTimeout(r, 400));
-    }
-  } catch (e) { if (e && e.code === "failed-precondition") console.warn("التنضيف محتاج Index (room + ts):", e.message); }
-  PRUNE.busy = false;
-}
-
 function openRoom(id) {
   if (!db) { setStatus("التطبيق لسه مش متصل بـ Firebase: حط إعدادات FIREBASE_CONFIG في أول الملف وافتح الصفحة من رابط مستضاف (مش من المعاينة)."); return; }
   clearReply(); selMode = false; sel.clear(); $("selBar").hidden = true;
@@ -1333,37 +1243,22 @@ function openRoom(id) {
   room = id; creating = false; confirmDel = false; $("inp").placeholder = "اكتب رسالة…"; try { $("inp").value = localStorage.getItem("vc_draft_" + id) || ""; } catch (_) {} buildChips(); refreshMe();
   if (unsub) unsub();
   setStatus("جاري تحميل الرسايل…");
-  const tok = ++openRoom._tok;
-  const timer = setTimeout(() => { if (tok === openRoom._tok) setStatus("مش قادر أوصل للرسايل دلوقتي، ممكن النت ضعيف."); }, 10000);
+  const timer = setTimeout(() => setStatus("مش قادر أوصل للرسايل دلوقتي، ممكن النت ضعيف."), 10000);
   let firstSnap = true, pendSig = "";
-  const baseQ = isDM(id) ? db.collection("dmsgs").where("room", "==", id).where("members", "array-contains", myId) : db.collection("msgs").where("room", "==", id);
-  const attach = ordered => {
-    // مرتّب من الأحدث + limit: السيرفر مابيبعتش غير آخر CAP رسالة، فالغرفة ماتتقلش مهما كبرت
-    const q = ordered ? baseQ.orderBy("ts", "desc").limit(CAP) : baseQ;   // العام بس: آخر CAP رسالة؛ باقي الغرف زي الأول
-    unsub = q.onSnapshot({ includeMetadataChanges: true },
-      s => {
-        if (tok !== openRoom._tok) return;
-        clearTimeout(timer);
-        const c = s.metadata.fromCache; if (c && !NET.cache) NET.since = Date.now(); NET.cache = c; if (!c) NET.since = 0;
-        const pend = s.docs.filter(d => d.metadata.hasPendingWrites).map(d => d.id).join(",");
-        if (!firstSnap && !s.docChanges().length && pend === pendSig) { netUI(); return; }
-        firstSnap = false; pendSig = pend;
-        if (ordered && !c && id === "general" && s.size >= CAP) { const ot = s.docs[s.docs.length - 1].data().ts; if (ot) setTimeout(() => pruneOld(id, ot), 4000 + Math.random() * 6000); }
-        const clr = isDM(id) ? dmClearedAt(dms[id]) : 0; { const st = $("status").textContent; if (st.startsWith("جاري تحميل") || st.startsWith("مش قادر أوصل")) setStatus(""); }
-        render(s.docs.map(d => ({ ...d.data(), id: d.id, _p: d.metadata.hasPendingWrites })).filter(m => m.ts > clr).sort((a, b) => (a.ts - b.ts) || a.id.localeCompare(b.id)).slice(-(id === "general" ? CAP : 150)));
-      },
-      e => {
-        if (tok !== openRoom._tok) return;
-        if (ordered && e && e.code === "failed-precondition") { console.warn("محتاج Index (room + ts) علشان الترتيب من السيرفر:", e.message); attach(false); return; }
-        clearTimeout(timer); setStatus(errMsg(e));
-      });
-  };
-  attach(id === "general");
+  unsub = (isDM(id) ? db.collection("dmsgs").where("room", "==", id).where("members", "array-contains", myId) : db.collection("msgs").where("room", "==", id)).onSnapshot({ includeMetadataChanges: true },
+    s => {
+      clearTimeout(timer); NET.cache = s.metadata.fromCache;
+      const pend = s.docs.filter(d => d.metadata.hasPendingWrites).map(d => d.id).join(",");
+      if (!firstSnap && !s.docChanges().length && pend === pendSig) { netUI(); return; }
+      firstSnap = false; pendSig = pend;
+      const clr = isDM(id) ? dmClearedAt(dms[id]) : 0; { const st = $("status").textContent; if (st.startsWith("جاري تحميل") || st.startsWith("مش قادر أوصل")) setStatus(""); }
+      render(s.docs.map(d => ({ ...d.data(), id: d.id, _p: d.metadata.hasPendingWrites })).filter(m => m.ts > clr).sort((a, b) => (a.ts - b.ts) || a.id.localeCompare(b.id)).slice(-150));
+    },
+    e => { clearTimeout(timer); setStatus(errMsg(e)); });
   maybePersona();
   if (window.syncHistory) syncHistory();
 }
 
-openRoom._tok = 0;
 /* Very Chat — البروفايل وشخصيات الشلة */
 // ───── البروفايل ─────
 function perr(t) { $("pErr").textContent = t; $("pErr").hidden = !t; }
@@ -2116,7 +2011,7 @@ if (APPCHECK_KEY && firebase.appCheck) { try { firebase.appCheck().activate(APPC
     const au = firebase.auth(); au.getRedirectResult().catch(e => lerr(authMsg(e)));
     let user = await new Promise(res => { const un = au.onAuthStateChanged(u => { un(); res(u); }); });
     if (!user) user = await askLogin();
-    myId = user.uid; db = firebase.firestore(); try { db.settings({ experimentalAutoDetectLongPolling: true, merge: true }); } catch (_) {} try { await db.enablePersistence({ synchronizeTabs: true }); } catch (e) {}
+    myId = user.uid; db = firebase.firestore(); try { await db.enablePersistence({ synchronizeTabs: true }); } catch (e) {}
   } catch (e) { setStatus(e.code === "auth/operation-not-allowed" || e.code === "auth/admin-restricted-operation" ? "فعّل تسجيل الدخول Anonymous من Firebase ← Authentication ← Sign-in method." : "ماقدرتش أتصل بـ Firebase: " + (e.code || e.message)); $("sendBtn").disabled = true; starting = false; setTimeout(() => { if (!started) start(); }, 6000); return; }
   started = true; starting = false; $("sendBtn").disabled = false;
   db.collection("profiles").onSnapshot(s => {
