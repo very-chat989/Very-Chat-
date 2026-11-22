@@ -1009,10 +1009,10 @@ function openFriends() {
   const root = el("div", "fw"), head = el("div", "fwh"), x = el("button", "fwx", "✕"); x.type = "button"; x.setAttribute("aria-label", "إغلاق"); x.onclick = () => { $("msheet").hidden = true; };
   const ht = el("div", "fwt"), cnt = el("small", "", fr.length ? (fr.length === 1 ? "صديق واحد" : fr.length === 2 ? "صديقين" : fr.length + (fr.length > 10 ? " صديق" : " أصدقاء")) : "لسه مفيش أصدقاء");
   ht.append(el("b", "", "💬 محادثة جديدة"), cnt); head.append(ht, x);
-  const sbox = el("div", "fws big"), si = el("input"), sic = el("span", "fwsi"), sx = el("button", "fwsc", "✕"); sic.innerHTML = FW_SEARCH; sx.type = "button"; sx.hidden = true;
+  const sbox = el("div", "fws fwsb"), si = el("input"), sic = el("span", "fwsi"), sx = el("button", "fwsc", "✕"); sic.innerHTML = FW_SEARCH; sx.type = "button"; sx.hidden = true;
   si.type = "search"; si.placeholder = "ابحث بالاسم أو اكتب كود صديق…"; si.autocomplete = "off"; si.autocapitalize = "none"; si.spellcheck = false; si.enterKeyHint = "search"; si.setAttribute("aria-label", "بحث"); sbox.append(sic, si, sx);
-  const wrap = el("div", "fwlw"), list = el("div", "fwl"), idx = el("div", "fwidx"); idx.hidden = true; wrap.append(list, idx);
-  root.append(head, sbox, wrap); c.append(root);
+  const list = el("div", "fwl");
+  root.append(head, sbox, list); c.append(root);
   let tok = 0, extra = null, extraQ = "";
   function hl(name, q) {
     const f = document.createDocumentFragment(), nn = nzq(name), qn = nzq(q);
@@ -1038,15 +1038,10 @@ function openFriends() {
     extraQ = q; paint();
   }
   function paint() {
-    const q = si.value, qn = nzq(q), qc = nzc(q), qf = normFCode(q); sx.hidden = !q; list.textContent = ""; idx.textContent = ""; idx.hidden = true;
+    const q = si.value, qn = nzq(q), qc = nzc(q), qf = normFCode(q); sx.hidden = !q; list.textContent = "";
     const hit = fr.filter(t => !q || nzq(t.name).includes(qn) || (qc.length >= 2 && t.keys.toLowerCase().includes(qc)));
     if (q && hit.length) list.appendChild(el("div", "fwsec", "نتايج البحث (" + hit.length + ")"));
-    let last = null; const heads = {};
-    hit.forEach(t => { if (!q && t.ch !== last) { last = t.ch; const h = el("div", "fwsec fwltr", t.ch); heads[t.ch] = h; list.appendChild(h); } list.appendChild(mkRow(t, q)); });
-    const letters = Object.keys(heads);
-    if (!q && fr.length >= 10 && letters.length >= 4) {
-      letters.forEach(L => { const b = el("button", "", L); b.type = "button"; b.onclick = () => { list.scrollTop += heads[L].getBoundingClientRect().top - list.getBoundingClientRect().top; }; idx.appendChild(b); }); idx.hidden = false;
-    }
+    hit.forEach(t => list.appendChild(mkRow(t, q)));
     if (qf.length === 8 && !fr.some(t => t.keys === qf)) {
       list.appendChild(el("div", "fwsec", "🔎 نتيجة البحث بالكود"));
       if (extra && extraQ === q && extra.u) list.appendChild(mkRow(extra, "", true));
