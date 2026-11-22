@@ -107,7 +107,7 @@ function openPeer(u) {
 }
 function dmRow(d) {
   const u = dmPeerOf(d.id), p = profiles[u] || {}, row = el("button", "rrow" + (d.id === room ? " on" : "")); row.type = "button"; row.style.setProperty("--rc", p.color || "#5b6b78");
-  const tx = el("div", "rt"), sb = el("small"); sb.dir = "auto";
+  const tx = el("div", "rt"), sb = el("small"); sb.dir = "rtl";
   sb.textContent = ((d.blockedBy || []).length ? "🚫 " : "") + (d.req === myId && !d.acc ? "⏳ " : "") + (d.last ? (d.last.uid === myId ? "أنت: " : "") + d.last.text : "");
   tx.append(el("b", "", p.name || "مجهول"), sb); row.append(avatar(p), tx);
   const un = unreadOf(d.id); if (un) row.append(el("span", "bdg", un > 99 ? "99+" : String(un)));
@@ -196,7 +196,7 @@ function roomRow(r) {
   const tx = document.createElement("div"); tx.className = "rt";
   const nm = document.createElement("b"); nm.textContent = r.name;
   const last = recent.find(m => m.room === r.id), un = unreadOf(r.id);
-  const sb = document.createElement("small"); sb.dir = "auto";
+  const sb = document.createElement("small"); sb.dir = "rtl";
   sb.textContent = (r.by === myId ? "👑 " : "") + (r.private ? "🔒 " : "") + (r.onlyAdmins ? "📢 " : "") + (last ? nameOf(last.uid, r.id) + ": " + mtext(last).slice(0, 28) : "أنت: " + ((profileFor(myId, r.id) || {}).name || "—"));
   tx.append(nm, sb); row.append(ic, tx);
   if (un) { const bd = document.createElement("span"); bd.className = "bdg"; bd.textContent = un > 99 ? "99+" : un; row.append(bd); }
@@ -295,9 +295,9 @@ function render(list) {
     row.dataset.uid = m.uid; row.dataset.ts = m.ts;
     if (box._unr && m.ts >= box._unr && !(prev && prev.ts >= box._unr)) { const u = document.createElement("div"); u.className = "unr"; u.id = "unrDiv"; const cnt = list.filter(x => x.uid !== myId && x.ts >= box._unr).length; u.textContent = "⬇ " + cnt + " رسالة غير مقروءة"; frag.appendChild(u); } if (first) row.appendChild(avatar(p)); else { const s = document.createElement("div"); s.className = "sp"; row.appendChild(s); }
     const b = document.createElement("div"); b.className = "b";
-    if (first && !mine) { const n = document.createElement("div"); n.className = "n"; n.dir = "auto"; n.textContent = (p && p.name) || "مجهول"; n.style.cursor = "pointer"; n.onclick = e => { e.stopPropagation(); if (Date.now() - (b._f || 0) > 800) peerTap(m.uid, m.room || room); }; b.appendChild(n); }
+    if (first && !mine) { const n = document.createElement("div"); n.className = "n"; n.dir = "rtl"; n.textContent = (p && p.name) || "مجهول"; n.style.cursor = "pointer"; n.onclick = e => { e.stopPropagation(); if (Date.now() - (b._f || 0) > 800) peerTap(m.uid, m.room || room); }; b.appendChild(n); }
     if (m.fwd) b.appendChild(el("div", "fw", "↪️ محوّلة من " + m.fwd));
-    if (m.reply) { const q = el("div", "qt"); q.dir = "auto"; q.append(el("b", "", m.reply.name || "مجهول"), document.createTextNode(m.reply.text || "")); b.appendChild(q); }
+    if (m.reply) { const q = el("div", "qt"); q.dir = "rtl"; q.append(el("b", "", m.reply.name || "مجهول"), document.createTextNode(m.reply.text || "")); b.appendChild(q); }
     const tx = document.createElement("div"); tx.className = "tx"; tx.dir = "auto";
     if (m.audio) b.appendChild(audioPlayer(m));
     else {
@@ -488,7 +488,7 @@ function openMsg(m) {
   if (rx.length) {
     const kinds = [...new Set(rx.map(([, k]) => k))].slice(0, 3).map(k => { const d = el("span", "rxm"); d.innerHTML = EMO[k].s; return d; });
     const rows = rx.map(([u, k]) => {
-      const r = el("div", "seen-r"), nm = document.createElement("bdi"); nm.textContent = u === myId ? "أنت" : nameOf(u, rid);
+      const r = el("div", "seen-r"), nm = el("span", "nm"); nm.dir = "rtl"; nm.textContent = u === myId ? "أنت" : nameOf(u, rid);
       const e = el("span", "rxe"); e.innerHTML = EMO[k].s; r.append(avatar(profileFor(u, rid)), nm);
       if (u === myId) { r.append(el("small", "seen-hint", "اضغط للإزالة")); r.style.cursor = "pointer"; r.onclick = () => { close(); toggleReact(m, k); }; }
       r.append(e); return r;
@@ -498,7 +498,7 @@ function openMsg(m) {
   if (seenOK()) {
     const seen = seenBy(m), n = seen.length, stack = seen.slice(0, 3).map(u => avatar(profileFor(u)));
     if (n > 3) stack.push(el("span", "more", "+" + (n - 3)));
-    const rows = seen.map(u => { const r = el("div", "seen-r"), nm = document.createElement("bdi"); nm.textContent = nameOf(u); r.append(avatar(profileFor(u)), nm, el("span", "ok", "✓✓")); return r; });
+    const rows = seen.map(u => { const r = el("div", "seen-r"), nm = el("span", "nm"); nm.dir = "rtl"; nm.textContent = nameOf(u); r.append(avatar(profileFor(u)), nm, el("span", "ok", "✓✓")); return r; });
     wrap.appendChild(fold(MXI.eye, "", n ? "شوهدت بواسطة" : "لسه محدش شافها", n, stack, rows, n <= 3));
   }
   $("msheet").hidden = false;
@@ -922,7 +922,7 @@ function memberMenu(r, u) {
   const isAdm = (r.admins || []).includes(u), isMut = (r.muted || []).includes(u) || ((r.mutedUntil || {})[u] || 0) > Date.now();
   const head = el("div", "mprev mh");
   const a = avatar(profileFor(u, r.id)); a.style.cssText += ";width:68px;height:68px;font-size:34px";
-  const nm = el("b", "", nameOf(u, r.id)); nm.dir = "auto";
+  const nm = el("b", "", nameOf(u, r.id)); nm.dir = "rtl";
   const roleTx = u === r.by ? "👑 مالك الغرفة" : isAdm ? "🛡️ مشرف" : "عضو"; head.append(a, nm, el("small", "ri-msub", roleTx + (isMut ? "  ·  🔇 مكتوم" : "") + (isOnline(presence[u]) ? "  ·  🟢 متصل" : "")));
   c.append(head);
   const acts = el("div", "acts lst");
@@ -1138,7 +1138,7 @@ function renderInfo(tabSwitch) {
       reqs.forEach(u => {
         const row = el("div", "ri-mem"), ok = el("button", "ri-ok", "✓"), no = el("button", "ri-no", "✕");
         ok.onclick = () => decideJoin(r, u, true); no.onclick = () => decideJoin(r, u, false);
-        const nb = el("b", "", nameOf(u)); nb.dir = "auto"; row.append(avatar(profileFor(u)), nb, ok, no); c.append(row);
+        const nb = el("b", "", nameOf(u)); nb.dir = "rtl"; row.append(avatar(profileFor(u)), nb, ok, no); c.append(row);
       });
     }
     const isOn = u => u === myId || isOnline(presence[u]);
@@ -1188,7 +1188,7 @@ function renderInfo(tabSwitch) {
       if (cnt) cnt.hidden = !cnt.textContent;
       if (!rows.length) { const e = el("div", "ri-empty"); e.append(el("i", "", "🔍"), el("b", "", "مفيش نتايج"), el("small", "", "جرّب اسم أو كود تاني")); lst.append(e); return; }
       rows.slice(0, riLim).forEach(u => {
-        const row = el("div", "ri-mem" + (isOn(u) ? " on" : "")), mi = el("div", "mi"), l1 = el("div", "ri-nm"), nm = el("b", "", nameOf(u, r.id) + (u === myId ? " (أنت)" : "")); nm.dir = "auto"; row.dataset.uid = u;
+        const row = el("div", "ri-mem" + (isOn(u) ? " on" : "")), mi = el("div", "mi"), l1 = el("div", "ri-nm"), nm = el("b", "", nameOf(u, r.id) + (u === myId ? " (أنت)" : "")); nm.dir = "rtl"; row.dataset.uid = u;
         l1.append(nm);
         if (u === r.by) l1.append(el("span", "ri-bd own", "👑 مالك")); else if ((r.admins || []).includes(u)) l1.append(el("span", "ri-bd adm", "🛡️ مشرف"));
         if (isMut(u)) l1.append(el("span", "ri-bd mut", "🔇"));
@@ -1204,7 +1204,7 @@ function renderInfo(tabSwitch) {
     paintList(); window.__memPaint = paintList;
     if (admin && !G && (r.banned || []).length) {
       const c = card("⛔ المحظورون (" + r.banned.length + ")", "stack");
-      riPaged(c, r.banned, u => { const row = el("div", "ri-mem"), b = el("button", "ghost", "إلغاء الحظر"); b.onclick = () => upd({ banned: AR(u) }, r.id); const nb = el("b", "", nameOf(u)); nb.dir = "auto"; row.append(avatar(profileFor(u)), nb, b); return row; });
+      riPaged(c, r.banned, u => { const row = el("div", "ri-mem"), b = el("button", "ghost", "إلغاء الحظر"); b.onclick = () => upd({ banned: AR(u) }, r.id); const nb = el("b", "", nameOf(u)); nb.dir = "rtl"; row.append(avatar(profileFor(u)), nb, b); return row; });
     }
   }
 
@@ -1213,7 +1213,7 @@ function renderInfo(tabSwitch) {
     const staff = [...new Set([...(r.by ? [r.by] : []), ...(r.admins || [])])];
     const sc = card("🛡️ المشرفين (" + staff.length + ")", "stack");
     staff.forEach(u => {
-      const row = el("div", "ri-mem"), nb = el("b", "", nameOf(u, "general") + (u === myId ? " (أنت)" : "")); nb.dir = "auto";
+      const row = el("div", "ri-mem"), nb = el("b", "", nameOf(u, "general") + (u === myId ? " (أنت)" : "")); nb.dir = "rtl";
       row.append(avatar(profileFor(u, "general")), nb, el("span", "ri-bd " + (u === r.by ? "own" : "adm"), u === r.by ? "👑 مالك" : "🛡️ مشرف"));
       if (owner && u !== r.by) { const x = el("button", "ghost", "إزالة"); x.onclick = () => upd({ admins: AR(u) }, "general"); row.append(x); }
       sc.append(row);
@@ -1224,16 +1224,16 @@ function renderInfo(tabSwitch) {
     bn.append(friendFinder(staff, r.banned || [], u => upd({ banned: AU(u) }, "general"), "⛔ حظر", "مشرف، مينفعش"));
     if ((r.banned || []).length) {
       const c = card("🚷 المحظورون (" + r.banned.length + ")", "stack");
-      riPaged(c, r.banned, u => { const row = el("div", "ri-mem"), b = el("button", "ghost", "إلغاء الحظر"); b.onclick = () => upd({ banned: AR(u) }, r.id); const nb = el("b", "", nameOf(u)); nb.dir = "auto"; row.append(avatar(profileFor(u)), nb, b); return row; });
+      riPaged(c, r.banned, u => { const row = el("div", "ri-mem"), b = el("button", "ghost", "إلغاء الحظر"); b.onclick = () => upd({ banned: AR(u) }, r.id); const nb = el("b", "", nameOf(u)); nb.dir = "rtl"; row.append(avatar(profileFor(u)), nb, b); return row; });
     }
     const kd = Object.keys(r.removedUntil || {}).filter(u => kickedLeft(r, u) > 0);
     if (kd.length) {
       const kc = card("🚪 المُزالون مؤقتاً (" + kd.length + ")", "stack");
-      riPaged(kc, kd, u => { const row = el("div", "ri-mem"), b = el("button", "ghost", "إرجاع"); b.onclick = () => upd({ ["removedUntil." + u]: FV().delete() }, "general"); const nm = el("b", "", nameOf(u, "general")); nm.dir = "auto"; row.append(avatar(profileFor(u, "general")), nm, el("span", "ri-tag", leftTxt(kickedLeft(r, u))), b); return row; });
+      riPaged(kc, kd, u => { const row = el("div", "ri-mem"), b = el("button", "ghost", "إرجاع"); b.onclick = () => upd({ ["removedUntil." + u]: FV().delete() }, "general"); const nm = el("b", "", nameOf(u, "general")); nm.dir = "rtl"; row.append(avatar(profileFor(u, "general")), nm, el("span", "ri-tag", leftTxt(kickedLeft(r, u))), b); return row; });
     }
     if ((r.muted || []).length) {
       const mc2 = card("🔇 المكتومين (" + r.muted.length + ")", "stack");
-      riPaged(mc2, r.muted, u => { const row = el("div", "ri-mem"), b = el("button", "ghost", "إلغاء الكتم"); b.onclick = () => upd({ muted: AR(u), ["mutedUntil." + u]: FV().delete() }, "general"); const nb = el("b", "", nameOf(u, "general")); nb.dir = "auto"; row.append(avatar(profileFor(u, "general")), nb, b); return row; });
+      riPaged(mc2, r.muted, u => { const row = el("div", "ri-mem"), b = el("button", "ghost", "إلغاء الكتم"); b.onclick = () => upd({ muted: AR(u), ["mutedUntil." + u]: FV().delete() }, "general"); const nb = el("b", "", nameOf(u, "general")); nb.dir = "rtl"; row.append(avatar(profileFor(u, "general")), nb, b); return row; });
     }
   }
 
@@ -2320,7 +2320,7 @@ function renderReqs() {
   const btn = (cls, t, fn) => { const b = el("button", cls, t); b.type = "button"; b.onclick = async () => { b.disabled = true; try { await fn(); } finally { b.disabled = false; } }; return b; };
   const ago = ts => { const m = Math.max(0, Math.round((Date.now() - ts) / 6e4)); return m < 1 ? "دلوقتي" : m < 60 ? "من " + m + " دقيقة" : m < 1440 ? "من " + Math.round(m / 60) + " ساعة" : "من " + Math.round(m / 1440) + " يوم"; };
   const sec = (ico, title, n, color, all, rej) => { const c = el("div", "ri-card"), h = el("h3", "rq-h"); c.style.borderInlineStartColor = color; h.append(el("span", "", ico + " " + title), el("span", "rq-n", String(n))); if (rej && n > 1) h.append(btn("rq-wait", "✕ رفض الكل", rej)); if (all && n > 1) h.append(btn("rq-all", "✓ قبول الكل", all)); c.append(h); box.append(c); return c; };
-  const row = (av, name, sub, ...acts) => { const r = el("div", "ri-mem"), mi = el("div", "mi"), b = el("b", "", name), sm = el("small", "", sub); b.dir = sm.dir = "auto"; mi.append(b, sm); r.append(av, mi, ...acts); return r; };
+  const row = (av, name, sub, ...acts) => { const r = el("div", "ri-mem"), mi = el("div", "mi"), b = el("b", "", name), sm = el("small", "", sub); b.dir = sm.dir = "rtl"; mi.append(b, sm); r.append(av, mi, ...acts); return r; };
   const rav = r => avatar(r.emoji || r.photo ? r : { emoji: "💬", color: "#5b6b78" });
   const yes = fn => btn("ri-ok", "✓", fn), no = fn => btn("ri-no", "✕", fn);
   const empty = (i, t, sub) => { const e = el("div", "rq-empty"); e.append(el("i", "", i), el("b", "", t), el("small", "", sub)); box.append(e); };

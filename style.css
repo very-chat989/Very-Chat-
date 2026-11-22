@@ -864,3 +864,8 @@ html[dir=rtl] #sendBtn svg{transform:scaleX(-1)}
 .fwl{touch-action:pan-y;animation:rise .18s both}
 .fwl .ghost{display:block;margin:6px auto}
 .fwc{padding-top:6px}
+
+/* ───── الأسامي كلها على اليمين (حتى الإنجليزي) ───── */
+.seen-r .nm{flex:1;min-width:0;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;direction:rtl;text-align:start;unicode-bidi:isolate}
+.n,.qt b,.rt b,.rt small,.mi b,.mi small,.ri-nm b,.ri-mem b,.ri-row b,.ri-row small,.fwrt b,.fwrt small,.fwt b,.fwchip small,#hRoom b,#hRoom small{direction:rtl;text-align:start;unicode-bidi:isolate}
+.qt{direction:rtl;text-align:start}
