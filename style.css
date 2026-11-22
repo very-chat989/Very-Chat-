@@ -787,3 +787,14 @@ html[dir=rtl] #sendBtn svg{transform:scaleX(-1)}
 .ffind input:focus{box-shadow:inset 0 0 0 2px var(--pri)}
 .ffind .send{border-radius:16px;padding:13px;font-family:inherit}
 .ffind .rrow{background:var(--bg);border-radius:18px}
+
+/* ───── حركات الرسايل والبانر (نسخة 20261122-6) ───── */
+@keyframes rowIn{from{opacity:0;transform:translateY(12px) scale(.96)}to{opacity:1;transform:none}}
+.row.in{animation:rowIn .28s cubic-bezier(.2,.85,.25,1) both}
+.row.me.in{transform-origin:100% 100%}
+.row:not(.me).in{transform-origin:0 100%}
+#msgs .row{will-change:auto}
+@keyframes netIn{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:none}}
+#net:not([hidden]){animation:netIn .25s ease both}
+#net.con{background:color-mix(in srgb,#e08a2f 88%,transparent);font-size:12.5px;padding:4px}
+@media (prefers-reduced-motion:reduce){.row.in,#net:not([hidden]){animation:none}}
