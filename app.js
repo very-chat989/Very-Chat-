@@ -254,7 +254,7 @@ function toggleFold(k) {
   h.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggleFold(h.dataset.k); } });
 });
 $("dSearch").addEventListener("input", buildChips);
-$("menuBtn").onclick = () => { $("dSearch").value = ""; buildChips(); $("dNotif").hidden = !("Notification" in window) || Notification.permission !== "default"; $("drawer").hidden = false; };
+$("menuBtn").onclick = () => { $("dSearch").value = ""; buildChips(); $("dNotif").hidden = !("Notification" in window) || pushReady; $("drawer").hidden = false; };
 $("drawer").onclick = e => { if (e.target === $("drawer")) closeDrawer(); };
 $("dAdd").onclick = () => { closeDrawer(); openSheet("room"); };
 $("hRoom").onclick = () => { if (isDM(room)) openPeer(dmPeerOf(room)); else if (curR()) openInfo(room); else $("meBtn").click(); };
@@ -833,26 +833,37 @@ $("accBtn").onclick = async () => {
     location.reload();
   } catch (e) { perr("ماقدرتش أكمل (" + (e.code || e.message) + "). اتأكد إن تسجيل جوجل متفعل في Firebase."); }
 };
-$("dNotif").onclick = async () => { try { await Notification.requestPermission(); } catch (e) {} $("dNotif").hidden = !("Notification" in window) || Notification.permission !== "default"; pushInit(); };
+$("dNotif").onclick = async () => { try { if (Notification.permission === "default") await Notification.requestPermission(); } catch (e) {} await pushInit(true); $("dNotif").hidden = !("Notification" in window) || pushReady; };
 /* Very Chat — إشعارات الـ Push (Firebase Cloud Messaging عن طريق Cloudflare Worker) */
 // بتوصلك الإشعارات حتى والتطبيق مقفول. لو PUSH_URL أو VAPID_KEY فاضيين، الميزة دي متوقفة والباقي شغال عادي.
 let pushReady = false;
 async function pushCall(path, body) {
-  const u = firebase.auth().currentUser; if (!u) return false;
+  const u = firebase.auth().currentUser; if (!u) return { ok: false, status: 0, err: "مش مسجّل دخول" };
   const r = await fetch(PUSH_URL.replace(/\/+$/, "") + path, { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + await u.getIdToken() }, body: JSON.stringify(body), keepalive: true });
-  return r.ok;
+  let j = null; try { j = await r.json(); } catch (_) {}
+  return { ok: r.ok, status: r.status, err: j && j.error };
 }
-async function pushInit() {
-  if (pushReady || !PUSH_URL || !VAPID_KEY || !myId || !("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window) || Notification.permission !== "granted" || !/^https?:/.test(location.protocol)) return;
+async function pushInit(manual) {
+  const say = t => { if (manual) toast(t + " (نسخة " + String(BUILD).slice(-2) + ")", true); };
+  if (pushReady) { say("✅ الإشعارات شغالة على الجهاز ده"); return; }
+  if (!PUSH_URL || !VAPID_KEY) return say("⚠️ إعدادات الإشعارات ناقصة في app.js");
+  if (!myId) return say("⚠️ سجّل دخولك الأول");
+  if (!("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window)) return say("⚠️ المتصفح ده مش بيدعم إشعارات الخلفية. على الآيفون ثبّت التطبيق على الشاشة الرئيسية وافتحه منها");
+  if (Notification.permission !== "granted") return say("⚠️ الإذن مش مفعّل (" + Notification.permission + "). فعّله من إعدادات الموقع ← الإشعارات");
+  if (!/^https?:/.test(location.protocol)) return;
   try {
-    if (!(firebase.messaging && await Promise.resolve(firebase.messaging.isSupported()))) return;
-    const reg = await Promise.race([navigator.serviceWorker.ready, new Promise((_, no) => setTimeout(no, 8000))]);
-    const tok = await firebase.messaging().getToken({ vapidKey: VAPID_KEY, serviceWorkerRegistration: reg });
-    if (!tok) return;
+    if (!(firebase.messaging && await Promise.resolve(firebase.messaging.isSupported()))) return say("⚠️ Firebase Messaging مش مدعوم على الجهاز/المتصفح ده");
+    const reg = await Promise.race([navigator.serviceWorker.ready, new Promise((_, no) => setTimeout(() => no(new Error("الـ service worker مش جاهز")), 8000))]);
+    let tok; try { tok = await firebase.messaging().getToken({ vapidKey: VAPID_KEY, serviceWorkerRegistration: reg }); } catch (e) { return say("⚠️ ماقدرتش أجيب توكن الإشعارات: " + (e.code || e.message)); }
+    if (!tok) return say("⚠️ مفيش توكن للجهاز");
     const key = tok + "|" + myId + "|" + Math.floor(Date.now() / 6048e5); let last = ""; try { last = localStorage.getItem("vc_ptok") || ""; } catch (_) {}
-    if (last !== key) { if (!(await pushCall("/register", { token: tok }))) return; try { localStorage.setItem("vc_ptok", key); localStorage.setItem("vc_ptok_raw", tok); } catch (_) {} }
-    pushReady = true;
-  } catch (e) {}
+    if (manual || last !== key) {
+      let rr; try { rr = await pushCall("/register", { token: tok }); } catch (e) { return say("⚠️ ماقدرتش أوصل للـ Worker (" + (e.message || "النت؟") + ")"); }
+      if (!rr.ok) return say("⚠️ الـ Worker رفض التسجيل (" + rr.status + (rr.err ? ": " + rr.err : "") + ")");
+      try { localStorage.setItem("vc_ptok", key); localStorage.setItem("vc_ptok_raw", tok); } catch (_) {}
+    }
+    pushReady = true; say("✅ الإشعارات اتفعّلت على الجهاز ده");
+  } catch (e) { say("⚠️ خطأ: " + (e.message || e)); }
 }
 async function pushUnreg() {   // قبل تسجيل الخروج: الجهاز ده ميستقبلش إشعارات الحساب ده تاني
   try { const t = localStorage.getItem("vc_ptok_raw"); if (!PUSH_URL || !t) return; await Promise.race([pushCall("/unregister", { token: t }), new Promise(r => setTimeout(r, 2500))]); localStorage.removeItem("vc_ptok"); localStorage.removeItem("vc_ptok_raw"); } catch (_) {}
