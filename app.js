@@ -150,8 +150,7 @@ async function wipeMyDm(id) {
   const s = await db.collection("dmsgs").where("room", "==", id).where("members", "array-contains", myId).get();
   const mine = s.docs.filter(x => x.data().uid === myId), rest = s.docs.filter(x => x.data().uid !== myId).map(x => x.data()).sort((a, b) => b.ts - a.ts);
   for (let i = 0; i < mine.length; i += 400) { const b = db.batch(); mine.slice(i, i + 400).forEach(x => b.delete(x.ref)); await b.commit(); }
-  const lt = rest[0];
-  await db.collection("dms").doc(id).update({ last: lt ? { uid: lt.uid, ts: lt.ts, text: mtext(lt).slice(0, 60) } : FV().delete() }).catch(() => {});
+  syncDmMeta(id);
   return mine.length;
 }
 function openDMMenu(d) {
@@ -309,12 +308,12 @@ function render(list) {
   lastList = list;
   const box = $("msgs");
   const fresh = box._room !== room;
-  if (fresh) { box._room = room; box._unr = 0; const s0 = getSeen(room); if (s0) { const f0 = list.find(m => m.uid !== myId && m.ts > s0); if (f0) box._unr = f0.ts; } else if (list.length) setSeen(room, list[list.length - 1].ts); }
+  if (fresh) { box._room = room; box._unr = 0; const s0 = getSeen(room); if (s0) { const f0 = list.find(m => m.uid !== myId && !m.del && m.ts > s0); if (f0) box._unr = f0.ts; } else if (list.length) setSeen(room, list[list.length - 1].ts); }
   // لو في فيديو شغّال، نأجّل إعادة الرسم علشان ما يقفلش في وشك
   if ([...box.querySelectorAll("video")].some(v => !v.paused && !v.ended)) { clearTimeout(render._t); render._t = setTimeout(() => render(lastList), 1500); return; }
   const near = box.scrollHeight - box.scrollTop - box.clientHeight < 90;
   const nodes = [], oldIds = !fresh && box._ids ? box._ids : null, RC = fresh || !box._rc ? (box._rc = new Map()) : box._rc, keep = new Set();   // RC: الرسايل اللي ما اتغيرتش بنسيبها زي ما هي (من غير إعادة رسم)
-  { const hs = hidSet(room); if (hs.size) list = list.filter(m => !(m.del && hs.has(m.id))); }
+  { const hs = hidSet(room); if (hs.size) list = list.filter(m => !(m.del && hs.has(m.id))); } if (UNDO.size) list = list.filter(m => !UNDO.has(m.id));
   list.forEach((m, i) => { try {
     const prev = list[i - 1], mine = m.uid === myId, p = profileFor(m.uid);
     const newDay = !prev || new Date(prev.ts).toDateString() !== new Date(m.ts).toDateString();
@@ -322,16 +321,16 @@ function render(list) {
     const first = newDay || prev.uid !== m.uid || m.ts - prev.ts > 300000;
     const row = document.createElement("div"); row.className = "row" + (mine ? " me" : "") + (first ? " first" : "") + (sel.has(m.id) ? " sel" : "");
     row.dataset.uid = m.uid; row.dataset.ts = m.ts; row.dataset.mid = m.id;
-    if (box._unr && m.ts >= box._unr && !(prev && prev.ts >= box._unr)) { const u = document.createElement("div"); u.className = "unr"; u.id = "unrDiv"; const cnt = list.filter(x => x.uid !== myId && x.ts >= box._unr).length; u.textContent = "⬇ " + cnt + " رسالة غير مقروءة"; nodes.push(u); } if (first) row.appendChild(avatar(p)); else { const s = document.createElement("div"); s.className = "sp"; row.appendChild(s); }
+    if (box._unr && m.ts >= box._unr && !(prev && prev.ts >= box._unr)) { const u = document.createElement("div"); u.className = "unr"; u.id = "unrDiv"; const cnt = list.filter(x => x.uid !== myId && !x.del && x.ts >= box._unr).length; u.textContent = "⬇ " + cnt + " رسالة غير مقروءة"; nodes.push(u); } if (first) row.appendChild(avatar(p)); else { const s = document.createElement("div"); s.className = "sp"; row.appendChild(s); }
     const p2 = m.ucard ? (profiles[m.ucard.uid] || {}) : null;
     const sig = [sgs(m), mine ? 1 : 0, first ? 1 : 0, sel.has(m.id) ? 1 : 0, selMode ? 1 : 0, first ? sgs(p) : "", mine && seenOK() ? seenBy(m).length : -1, p2 ? (p2.name || "") + (p2.fcode || "") : "", m.share ? rooms.length : ""].join("¦");
     const hit = RC.get(m.id); if (hit && hit.sig === sig) { keep.add(m.id); nodes.push(hit.row); return; }
     const b = document.createElement("div"); b.className = "b";
     if (first && !mine) { const n = document.createElement("div"); n.className = "n"; n.dir = "rtl"; n.textContent = (p && p.name) || "مجهول"; n.style.cursor = "pointer"; n.onclick = e => { e.stopPropagation(); if (Date.now() - (b._f || 0) > 800) peerTap(m.uid, m.room || room); }; b.appendChild(n); }
     const dl = !!m.del;
-    if (dl) { const x = el("div", "dl", delLabel(m)); x.dir = "rtl"; b.appendChild(x); b.classList.add("deld"); }
+    if (dl) { const x = el("div", "dl", delLabel(m)); x.dir = "rtl"; b.appendChild(x); b.classList.add("deld"); if (hit && !hit.dl) b.classList.add("poof"); row.dataset.dl = "1"; row._l0 = delLabel(m); }
     if (!dl && m.fwd) b.appendChild(el("div", "fw", "↪️ محوّلة من " + m.fwd));
-    if (!dl && m.reply) { const q = el("div", "qt"); q.dir = "rtl"; q.append(el("b", "", m.reply.name || "مجهول"), document.createTextNode(m.reply.text || "")); b.appendChild(q); }
+    if (!dl && m.reply) { const q = el("div", "qt"); q.dir = "rtl"; q.append(el("b", "", m.reply.name || "مجهول"), document.createTextNode(m.reply.text || "")); if (m.reply.id) { q.classList.add("go"); q.onclick = e => { e.stopPropagation(); const t = $("msgs").querySelector('[data-mid="' + m.reply.id + '"]'); if (!t) { flash("الرسالة الأصلية مش موجودة"); return; } t.scrollIntoView({ block: "center", behavior: "smooth" }); t.classList.remove("hl"); void t.offsetWidth; t.classList.add("hl"); setTimeout(() => t.classList.remove("hl"), 1800); }; } b.appendChild(q); }
     const tx = document.createElement("div"); tx.className = "tx"; tx.dir = "auto";
     if (dl) {}
     else if (m.audio) b.appendChild(audioPlayer(m));
@@ -356,9 +355,11 @@ function render(list) {
     const tm = document.createElement("span"); tm.textContent = new Date(m.ts).toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit" }); t.appendChild(tm);
     b.appendChild(t); holdMenu(b, m); row.appendChild(b);
     if (selMode) { const ck = document.createElement("span"); ck.className = "ck"; ck.textContent = sel.has(m.id) ? "✓" : ""; row.appendChild(ck); }
-    row.onclick = () => { if (selMode) toggleSel(m.id); }; nodes.push(row); RC.set(m.id, { sig, row }); keep.add(m.id);
+    row.onclick = () => { if (selMode) toggleSel(m.id); }; nodes.push(row); RC.set(m.id, { sig, row, dl }); keep.add(m.id);
   } catch (err) { console.warn("رسالة تالفة اتخطّت", err); } });
-  { const ns = new Set(nodes); [...box.childNodes].forEach(c => { if (!ns.has(c)) c.remove(); }); let cur = box.firstChild; for (const n of nodes) { if (n === cur) cur = cur.nextSibling; else box.insertBefore(n, cur); } for (const k of [...RC.keys()]) if (!keep.has(k)) RC.delete(k); } box._ids = new Set(list.map(x => x.id)); try { UPL.mount(list, box); } catch (_) {}
+  { let run = []; const flush = () => { run.forEach((r, i) => { r.classList.toggle("dgrp-x", i > 0); const x = r.querySelector(".dl"); if (x) x.textContent = i === 0 && run.length > 1 ? "🚫 " + run.length + " رسايل اتحذفت" : r._l0; }); run = []; };
+    nodes.forEach(n => { if (n.dataset && n.dataset.dl && (!run.length || run[0].dataset.uid === n.dataset.uid)) run.push(n); else { flush(); if (n.dataset && n.dataset.dl) run.push(n); } }); flush(); }
+  { const ns = new Set(nodes); [...box.childNodes].forEach(c => { if (!ns.has(c)) c.remove(); }); let cur = box.firstChild; for (const n of nodes) { if (n === cur) cur = cur.nextSibling; else box.insertBefore(n, cur); } for (const k of [...RC.keys()]) if (!keep.has(k)) RC.delete(k); } box._ids = new Set(list.map(x => x.id)); try { UPL.mount(list, box); } catch (_) {} try { DUP.mount(list, box); } catch (_) {}
   const lm = list[list.length - 1], mineNew = lm && lm.uid === myId && Date.now() - lm.ts < 5000;
   if (fresh) { box.scrollTop = box.scrollHeight; box._pin = 1; requestAnimationFrame(() => { if (box._pin) box.scrollTop = box.scrollHeight; setTimeout(() => { if (box._pin) box.scrollTop = box.scrollHeight; box._pin = 0; }, 400); }); }
   else if (near || mineNew || list.length < 4) box.scrollTop = box.scrollHeight;
@@ -397,12 +398,49 @@ async function delMsg(m, rid) {
   try { await ref.update(patch); }
   catch (e) {
     if (!e || e.code !== "permission-denied") throw e;
-    await ref.delete(); flash("اتحذفت نهائياً (قواعد Firebase مش بتسمح بعلامة «تم الحذف»)"); return;   // احتياطي لو القواعد بتمنع التعديل
+    await ref.delete(); flash("اتحذفت نهائياً (قواعد Firebase مش بتسمح بعلامة «تم الحذف»)"); syncDmMeta(rid); return;   // احتياطي لو القواعد بتمنع التعديل
   }
-  if (isDM(rid)) { const d = dms[rid]; if (d && d.last && d.last.ts === m.ts) db.collection("dms").doc(rid).update({ "last.text": DEL_TXT }).catch(() => {}); }
+  syncDmMeta(rid);
 }
-const delOne = (m, rid) => (m.del ? msgCol(rid || m.room || room).doc(m.id).delete() : delMsg(m, rid));   // المحذوفة أصلاً = إزالة نهائية
+// ═══ 🧠 مزامنة بيانات المحادثة الخاصة: آخر رسالة + عدّاد الطرف التاني بيتحسبوا من الرسايل الموجودة فعلاً (مش رقم بيتزوّد بس) ═══
+const _sdm = {};
+function syncDmMeta(rid) { if (!isDM(rid) || !db) return; clearTimeout(_sdm[rid]); _sdm[rid] = setTimeout(() => syncDmMeta0(rid), 450); }
+async function syncDmMeta0(rid) {
+  try {
+    const s = await db.collection("dmsgs").where("room", "==", rid).where("members", "array-contains", myId).get({ source: "server" });
+    const all = s.docs.map(x => ({ ...x.data(), id: x.id })).filter(m => !m._p).sort((x, y) => x.ts - y.ts), lt = all[all.length - 1];
+    const peer = dmPeerOf(rid), rd = (((dms[rid] || {}).read || {})[peer]) || 0;
+    const un = all.filter(m => m.uid === myId && !m.del && m.ts > rd).length;
+    await db.collection("dms").doc(rid).update({ last: lt ? { uid: lt.uid, ts: lt.ts, text: mtext(lt).slice(0, 60) } : FV().delete(), ["unread." + peer]: un });
+  } catch (_) {}
+}
+// جهة المستقبِل: لو العدّاد أكبر من الرسايل الحقيقية (حد حذف رسايله) بنصلّحه لوحدنا ونصلّح معاينة آخر رسالة
+const _vdm = new Map();
+async function verifyDm(d) {
+  if (!db || !d || !d.id || d.id === room) return;
+  const sig = d.id + "|" + ((d.unread || {})[myId] || 0) + "|" + ((d.last || {}).ts || 0) + "|" + ((d.last || {}).text || ""); if (_vdm.get(d.id) === sig) return; _vdm.set(d.id, sig);
+  try {
+    const s = await db.collection("dmsgs").where("room", "==", d.id).where("members", "array-contains", myId).get({ source: "server" });
+    const all = s.docs.map(x => ({ ...x.data(), id: x.id })).filter(m => !m._p).sort((x, y) => x.ts - y.ts), lt = all[all.length - 1], rd = ((d.read || {})[myId]) || 0;
+    const real = all.filter(m => m.uid !== myId && !m.del && m.ts > rd).length, cur = (d.unread || {})[myId] || 0, patch = {};
+    if (real < cur) patch["unread." + myId] = real;
+    if (lt && (!d.last || d.last.ts !== lt.ts || d.last.text !== mtext(lt).slice(0, 60))) patch.last = { uid: lt.uid, ts: lt.ts, text: mtext(lt).slice(0, 60) };
+    if (Object.keys(patch).length) await db.collection("dms").doc(d.id).update(patch);
+  } catch (_) {}
+}
+const delOne = (m, rid) => (m.del ? msgCol(rid || m.room || room).doc(m.id).delete().then(() => syncDmMeta(rid || m.room || room)) : delMsg(m, rid));   // المحذوفة أصلاً = إزالة نهائية
 const delLabel = m => !m.del ? "" : m.delBy && m.delBy !== m.uid ? "🚫 تم حذف هذه الرسالة بواسطة المشرف" : m.uid === myId ? "🚫 حذفت هذه الرسالة" : DEL_TXT;
+// ↩️ حذف مع «تراجع»: الرسالة بتختفي فوراً وبعد 5 ثواني الحذف بيتنفّذ فعلاً
+const UNDO = new Map();
+function delUndo(m, rid) {
+  const t = setTimeout(fin, 5000); function fin() { clearTimeout(t); if (!UNDO.has(m.id)) return; UNDO.delete(m.id); tst.remove(); delMsg(m, rid).catch(() => { setStatus("ماقدرتش أحذف الرسالة."); if (lastList.length) render(lastList); }); }
+  UNDO.set(m.id, { fin }); if (lastList.length) render(lastList);
+  document.querySelectorAll(".undo-t").forEach(x => x.remove());
+  const tst = el("div", "undo-t"), bt = el("button", "", "↩ تراجع"); bt.type = "button"; tst.append(el("span", "", "🗑 اتحذفت الرسالة"), bt, el("i", "")); document.body.append(tst);
+  bt.onclick = () => { clearTimeout(t); UNDO.delete(m.id); tst.remove(); vcSnd("tap"); if (lastList.length) render(lastList); };
+}
+const flushUndo = () => [...UNDO.values()].forEach(u => u.fin());
+addEventListener("pagehide", flushUndo); document.addEventListener("visibilitychange", () => { if (document.hidden) flushUndo(); });
 const hidKey = r => "vc_hid_" + r;
 function hidSet(r) { try { return new Set(JSON.parse(localStorage.getItem(hidKey(r)) || "[]")); } catch (_) { return new Set(); } }
 function hideLocal(m) { const r = m.room || room, h = hidSet(r); h.add(m.id); try { localStorage.setItem(hidKey(r), JSON.stringify([...h].slice(-300))); } catch (_) {} }
@@ -445,7 +483,9 @@ $("selDel").onclick = () => {
 let editingId = null, reads = {}, myReads = {}, readsLoaded = false;
 function seenBy(m) { if (isDM(room)) { const rd = (dms[room] || {}).read || {}; return Object.keys(rd).filter(u => u !== m.uid && rd[u] >= m.ts); } return Object.keys(reads).filter(u => u !== m.uid && ((reads[u] || {})[room] || 0) >= m.ts); }
 function markSeen(list) {
-  if (!db || !readsLoaded || !list.length || document.hidden) return;
+  if (!db || !readsLoaded || document.hidden) return;
+  if (isDM(room) && !list.length) { const d0 = dms[room]; if (d0 && ((d0.unread || {})[myId] || 0)) { d0.unread = { ...(d0.unread || {}), [myId]: 0 }; db.collection("dms").doc(room).update({ ["unread." + myId]: 0 }).catch(() => {}); } return; }
+  if (!list.length) return;
   if (isDM(room)) {
     const d = dms[room] || {}, lt = list[list.length - 1].ts;
     if (!d.id || (((d.read || {})[myId] || 0) >= lt && !(d.unread || {})[myId])) return;
@@ -474,6 +514,20 @@ function holdMenu(node, m) {
   ["touchstart", "mousedown"].forEach(ev => node.addEventListener(ev, go, { passive: true }));
   node.addEventListener("touchmove", mv, { passive: true });
   ["touchend", "touchcancel", "mouseup", "mouseleave"].forEach(ev => node.addEventListener(ev, stop, { passive: true }));
+  // ↩ اسحب الفقاعة للرد (زي واتساب) + دبل تاب = ❤️
+  let sx = 0, sy = 0, dx = 0, sw = false, lastTap = 0;
+  node.addEventListener("touchstart", e => { sx = e.touches[0].clientX; sy = e.touches[0].clientY; dx = 0; sw = false; }, { passive: true });
+  node.addEventListener("touchmove", e => {
+    if (selMode || m.del) return; const t = e.touches[0], mx = t.clientX - sx, my = t.clientY - sy;
+    if (!sw && (Math.abs(mx) < 14 || Math.abs(mx) < Math.abs(my) * 1.6)) return;
+    sw = true; dx = Math.max(-90, Math.min(90, mx)); node.style.transition = "none"; node.style.transform = "translateX(" + dx + "px)";
+    const ok = Math.abs(dx) > 60; if (ok !== node.classList.contains("swok")) { node.classList.toggle("swok", ok); if (ok && navigator.vibrate) navigator.vibrate(12); }
+  }, { passive: true });
+  node.addEventListener("touchend", e => {
+    if (sw) { const go = Math.abs(dx) > 60; node.style.transition = "transform .25s cubic-bezier(.2,.9,.3,1.2)"; node.style.transform = ""; node.classList.remove("swok"); sw = false; if (go) { vcSnd("tap"); startReply(m); } node._f = Date.now(); return; }
+    if (selMode || m.del || e.target.closest("a,button,audio,video,input,.qt")) return;
+    const n = Date.now(); if (n - lastTap < 300) { lastTap = 0; node._f = n; if ((m.reacts || {})[myId] !== "qalb") toggleReact(m, "qalb"); if (navigator.vibrate) navigator.vibrate(10); } else lastTap = n;
+  }, { passive: true });
   node.addEventListener("contextmenu", e => { e.preventDefault(); stop(); if (!selMode) { node._f = Date.now(); openMsg(m); } });
 }
 const MXI = {
@@ -502,7 +556,7 @@ function openDelMsg(m) {
   const row = (cls, ico, label, fn) => { const b = el("button", "mx-r " + cls); b.type = "button"; const i = el("i"); i.innerHTML = ico; const sp = el("span", "", label); b.append(i, sp); b.onclick = () => fn(b, sp); list.appendChild(b); };
   row("", MXI.eye, "إخفاء عندي", () => { hideLocal(m); close(); if (lastList.length) render(lastList); });
   if (m.uid === myId || (cr0 && adminOf(cr0))) row("dg", MXI.del, "إزالة نهائياً من المحادثة", (b, sp) => {
-    if (b.dataset.ok) { close(); vcSnd("del"); msgCol(rid).doc(m.id).delete().catch(() => setStatus("ماقدرتش أزيل الرسالة.")); }
+    if (b.dataset.ok) { close(); vcSnd("del"); msgCol(rid).doc(m.id).delete().then(() => syncDmMeta(rid)).catch(() => setStatus("ماقدرتش أزيل الرسالة.")); }
     else { b.dataset.ok = "1"; b.classList.add("arm"); sp.textContent = "اضغط تاني لتأكيد الإزالة"; setTimeout(() => { if (b.isConnected && b.dataset.ok) { delete b.dataset.ok; b.classList.remove("arm"); sp.textContent = "إزالة نهائياً من المحادثة"; } }, 3500); }
   });
   $("msheet").hidden = false; wrap.scrollTop = 0;
@@ -576,7 +630,7 @@ function openMsg(m) {
   if (canPin(cr0)) { const isP = pinsOf(cr0).some(x => x.id === m.id); if (isP) row("", MXI.pin, "إلغاء التثبيت", () => { close(); delPin(cr0, m.id); }); else row("", MXI.pin, isDM(cr0.id) ? "تثبيت في المحادثة" : "تثبيت في الغرفة", () => { close(); addPin(cr0, { id: m.id, name: nameOf(m.uid), text: mtext(m).slice(0, 120) }); }); }
   if ((mine && (!cr0 || !cr0.noDelOwn || adminOf(cr0))) || (cr0 && adminOf(cr0))) {
     row("dg", MXI.del, "حذف الرسالة", (b, sp) => {
-      if (b.dataset.ok) { close(); vcSnd("del"); delMsg(m, rid).catch(() => setStatus("ماقدرتش أحذف الرسالة.")); }
+      if (b.dataset.ok) { close(); vcSnd("del"); delUndo(m, rid); }
       else { b.dataset.ok = "1"; b.classList.add("arm"); sp.textContent = "اضغط تاني لتأكيد الحذف"; setTimeout(() => { if (b.isConnected && b.dataset.ok) { delete b.dataset.ok; b.classList.remove("arm"); sp.textContent = "حذف الرسالة"; } }, 3500); }
     });
   }
@@ -892,9 +946,10 @@ function netUI() {
 }
 window.addEventListener("online", () => { try { if (db) db.enableNetwork().catch(() => {}); } catch (_) {} netUI(); }); window.addEventListener("offline", netUI);
 setTimeout(netUI, 0);
-function unreadOf(rid) { if (isDM(rid)) return ((dms[rid] || {}).unread || {})[myId] || 0; return readsLoaded ? recent.filter(m => m.room === rid && m.uid !== myId && m.ts > (myReads[rid] || 0)).length : 0; }
+function unreadOf(rid) { if (isDM(rid)) return ((dms[rid] || {}).unread || {})[myId] || 0; return readsLoaded ? recent.filter(m => m.room === rid && m.uid !== myId && !m.del && m.ts > (myReads[rid] || 0)).length : 0; }
 function updateTotal() {
   let n = 0; ["general", ...rooms.filter(canSee).map(r => r.id), ...Object.keys(dms).filter(k => !pendingIn(dms[k]) && !dmCancelled(dms[k]))].forEach(id => { n += unreadOf(id); });
+  try { Object.keys(dms).forEach(k => { if (unreadOf(k)) verifyDm(dms[k]); }); } catch (_) {}
   const rc = reqCount(), bg = $("reqBdg"); bg.hidden = !rc; bg.textContent = rc > 99 ? "99+" : rc; renderReqs();
   $("menuBtn").classList.toggle("un", n > 0 || rc > 0); document.title = (n ? "(" + n + ") " : "") + "Very Chat";
   try { const bn = n + rc; if (navigator.setAppBadge) (bn > 0 ? navigator.setAppBadge(bn) : navigator.clearAppBadge()).catch(() => {}); } catch (_) {}   // رقم الرسايل الجديدة على أيقونة التطبيق
@@ -918,7 +973,7 @@ function linkify(node, text) {
   });
 }
 function startReply(m) {
-  cancelEdit(); replyTo = { name: nameOf(m.uid), text: mtext(m).slice(0, 80) };
+  cancelEdit(); replyTo = { name: nameOf(m.uid), text: mtext(m).slice(0, 80), id: m.id };
   $("replyTxt").textContent = "↩️ رد على " + replyTo.name + ": " + replyTo.text; $("replyBar").hidden = false; $("inp").focus();
 }
 function clearReply() { replyTo = null; $("replyBar").hidden = true; }
@@ -2801,16 +2856,71 @@ $("plusBtn").onclick = () => {
 const DOC_MAX = 15 * 1024 * 1024;
 const docSize = n => n >= 1048576 ? arN((n / 1048576).toFixed(1)) + " ميجا" : arN(Math.max(1, Math.round(n / 1024))) + " كيلو";
 const DOC_COL = { pdf: "#e5484d", doc: "#2f7de1", docx: "#2f7de1", xls: "#1f9d55", xlsx: "#1f9d55", csv: "#1f9d55", ppt: "#e8702a", pptx: "#e8702a", zip: "#7c5cff", rar: "#7c5cff", "7z": "#7c5cff", txt: "#5b6b78", apk: "#3ddc84" };
+// ───── رفع المستند: الفقاعة بتظهر في الشات فورًا وعليها دايرة التقدّم (زي واتساب) ─────
+const DUP = (() => {
+  const jobs = new Map(), R = 20, CIRC = 2 * Math.PI * R, NS = "http://www.w3.org/2000/svg";
+  const PC = n => arN(Math.round(n)) + "٪";
+  function build(job) {
+    const row = el("div", "row me"), b = el("div", "b dup"), box = el("div", "dcard");
+    const nm = job.name, ext = (nm.includes(".") ? nm.split(".").pop() : "").toLowerCase().slice(0, 4);
+    const ic = el("div", "dic", ext ? ext.toUpperCase() : "📄"); ic.style.background = DOC_COL[ext] || "#5b6b78";
+    const t = el("div", "dtx"), n = el("b", "", nm), sm = el("small"); n.dir = "auto"; t.append(n, sm);
+    const x = el("button", "dact dupx"); x.type = "button";
+    const ring = document.createElementNS(NS, "svg"); ring.setAttribute("viewBox", "0 0 48 48"); ring.setAttribute("class", "upr");
+    ring.innerHTML = '<circle class="bg" cx="24" cy="24" r="' + R + '"/><circle class="fg" cx="24" cy="24" r="' + R + '" stroke-dasharray="' + CIRC.toFixed(2) + '" stroke-dashoffset="' + CIRC.toFixed(2) + '"/>';
+    const xl = el("span", "dupxl", "✕"); x.append(ring, xl);
+    x.onclick = e => { e.stopPropagation(); if (job.state === "err") run(job); else if (job.state === "up") cancel(job); };
+    box.onclick = e => e.stopPropagation();
+    box.append(ic, t, x); b.append(box);
+    const tm = el("div", "t"), sc = el("span", "pend"); sc.innerHTML = typeof SVG_CLOCK !== "undefined" ? SVG_CLOCK : "⏱";
+    tm.append(sc, el("span", "", new Date(job.t0).toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit" })));
+    b.append(tm); row.append(b);
+    job.row = row; job.el = { ring, fg: ring.querySelector(".fg"), x, xl, sm }; paint(job); return row;
+  }
+  function paint(job) {
+    const e = job.el; if (!e) return; const st = job.state, pct = Math.max(0, Math.min(100, job.pct || 0)), ind = st === "post" || (st === "up" && !pct);
+    e.ring.classList.toggle("spin", ind); e.fg.style.strokeDashoffset = (CIRC * (1 - (ind ? .28 : pct / 100))).toFixed(2);
+    e.x.classList.toggle("err", st === "err"); e.xl.textContent = st === "err" ? "↻" : "✕"; e.x.hidden = st === "post";
+    e.x.setAttribute("aria-label", st === "err" ? "إعادة المحاولة" : "إلغاء");
+    const sz = docSize(job.file.size);
+    e.sm.textContent = st === "err" ? (job.err || "اتقطع الرفع") + " · اضغط ↻" : st === "post" ? "بيتبعت…" : (pct ? PC(pct) + " · " : "") + sz;
+  }
+  function show(job) { if (job.rid !== room) return; const box = $("msgs"); if (!box) return; if (!job.row) build(job); box.append(job.row); box.scrollTop = box.scrollHeight; }
+  function drop(job) { jobs.delete(job.id); if (job.row) job.row.remove(); }
+  function cancel(job) {
+    job.cancel = true; drop(job); flash("اتلغى رفع المستند");
+    if (!job.running && job.mid && db) for (let i = 0; i < Math.max(1, Math.ceil(job.file.size / RAW_CH)); i++) db.collection("media").doc(i ? job.mid + "_" + i : job.mid).delete().catch(() => {});
+  }
+  async function run(job) {
+    if (job.running) return; job.running = true; job.cancel = false; job.state = "up"; paint(job);
+    try { WL.on(); } catch (_) {}
+    try {
+      if (!job.mid) job.mid = db.collection("media").doc().id;
+      await uploadChunks(job.file, "application/octet-stream", job.ui, job.name.slice(0, 22), { id: job.mid, skip: job.done, onChunk: i => job.done.add(i) });
+      if (job.cancel) throw new Error("cancel");
+      job.state = "post"; job.pct = 100; paint(job);
+      await postMedia({ mid: job.mid, mk: "doc", fname: job.name, fsize: job.file.size, ftype: String(job.file.type || "").slice(0, 80) }, job.rid);
+      job.state = "done"; setTimeout(() => drop(job), 700);
+    } catch (e) {
+      if (job.cancel || (e && e.message === "cancel")) drop(job);
+      else if (e && e.code === "permission-denied") { drop(job); flash("⚠️ قواعد Firebase مش مسمحة برفع المستندات (collection media)."); }
+      else { job.state = "err"; job.err = navigator.onLine === false ? "مفيش نت" : "اتقطع الرفع"; paint(job); }
+    } finally { job.running = false; try { WL.off(); } catch (_) {} }
+  }
+  function make(o) {
+    const job = { id: "d" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), state: "up", pct: 0, t0: Date.now(), done: new Set(), ...o };
+    job.ui = { get cancel() { return job.cancel; }, set(_t, p) { if (p != null) job.pct = p; paint(job); } };
+    jobs.set(job.id, job); show(job); return job;
+  }
+  const kick = () => [...jobs.values()].forEach(j => { if (j.state === "err" && !j.running) run(j); });
+  window.addEventListener("online", kick);
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) kick(); });
+  return { make, run, mount: (list, box) => { for (const j of jobs.values()) { if (j.rid !== room) continue; if (j.state === "done" && j.mid && list.some(m => m.mid === j.mid)) { if (j.row) j.row.remove(); continue; } if (!j.row) build(j); box.append(j.row); } } };
+})();
 async function sendDocFile(file, rid) {
   rid = rid || room; if (!mediaGuard(rid)) return;
-  if (!file.size) { flash("الملف فاضي"); return; }
-  if (file.size > DOC_MAX) { flash("📄 الحد الأقصى للمستند ١٥ ميجا"); return; }
-  const nm = String(file.name || "مستند").slice(0, 80), ui = upChip(rid, "📄 " + nm.slice(0, 22));
-  try {
-    const id = await uploadChunks(file, "application/octet-stream", ui, nm.slice(0, 22));
-    ui.done();
-    await postMedia({ mid: id, mk: "doc", fname: nm, fsize: file.size, ftype: String(file.type || "").slice(0, 80) }, rid);
-  } catch (e) { ui.done(); if (!ui.cancel) flash("المستند ماتبعتش، اتأكد من النت وجرّب تاني."); }
+  const nm = String(file.name || "مستند").slice(0, 80);
+  await DUP.run(DUP.make({ rid, name: nm, file }));   // الفقاعة بتظهر فورًا والتقدّم عليها
 }
 $("aDoc").onchange = async e => { const f = [...e.target.files].slice(0, 3); e.target.value = ""; for (const x of f) await sendDocFile(x, room); };
 function docBox(m) {

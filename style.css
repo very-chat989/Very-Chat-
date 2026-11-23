@@ -1254,3 +1254,31 @@ html:not([dir=rtl]) #drawer.vc-out .dpanel{animation-name:vcOutPanelL}
 #pill.locked{padding:0 14px}
 #pill.locked input,#pill.locked .pb{display:none!important}
 #pill #lockMsg{flex:1;min-width:0;padding:9px 6px;font-size:13.5px;line-height:1.55;font-weight:600;color:var(--mute);text-align:center;overflow-wrap:anywhere}
+
+/* مستند بيترفع: دايرة التقدّم على الملف نفسه */
+.dact.dupx{position:relative;background:rgba(127,127,127,.18);font-size:16px}
+.dupx .upr{position:absolute;inset:0;width:100%;height:100%}
+.dupx .upr .bg{stroke:rgba(127,127,127,.35)}
+.dupx .dupxl{position:relative;z-index:1;line-height:1}
+.dupx.err .upr .fg{stroke:#ff6b6b}
+.dupx[hidden]{display:none}
+.dup .t .pend{display:inline-flex;align-items:center}
+
+/* ── حذف كريتيف: تراجع + تجميع + اختفاء ── */
+.row.dgrp-x{display:none!important}
+.row .b.poof{animation:poof .55s cubic-bezier(.2,.8,.2,1)}
+@keyframes poof{0%{transform:scale(1.04);filter:blur(0);opacity:1}35%{transform:scale(.9);filter:blur(3px);opacity:.4}100%{transform:scale(1);filter:blur(0);opacity:.9}}
+.undo-t{position:fixed;left:50%;bottom:calc(86px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:60;display:flex;align-items:center;gap:14px;padding:10px 12px 10px 16px;border-radius:16px;background:var(--card);color:var(--ink);border:1px solid var(--line);box-shadow:0 10px 30px rgba(0,0,0,.35);overflow:hidden;animation:utIn .28s cubic-bezier(.2,.9,.3,1.2);font-size:14px}
+.undo-t button{border:0;border-radius:11px;padding:8px 14px;font:inherit;font-weight:700;background:var(--pri);color:var(--onpri);cursor:pointer}
+.undo-t i{position:absolute;left:0;bottom:0;height:3px;width:100%;background:var(--pri);transform-origin:left;animation:utBar 5s linear forwards}
+@keyframes utIn{from{opacity:0;transform:translate(-50%,16px) scale(.94)}}
+@keyframes utBar{to{transform:scaleX(0)}}
+@media (prefers-reduced-motion:reduce){.row .b.poof,.undo-t{animation:none}}
+
+/* ── سحب للرد / دبل تاب / القفز للرسالة الأصلية ── */
+.row .b{touch-action:pan-y}
+.row .b.swok{filter:brightness(1.12);box-shadow:0 0 0 2px var(--pri)}
+.row .b .qt.go{cursor:pointer}
+.row.hl .b{animation:hl 1.8s ease}
+@keyframes hl{0%,60%{box-shadow:0 0 0 3px var(--pri),0 0 24px var(--pri);transform:scale(1.03)}100%{box-shadow:none;transform:none}}
+@media (prefers-reduced-motion:reduce){.row.hl .b{animation:none;outline:2px solid var(--pri)}}
