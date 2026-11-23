@@ -878,6 +878,11 @@ function pushTo(to, type, name, roomName) {
   if (!PUSH_URL || !myId || !to || to === myId) return;
   pushCall("/notify", { kind: "to", to, type, name, roomName }).catch(() => {});
 }
+// مسح إشعارات المحادثة لما تفتحها (زي واتساب)، فالرسالة الجاية تنبّه من جديد
+function clearNotifs(...tags) {
+  try { if (!navigator.serviceWorker) return; navigator.serviceWorker.getRegistration().then(r => r && Promise.all(tags.filter(Boolean).map(t => r.getNotifications({ tag: t }).then(ns => ns.forEach(n => n.close()))))).catch(() => {}); } catch (_) {}
+}
+document.addEventListener("visibilitychange", () => { if (!document.hidden) clearNotifs(room, "join", "req", "info"); });
 // فتح الغرفة/المحادثة اللي جاي منها الإشعار
 function openByTag(t, tries) {
   t = String(t || ""); if (!t || t === "info") return;
@@ -2615,7 +2620,7 @@ function presenceStart() {
     else if (d.exists && noProfile && !gLogged) { gLogged = true; logJoin({ id: "general", name: "عام" }, "join"); }
   }, () => {});
 }
-{ const _open = openRoom; openRoom = function (id) { _open(id); stopTyping(); if (started) { presWrite({ typing: "", tts: 0 }); paintHSub(); } }; }
+{ const _open = openRoom; openRoom = function (id) { _open(id); clearNotifs(id); stopTyping(); if (started) { presWrite({ typing: "", tts: 0 }); paintHSub(); } }; }
 
 const vv = window.visualViewport;
 function fit() {

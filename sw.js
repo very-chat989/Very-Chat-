@@ -3,7 +3,7 @@
  * ومكتبات Firebase (نسخة ثابتة) بتتخزّن مرة واحدة وتتقدّم من الكاش.
  * لما تعدّل أي ملف: غيّر رقم BUILD هنا وفي index.html (meta vc-build و ?v= و التعليق الأخير). */
 "use strict";
-const BUILD = "20261122-22";
+const BUILD = "20261123-23";
 const PREFIX = "verychat-";
 const CACHE = PREFIX + BUILD;
 const V = "?v=" + BUILD;
@@ -83,9 +83,12 @@ self.addEventListener("push", e => {
   e.waitUntil((async () => {
     const cs = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
     if (cs.some(c => c.visibilityState === "visible")) return;          // التطبيق مفتوح قدامك، مش محتاج إشعار
-    const ex = await self.registration.getNotifications({ tag });       // نفس الإشعار اتعرض لسه من التطبيق نفسه
-    if (ex.some(n => n.title === title && n.body === body && Date.now() - n.timestamp < 20000)) return;
-    await self.registration.showNotification(title, { body, tag, renotify: true, icon: "icon-192.png", badge: "icon-192.png", dir: "auto", lang: "ar", data: { tag } });
+    const ex = await self.registration.getNotifications({ tag });
+    const bt = n => (n.data && n.data.title) || n.title, bb = n => (n.data && n.data.body) || n.body;
+    if (ex.some(n => bt(n) === title && bb(n) === body && Date.now() - n.timestamp < 20000)) return;   // نفس الإشعار اتعرض لسه من التطبيق نفسه
+    // زي واتساب: أول رسالة بتنبّه، والباقي بيتحدّث في نفس الإشعار من غير صوت (مع عدد الرسايل) لحد ما تفتح المحادثة
+    const count = ex.length ? ex.reduce((m, n) => Math.max(m, (n.data && n.data.count) || 1), 0) + 1 : 1;
+    await self.registration.showNotification(count > 1 ? title + " (" + count + ")" : title, { body, tag, renotify: false, icon: "icon-192.png", badge: "icon-192.png", dir: "auto", lang: "ar", data: { tag, title, body, count } });
   })());
 });
 
