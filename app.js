@@ -66,7 +66,7 @@ const dmMembers = id => id.slice(3).split("_");
 const dmPeerOf = id => dmMembers(id).find(u => u !== myId) || null;
 const msgCol = rid => db.collection(isDM(rid) ? "dmsgs" : "msgs");
 const mBase = rid => isDM(rid) ? { room: rid, members: dmMembers(rid) } : { room: rid };
-const dmRoom = id => { const p = profiles[dmPeerOf(id)] || {}; return { id, dm: true, name: p.name || "مجهول", emoji: p.emoji, color: p.color, photo: p.photo, blocked: (dms[id] || {}).blockedBy || [] }; };
+const dmRoom = id => { const p = profiles[dmPeerOf(id)] || {}; return { id, dm: true, name: p.name || "مجهول", emoji: p.emoji, color: p.color, photo: p.photo, blocked: (dms[id] || {}).blockedBy || [], pinned: (dms[id] || {}).pinned, pins: (dms[id] || {}).pins }; };
 function flash(t) { flashSnd(t); setStatus(t); setTimeout(() => { if ($("status").textContent === t) setStatus(""); }, 3500); }
 const dmEstablished = d => !!d && (!!d.acc || (!!d.last && !d.req));
 function sendDoc(doc) { const p = sendDoc0(doc); p.then(() => pushMsg(doc), () => {}); return p; }
@@ -300,7 +300,7 @@ function render(list) {
     if (newDay) { const dv = document.createElement("div"), d0 = new Date(m.ts); dv.className = "day"; dv.textContent = d0.toDateString() === new Date().toDateString() ? "اليوم" : d0.toLocaleDateString("ar-EG", { day: "numeric", month: "long" }); frag.appendChild(dv); }
     const first = newDay || prev.uid !== m.uid || m.ts - prev.ts > 300000;
     const row = document.createElement("div"); row.className = "row" + (mine ? " me" : "") + (first ? " first" : "") + (sel.has(m.id) ? " sel" : "");
-    row.dataset.uid = m.uid; row.dataset.ts = m.ts;
+    row.dataset.uid = m.uid; row.dataset.ts = m.ts; row.dataset.mid = m.id;
     if (box._unr && m.ts >= box._unr && !(prev && prev.ts >= box._unr)) { const u = document.createElement("div"); u.className = "unr"; u.id = "unrDiv"; const cnt = list.filter(x => x.uid !== myId && x.ts >= box._unr).length; u.textContent = "⬇ " + cnt + " رسالة غير مقروءة"; frag.appendChild(u); } if (first) row.appendChild(avatar(p)); else { const s = document.createElement("div"); s.className = "sp"; row.appendChild(s); }
     const b = document.createElement("div"); b.className = "b";
     if (first && !mine) { const n = document.createElement("div"); n.className = "n"; n.dir = "rtl"; n.textContent = (p && p.name) || "مجهول"; n.style.cursor = "pointer"; n.onclick = e => { e.stopPropagation(); if (Date.now() - (b._f || 0) > 800) peerTap(m.uid, m.room || room); }; b.appendChild(n); }
@@ -311,6 +311,8 @@ function render(list) {
     const tx = document.createElement("div"); tx.className = "tx"; tx.dir = "auto";
     if (dl) {}
     else if (m.audio) b.appendChild(audioPlayer(m));
+    else if (m.poll) b.appendChild(pollBox(m));
+    else if (m.mk === "doc") b.appendChild(docBox(m));
     else {
       if (m.mid || m.img || m.vid) b.appendChild(mediaBox(m));
       if (m.share) b.appendChild(roomCard(m.share));
@@ -337,12 +339,13 @@ function render(list) {
   if (fresh) { box.scrollTop = box.scrollHeight; box._pin = 1; requestAnimationFrame(() => { if (box._pin) box.scrollTop = box.scrollHeight; setTimeout(() => { if (box._pin) box.scrollTop = box.scrollHeight; box._pin = 0; }, 400); }); }
   else if (near || mineNew || list.length < 4) box.scrollTop = box.scrollHeight;
   try { netUI(); } catch (_) {} boxScrolled(); _spMsg = true; if (_spMin) hideSplash();
+  try { renderPin(); } catch (_) {}
   markSeen(list); updateTotal();
   setStatus(list.length ? "" : "مفيش رسايل لسه. ابدأ إنت!");
 }
 
 const DEL_TXT = "🚫 تم حذف هذه الرسالة";
-const mtext = m => m.del ? DEL_TXT : m.audio ? "🎤 رسالة صوتية" : (m.mid ? m.mk === "vid" : false) || m.vid ? "🎥 فيديو" + (m.text ? " · " + m.text : "") : m.mid || m.img ? "🖼 صورة" + (m.text ? " · " + m.text : "") : m.ucard ? "🆔 كارت تعريف" : m.share ? "🏠 غرفة: " + (m.share.name || "") : (m.text || "");
+const mtext = m => m.del ? DEL_TXT : m.audio ? "🎤 رسالة صوتية" : m.poll ? "📊 " + (m.poll.q || "استطلاع") : m.mk === "doc" ? "📄 " + (m.fname || "مستند") : (m.mid ? m.mk === "vid" : false) || m.vid ? "🎥 فيديو" + (m.text ? " · " + m.text : "") : m.mid || m.img ? "🖼 صورة" + (m.text ? " · " + m.text : "") : m.ucard ? "🆔 كارت تعريف" : m.share ? "🏠 غرفة: " + (m.share.name || "") : (m.text || "");
 const EMO = {
   fol: { n: "فل", s: `<svg viewBox='0 0 40 40'><g fill='#fff' stroke='#e7a8c8' stroke-width='1.5'><circle cx='20' cy='9' r='7'/><circle cx='31' cy='17' r='7'/><circle cx='27' cy='30' r='7'/><circle cx='13' cy='30' r='7'/><circle cx='9' cy='17' r='7'/></g><circle cx='20' cy='20' r='9' fill='#ffd34d'/><circle cx='17' cy='19' r='1.4' fill='#4a3200'/><circle cx='23' cy='19' r='1.4' fill='#4a3200'/><path d='M16 23q4 4 8 0' fill='none' stroke='#4a3200' stroke-width='1.6' stroke-linecap='round'/></svg>` },
   nar: { n: "نار", s: `<svg viewBox='0 0 40 40'><path d='M20 3c2 7 11 11 11 21a11 11 0 0 1-22 0c0-5 3-8 5-11 1 3 2 4 4 4 0-5 0-8 2-14z' fill='#ff7a2f'/><path d='M20 17c1 4 6 6 6 11a6 6 0 0 1-12 0c0-3 2-5 3-7 1 2 2 2 3 2z' fill='#ffd34d'/><rect x='12' y='22' width='7' height='5' rx='2' fill='#1b1b1b'/><rect x='21' y='22' width='7' height='5' rx='2' fill='#1b1b1b'/><path d='M19 24h2' stroke='#1b1b1b' stroke-width='1.5'/></svg>` },
@@ -383,7 +386,17 @@ let selMode = false, selDelArm = false; const sel = new Set();
 function selLbl(id, t) { const l = $(id).querySelector(".l"); if (l) l.textContent = t; }
 function selSetCount(n) { const c = $("selCount"); if (c.textContent !== String(n)) { c.textContent = n; c.classList.remove("pop"); void c.offsetWidth; c.classList.add("pop"); } }
 function selSetDel(arm, n) { const b = $("selDel"); b.classList.toggle("arm", arm); selLbl("selDel", arm ? "تأكيد (" + n + ")" : "حذف"); }
-function updSel() { $("selBar").hidden = !selMode; $("selCopy").hidden = $("selFwd").hidden = fwdBlocked(); selSetCount(sel.size); selSetDel(false, 0); selDelArm = false; if (lastList.length) render(lastList); }
+function updSel() { $("selBar").hidden = !selMode; $("selCopy").hidden = $("selFwd").hidden = fwdBlocked(); selSetCount(sel.size); selSetDel(false, 0); selDelArm = false; paintSel(); }
+// تحديث التحديد في مكانه من غير إعادة رسم الشات (إعادة الرسم كانت بتعيد تحميل الفيديوهات فتترعش)
+function paintSel() {
+  const box = $("msgs"); box.classList.toggle("selmode", selMode);
+  box.querySelectorAll(".row[data-mid]").forEach(r => {
+    const on = sel.has(r.dataset.mid); r.classList.toggle("sel", on);
+    let ck = r.querySelector(":scope > .ck");
+    if (selMode) { if (!ck) { ck = document.createElement("span"); ck.className = "ck"; r.appendChild(ck); } ck.textContent = on ? "✓" : ""; }
+    else if (ck) ck.remove();
+  });
+}
 function enterSel(id) { selMode = true; sel.clear(); sel.add(id); updSel(); }
 function exitSel() { selMode = false; sel.clear(); updSel(); }
 function toggleSel(id) { if (sel.has(id)) sel.delete(id); else sel.add(id); if (!sel.size) exitSel(); else updSel(); }
@@ -503,11 +516,11 @@ function openMsg(m) {
   quick.style.gridTemplateColumns = "repeat(" + quick.children.length + ",1fr)"; wrap.appendChild(quick);
   // 4) باقي الأوامر: قايمة
   if (!mine && !isDM(room) && canDMFrom(m.uid, rid)) row("", MXI.dm, "مراسلة خاصة", () => { close(); openPeer(m.uid); });
-  if (mine && !m.audio && !writeBlock(cr0) && (!cr0 || !cr0.noEdit || adminOf(cr0))) {
+  if (mine && !m.audio && !m.poll && !writeBlock(cr0) && (!cr0 || !cr0.noEdit || adminOf(cr0))) {
     row("", MXI.edit, "تعديل الرسالة", () => { close(); clearReply(); editingId = m.id; $("inp").value = m.text; $("editBar").hidden = false; $("sendBtn").innerHTML = SVG_CHECK; $("inp").focus(); });
   }
   if (cr0 && adminOf(cr0) && !mine && m.uid !== cr0.by && (ownerOf(cr0) || !(cr0.admins || []).includes(m.uid))) row("", MXI.user, "إدارة العضو", () => { close(); memberMenu(cr0, m.uid); });
-  if (cr0 && adminOf(cr0)) row("", MXI.pin, "تثبيت في الغرفة", () => { close(); upd({ pinned: { id: m.id, name: nameOf(m.uid), text: mtext(m).slice(0, 120) } }); });
+  if (canPin(cr0)) { const isP = pinsOf(cr0).some(x => x.id === m.id); if (isP) row("", MXI.pin, "إلغاء التثبيت", () => { close(); delPin(cr0, m.id); }); else row("", MXI.pin, isDM(cr0.id) ? "تثبيت في المحادثة" : "تثبيت في الغرفة", () => { close(); addPin(cr0, { id: m.id, name: nameOf(m.uid), text: mtext(m).slice(0, 120) }); }); }
   if ((mine && (!cr0 || !cr0.noDelOwn || adminOf(cr0))) || (cr0 && adminOf(cr0))) {
     row("dg", MXI.del, "حذف الرسالة", (b, sp) => {
       if (b.dataset.ok) { close(); vcSnd("del"); delMsg(m, rid).catch(() => setStatus("ماقدرتش أحذف الرسالة.")); }
@@ -695,7 +708,7 @@ function openForward(msgs) {
   list.addEventListener("touchend", e => { const t = e.changedTouches[0], dx = t.clientX - tx0, dy = t.clientY - ty0; if (Math.abs(dx) > 70 && Math.abs(dy) < 40) { const nt = dx > 0 ? 2 : 1; if (nt !== tab) { tab = nt; paint(); list.scrollTop = 0; } } }, { passive: true });
   si.oninput = paint; sx.onclick = () => { si.value = ""; paint(); si.focus(); };
   si.addEventListener("keydown", e => { if (e.key === "Escape") { if (si.value) { si.value = ""; paint(); } else $("msheet").hidden = true; } });
-  const mkDoc = (rid, m, ts) => ({ ...mBase(rid), text: m.text || "", ...(m.audio ? { audio: m.audio, dur: m.dur || 0 } : {}), ...(m.mid ? { mid: m.mid, mk: m.mk || "img", thumb: m.thumb || "", w: m.w || 0, h: m.h || 0 } : {}), ...(m.img ? { img: m.img, thumb: m.thumb || "", w: m.w || 0, h: m.h || 0 } : {}), ...(m.vid ? { vid: m.vid, thumb: m.thumb || "", w: m.w || 0, h: m.h || 0 } : {}), ...(m.share ? { share: m.share } : {}), uid: myId, ts, fwd: m.fwd || nameOf(m.uid) });
+  const mkDoc = (rid, m, ts) => ({ ...mBase(rid), text: m.text || "", ...(m.audio ? { audio: m.audio, dur: m.dur || 0 } : {}), ...(m.mk === "doc" ? { fname: m.fname || "", fsize: m.fsize || 0, ftype: m.ftype || "" } : {}), ...(m.poll ? { poll: m.poll } : {}), ...(m.mid ? { mid: m.mid, mk: m.mk || "img", thumb: m.thumb || "", w: m.w || 0, h: m.h || 0 } : {}), ...(m.img ? { img: m.img, thumb: m.thumb || "", w: m.w || 0, h: m.h || 0 } : {}), ...(m.vid ? { vid: m.vid, thumb: m.thumb || "", w: m.w || 0, h: m.h || 0 } : {}), ...(m.share ? { share: m.share } : {}), uid: myId, ts, fwd: m.fwd || nameOf(m.uid) });
   go.onclick = async () => {
     if (!pick.size || go.disabled) return; go.disabled = true; go.classList.add("busy"); let i = 0, bad = 0, why = "";
     for (const t of pick.values()) { for (const m of msgs) { try { await sendDoc(mkDoc(t.id, m, Date.now() + (i++))); } catch (e) { bad++; if (e && e.custom) why = e.message; } } }
@@ -977,11 +990,37 @@ function updateComposer() {
   { const c0 = curR(); $("inp").maxLength = c0 && c0.maxLen && !adminOf(c0) ? c0.maxLen : 1000; }
   $("inp").placeholder = why ? "🔒 " + why : "اكتب رسالة…";
 }
+// مين يقدر يثبّت: الخاص = الاتنين (لو مفيش حظر) · الغرف والعام = الأدمن بس
+function canPin(r) { if (!r) return false; if (r.dm) return !(r.blocked || []).length; return adminOf(r); }
+// تثبيت متعدد: لحد ٣ رسايل (pins) — والحقل القديم pinned بيتحوّل تلقائي أول ما حد يعدّل
+const MAX_PINS = 3;
+const pinsOf = r => { if (!r) return []; const a = Array.isArray(r.pins) ? r.pins.filter(x => x && x.id) : []; if (r.pinned && r.pinned.id && !a.some(x => x.id === r.pinned.id)) a.unshift(r.pinned); return a.slice(-MAX_PINS); };
+async function savePins(r, arr) { try { await db.collection(isDM(r.id) ? "dms" : "rooms").doc(r.id).update({ pins: arr.length ? arr : FV().delete(), pinned: FV().delete() }); } catch (e) { setStatus(errMsg(e)); setTimeout(() => setStatus(""), 4000); } }
+function addPin(r, pin) { let a = pinsOf(r).filter(x => x.id !== pin.id); if (a.length >= MAX_PINS) { a = a.slice(a.length - (MAX_PINS - 1)); flash("الحد ٣ رسايل مثبتة — اتشال أقدم تثبيت"); } a.push(pin); return savePins(r, a); }
+const delPin = (r, id) => savePins(r, pinsOf(r).filter(x => x.id !== id));
+// يرجّع undefined لو القايمة لسه ما اتحمّلتش، و null لو الرسالة مش موجودة
+function pinMsg(p) { if (!p || $("msgs")._room !== room) return undefined; return lastList.find(m => m.id === p.id) || null; }
+function jumpToMsg(id) {
+  const box = $("msgs"), row = [...box.querySelectorAll(".row")].find(r => r.dataset.mid === id);
+  if (!row) { flash("الرسالة دي مش موجودة"); return; }
+  box._pin = 0; try { row.scrollIntoView({ block: "center", behavior: "smooth" }); } catch (_) { row.scrollIntoView(); }
+  row.classList.remove("jhl"); void row.offsetWidth; row.classList.add("jhl"); setTimeout(() => row.classList.remove("jhl"), 2400);
+}
+const PIN_I = {};
+function livePins(r) { return pinsOf(r).map(p => ({ p, m: pinMsg(p) })).filter(x => !(x.m !== undefined && (!x.m || x.m.del))); }
 function renderPin() {
-  const r = curR(), p = r && r.pinned, box = $("pin"); box.textContent = "";
-  box.hidden = !p; if (!p) return;
-  const t = el("span", "", "📌 " + (p.name || "") + ": " + (p.text || "")); t.dir = "auto"; box.append(t);
-  if (adminOf(r)) { const x = el("button", "", "✕"); x.onclick = () => upd({ pinned: FV().delete() }); box.append(x); }
+  const r = curR(), box = $("pin"); box.textContent = "";
+  const L = r ? livePins(r) : []; box.hidden = !L.length; if (!L.length) return;
+  const sig = r.id + ":" + L.map(x => x.p.id).join(","); if (renderPin._s !== sig) { renderPin._s = sig; PIN_I[r.id] = L.length - 1; }
+  let i = PIN_I[r.id]; if (!(i >= 0 && i < L.length)) i = L.length - 1; PIN_I[r.id] = i;
+  const { p, m } = L[i], n = L.length;
+  const nm = m ? nameOf(m.uid) : p.name || "", tx = m ? mtext(m).slice(0, 120) : p.text || "";
+  if (n > 1) { const sg = el("div", "pseg"); L.forEach((_, k) => sg.append(el("s", k === i ? "on" : ""))); box.append(sg); }
+  const t = el("div", "pt"), b = el("b", "", "رسالة مثبتة" + (n > 1 ? " " + arN(i + 1) + " من " + arN(n) : "") + " · " + nm), s = el("span", "", tx); s.dir = "auto"; t.append(b, s);
+  box.append(el("i", "pi", "📌"), t);
+  // زي تليجرام: الضغطة بتودّيك للرسالة، والضغطة اللي بعدها للي قبلها
+  box.onclick = () => { if (m) jumpToMsg(p.id); else flash("بحمّل الرسالة…"); if (n > 1) { PIN_I[r.id] = (i - 1 + n) % n; renderPin(); } };
+  if (canPin(r)) { const x = el("button", "", "✕"); x.type = "button"; x.setAttribute("aria-label", "إلغاء تثبيت الرسالة دي"); x.onclick = e => { e.stopPropagation(); delPin(r, p.id); }; box.append(x); }
 }
 async function upd(patch, rid) { try { await db.collection("rooms").doc(rid || room).update(patch); } catch (e) { setStatus(errMsg(e)); } }
 const RI_COLORS = ["#0f8f7a", "#2f90d9", "#e0507a", "#e0a82f", "#8a5cf6", "#2cae6a", "#e0702f", "#d64545"];
@@ -1498,7 +1537,7 @@ function renderInfo(tabSwitch) {
       confirmBtn(cl, "clr:" + r.id, "🧹 مسح كل الرسايل", "⚠️ اضغط تاني للتأكيد", async (busy, idle) => {
         try {
           busy("جاري المسح…");
-          const res = await wipeRoomMsgs(r.id, n => busy("جاري المسح… " + n));
+          const res = await wipeRoomMsgs(r.id, n => busy("جاري المسح… " + n)); if (r.pinned || r.pins) await upd({ pins: FV().delete(), pinned: FV().delete() }, r.id);
           setStatus(res.failed ? "اتمسح " + res.done + " ورسايل (" + res.failed + ") ماتمسحتش — راجع صلاحيات Firestore" : "✓ اتمسحت كل الرسايل (" + res.done + ")");
           setTimeout(() => setStatus(""), 4000);
         } catch (e) { setStatus(errMsg(e)); }
@@ -1963,7 +2002,7 @@ async function idbStats() { const d = await idbOpen(); if (!d) return { n: 0, by
 const idbClear = async () => { await idbTx("readwrite", st => st.clear()); };
 try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (_) {}
 // الفيديو الكبير بيتقسّم لقطع (كل قطعة document في media). أول قطعة header: data:video/..;vcn=N;base64,
-const VCN = /^data:(video\/[a-z0-9.+-]+);vcn=(\d+);base64,/i, MEDIA_CB = new Map(), sleep = ms => new Promise(r => setTimeout(r, ms));
+const VCN = /^data:((?:video|application)\/[a-z0-9.+-]+);vcn=(\d+);base64,/i, MEDIA_CB = new Map(), sleep = ms => new Promise(r => setTimeout(r, ms));
 const b64Bytes = b => { const bin = atob(b), u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return u; };
 async function loadChunked(id, first, mm) {
   const n = +mm[2], parts = new Array(n); parts[0] = first.slice(mm[0].length); let done = 1, next = 1;
@@ -2316,13 +2355,13 @@ const STU = (() => {
     root = document.createElement("div"); root.id = "stu"; root.hidden = true; root.setAttribute("role", "dialog"); root.setAttribute("aria-label", "إرسال صور وفيديو");
     root.innerHTML = '<div class="stu-aur"></div>' +
       '<div class="stu-top"><button type="button" class="stu-x" id="stuX" aria-label="إغلاق">✕</button><div class="stu-to"><span>إلى</span><b id="stuTo"></b></div><div class="stu-n" id="stuN"></div></div>' +
-      '<div class="stu-stage"><div class="stu-rail" id="stuRail"></div><div class="stu-frame" id="stuFrame"><canvas id="stuCv"></canvas><video id="stuV" playsinline webkit-playsinline controls hidden></video><div class="stu-tip" id="stuTip" hidden></div><div class="stu-ld" id="stuLd" hidden></div></div></div>' +
+      '<div class="stu-stage"><div class="stu-rail" id="stuRail"></div><div class="stu-frame" id="stuFrame"><canvas id="stuCv"></canvas><div class="stu-vw" id="stuVW" hidden><video id="stuV" playsinline webkit-playsinline></video><button type="button" class="stu-pp" id="stuPlay" aria-label="تشغيل"></button><div class="stu-vc"><span id="stuTm">0:00</span><input type="range" id="stuSeek" min="0" max="1" step="0.05" value="0" aria-label="التقدّم"></div></div><div class="stu-tip" id="stuTip" hidden></div><div class="stu-ld" id="stuLd" hidden></div></div></div>' +
       '<div class="stu-panel" id="stuPanel" hidden></div>' +
       '<div class="stu-strip" id="stuStrip"></div>' +
       '<div class="stu-bar"><div class="stu-cap"><label id="stuCapL" for="stuCap"></label><textarea id="stuCap" rows="1" maxlength="300" placeholder="اكتب شرح…" dir="auto" enterkeyhint="enter"></textarea></div>' +
       '<button type="button" class="stu-send" id="stuSend" aria-label="إرسال"><svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor" aria-hidden="true"><path d="M21.5 3.2 2.9 10.4c-.8.3-.8 1.4 0 1.7l4.6 1.8 1.8 4.6c.3.8 1.4.8 1.7 0L18.2 5.1 21.5 3.2z" transform="scale(-1 1) translate(-24 0)"/></svg><b id="stuSN"></b></button></div>';
     document.body.append(root);
-    ["stuX", "stuTo", "stuN", "stuRail", "stuFrame", "stuCv", "stuV", "stuTip", "stuLd", "stuPanel", "stuStrip", "stuCapL", "stuCap", "stuSend", "stuSN"].forEach(k => R[k.slice(3).toLowerCase() || k] = document.getElementById(k));
+    ["stuX", "stuTo", "stuN", "stuRail", "stuFrame", "stuCv", "stuV", "stuVW", "stuPlay", "stuTm", "stuSeek", "stuTip", "stuLd", "stuPanel", "stuStrip", "stuCapL", "stuCap", "stuSend", "stuSN"].forEach(k => R[k.slice(3).toLowerCase() || k] = document.getElementById(k));
     R.x = R.x; R.cv = R.cv; R.v = R.v;
     R.x.onclick = () => close(false);
     R.send.onclick = send;
@@ -2349,7 +2388,15 @@ const STU = (() => {
     R.cv.addEventListener("pointerup", up); R.cv.addEventListener("pointercancel", up);
     R.v.addEventListener("timeupdate", () => { const it = cur(); if (!it || it.kind !== "vid" || !it.dur) return; if (R.v.currentTime >= it.en - .05) { R.v.currentTime = it.st; if (!R.v.paused) R.v.play().catch(() => {}); } });
     R.v.addEventListener("play", () => { const it = cur(); if (it && it.kind === "vid" && (R.v.currentTime < it.st - .05 || R.v.currentTime >= it.en - .05)) R.v.currentTime = it.st; });
-    const fitV = () => { const it = cur(); if (!it || it.kind !== "vid" || !it.tw || !it.th) return; const fw = R.frame.clientWidth, fh = R.frame.clientHeight; if (!fw || !fh) return; const k = Math.min(fw / it.tw, fh / it.th); R.v.style.width = Math.floor(it.tw * k) + "px"; R.v.style.height = Math.floor(it.th * k) + "px"; };
+    const fitV = () => { const it = cur(); if (!it || it.kind !== "vid" || !it.tw || !it.th) return; const fw = R.frame.clientWidth, fh = R.frame.clientHeight; if (!fw || !fh) return; const k = Math.min(fw / it.tw, fh / it.th); R.vw.style.width = Math.floor(it.tw * k) + "px"; R.vw.style.height = Math.floor(it.th * k) + "px"; };
+    // تحكم فيديو مخصص (بدل أزرار المتصفح): تشغيل بلمسة + شريط تقدّم داخل حدود القص
+    let seeking = false;
+    const vsync = () => { const it = cur(); if (!it || it.kind !== "vid") return; const lo = it.st || 0, hi = it.en || it.dur || 1; R.seek.min = lo; R.seek.max = hi; const t = Math.min(hi, Math.max(lo, R.v.currentTime)); if (!seeking) R.seek.value = t; R.tm.textContent = fmt(t - lo) + " / " + fmt(hi - lo); R.vw.classList.toggle("playing", !R.v.paused); R.play.setAttribute("aria-label", R.v.paused ? "تشغيل" : "إيقاف"); };
+    R.vsync = vsync;
+    ["timeupdate", "play", "pause", "seeked", "loadedmetadata"].forEach(ev => R.v.addEventListener(ev, vsync));
+    R.play.onclick = () => { if (R.v.paused) R.v.play().catch(() => {}); else R.v.pause(); };
+    R.seek.addEventListener("pointerdown", () => { seeking = true; }); ["pointerup", "pointercancel", "change"].forEach(ev => R.seek.addEventListener(ev, () => { seeking = false; }));
+    R.seek.oninput = () => { R.v.currentTime = +R.seek.value; vsync(); };
     R.fitV = fitV; if (window.ResizeObserver) new ResizeObserver(fitV).observe(R.frame); window.addEventListener("resize", fitV);
     R.v.addEventListener("volumechange", () => { const it = cur(); if (it && it.kind === "vid") R.v.muted = it.mute; });
   }
@@ -2367,7 +2414,7 @@ const STU = (() => {
       it.url = URL.createObjectURL(it.file); const v = document.createElement("video"); v.muted = true; v.playsInline = true; v.preload = "auto"; let done = false;
       const fin = () => { if (done) return; done = true; it.dur = isFinite(v.duration) ? v.duration : 0; it.en = Math.min(it.dur || 0, 300); it.tw = v.videoWidth; it.th = v.videoHeight; res(); };
       v.onloadeddata = () => { try { v.currentTime = Math.min(.2, (v.duration || 1) / 2); } catch (e) { fin(); } };
-      v.onseeked = () => { try { const k = 160 / Math.max(v.videoWidth, v.videoHeight, 1), c = document.createElement("canvas"); c.width = Math.max(1, Math.round(v.videoWidth * k)); c.height = Math.max(1, Math.round(v.videoHeight * k)); c.getContext("2d").drawImage(v, 0, 0, c.width, c.height); it.poster = c.toDataURL("image/jpeg", .7); it.pc = c; } catch (e) {} fin(); };
+    v.onseeked = () => { try { const k = 160 / Math.max(v.videoWidth, v.videoHeight, 1), c = document.createElement("canvas"); c.width = Math.max(1, Math.round(v.videoWidth * k)); c.height = Math.max(1, Math.round(v.videoHeight * k)); const g = c.getContext("2d"); g.drawImage(v, 0, 0, c.width, c.height); it.poster = c.toDataURL("image/jpeg", .7); it.pc = c; const d = g.getImageData(0, 0, c.width, c.height).data; let sm = 0; for (let j = 0; j < d.length; j += 16) sm += d[j] + d[j + 1] + d[j + 2]; if (sm / (d.length / 16) / 3 < 18 && !it._r && v.duration > 1) { it._r = 1; v.currentTime = v.duration * .35; return; } } catch (e) {} fin(); };
       v.onerror = fin; v.src = it.url; setTimeout(fin, 7000);
     });
   }
@@ -2421,7 +2468,7 @@ const STU = (() => {
       const d = row("emo"); EMO.forEach(e => { const b = document.createElement("button"); b.type = "button"; b.textContent = e; b.onclick = () => { tick(); it.layers.push({ t: e, e: 1, x: .5, y: .5, s: .17, c: "#fff" }); S.sel = it.layers.length - 1; thumbOf(it); panel(); dock(); sched(); }; d.append(b); });
     } else if (m === "trim") {
       const d = row("trim"), mk = (lb, key) => { const w = document.createElement("label"); const s = document.createElement("span"), i = document.createElement("input"), o = document.createElement("b"); s.textContent = lb; i.type = "range"; i.min = 0; i.max = it.dur; i.step = .1; i.value = it[key]; o.textContent = fmt(it[key]);
-        i.oninput = () => { let v = +i.value; if (key === "st") { v = Math.min(v, it.en - .5); it.st = Math.max(0, v); R.v.currentTime = it.st; } else { v = Math.max(v, it.st + .5); it.en = Math.min(it.dur, v); R.v.currentTime = Math.max(it.st, it.en - .3); } i.value = it[key]; o.textContent = fmt(it[key]); len.textContent = "المدة " + fmt(it.en - it.st); };
+        i.oninput = () => { let v = +i.value; if (key === "st") { v = Math.min(v, it.en - .5); it.st = Math.max(0, v); R.v.currentTime = it.st; } else { v = Math.max(v, it.st + .5); it.en = Math.min(it.dur, v); R.v.currentTime = Math.max(it.st, it.en - .3); } i.value = it[key]; o.textContent = fmt(it[key]); len.textContent = "المدة " + fmt(it.en - it.st); if (R.vsync) R.vsync(); };
         i.onchange = () => { dock(); strip(); }; w.append(s, i, o); d.append(w); }, len = document.createElement("div"); len.className = "stu-len"; mk("من", "st"); mk("إلى", "en"); len.textContent = "المدة " + fmt(it.en - it.st); d.append(len);
       if (it.dur > 300) { const w = document.createElement("div"); w.className = "stu-len"; w.textContent = "الحد الأقصى ٥ دقايق"; d.append(w); }
     }
@@ -2444,7 +2491,7 @@ const STU = (() => {
     const s = R.strip; s.textContent = "";
     S.items.forEach((it, i) => {
       const b = document.createElement("button"); b.type = "button"; b.className = "stu-th" + (i === S.i ? " on" : ""); b.setAttribute("aria-label", "ملف " + (i + 1));
-      const src = it.kind === "img" ? it.tc : it.pc; if (src && src.width) { const c = document.createElement("canvas"); c.width = src.width; c.height = src.height; c.getContext("2d").drawImage(src, 0, 0); b.append(c); }
+      const src = it.kind === "img" ? it.tc : it.pc; if (src && src.width) { const c = document.createElement("canvas"); c.width = src.width; c.height = src.height; c.getContext("2d").drawImage(src, 0, 0); b.append(c); } else b.classList.add("nov");
       if (it.kind === "vid") { const t = document.createElement("i"); t.className = "stu-vd"; t.textContent = "▶ " + fmt(it.en - it.st); b.append(t); }
       if (edited(it)) { const e = document.createElement("u"); e.textContent = "✎"; b.append(e); }
       if (it.cap.trim()) { const e = document.createElement("s"); e.textContent = "Aa"; b.append(e); }
@@ -2453,19 +2500,19 @@ const STU = (() => {
       s.append(b);
     });
     if (S.items.length < MAX_ITEMS) { const a = document.createElement("button"); a.type = "button"; a.className = "stu-th stu-add2"; a.setAttribute("aria-label", "إضافة المزيد"); a.innerHTML = svg("plus", 22); a.onclick = () => document.getElementById("aMix").click(); s.append(a); }
-    R.sn.textContent = S.items.length > 1 ? arN(S.items.length) : ""; R.n.textContent = S.items.length > 1 ? arN(S.i + 1) + " / " + arN(S.items.length) : "";
+    R.sn.textContent = S.items.length > 1 ? arN(S.items.length) : ""; R.n.textContent = S.items.length > 1 ? arN(S.i + 1) + " \u200E/\u200E " + arN(S.items.length) : "";
     R.send.classList.toggle("multi", S.items.length > 1);
     const on = s.querySelector(".on"); if (on && on.scrollIntoView) try { on.scrollIntoView({ inline: "center", block: "nearest" }); } catch (_) {}
   }
   function removeAt(i) { const it = S.items[i]; releaseOne(it); S.items.splice(i, 1); if (!S.items.length) { close(true); return; } show(Math.min(i, S.items.length - 1)); }
   function show(i) {
     S.i = i; const it = cur(); if (!it) return; S.sel = -1; if (it.kind === "vid" && !["trim", ""].includes(S.mode)) S.mode = ""; if (it.kind === "img" && S.mode === "trim") S.mode = "";
-    R.cv.hidden = it.kind !== "img"; R.v.hidden = it.kind !== "vid";
+    R.cv.hidden = it.kind !== "img"; R.v.hidden = it.kind !== "vid"; R.vw.hidden = it.kind !== "vid"; root.style.setProperty("--pst", it.kind === "vid" && it.poster ? 'url("' + it.poster + '")' : "none");
     if (it.kind === "vid") { if (R.v.dataset.id !== String(it.id)) { R.v.dataset.id = it.id; R.v.src = it.url; R.v.muted = it.mute; R.v.currentTime = it.st || 0; } } else { try { R.v.pause(); } catch (_) {} }
     R.cap.value = it.cap; R.cap.style.height = "auto"; R.cap.style.height = Math.min(96, R.cap.scrollHeight) + "px";
     R.capl.textContent = (it.kind === "vid" ? "🎬 شرح الفيديو" : "🖼 شرح الصورة") + (S.items.length > 1 ? " · " + arN(i + 1) : "");
     if (it.kind === "img") { thumbOf(it); ambient(it.bmp, it.bmp.width, it.bmp.height); } else if (it.pc) ambient(it.pc, it.pc.width, it.pc.height);
-    dock(); panel(); strip(); repaint(); if (R.fitV) { R.fitV(); requestAnimationFrame(R.fitV); }
+    dock(); panel(); strip(); repaint(); if (R.vsync) R.vsync(); if (R.fitV) { R.fitV(); requestAnimationFrame(R.fitV); }
   }
   function releaseOne(it) { try { if (it.url) URL.revokeObjectURL(it.url); if (it.bmp && it.bmp.close) it.bmp.close(); } catch (_) {} }
   function close(sent) {
@@ -2582,15 +2629,112 @@ function openSharePicker() {
 }
 $("plusBtn").onclick = () => {
   const c = $("mcard"); c.textContent = "";
-  const g = el("div", "acts att");
-  [["#7c5cff", '<svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="10" r="1.6"/><path d="M4 18l5-5 4 4 3-3 4 4"/></svg>', "صور ومقاطع", () => $("aMix").click()],
-   ["#f08c2e", '<svg viewBox="0 0 24 24"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>', "غرفة", openSharePicker],
-   ["#2f8cff", '<svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="3"/><circle cx="9" cy="11" r="2.2"/><path d="M5.8 16c.6-1.4 1.8-2 3.2-2s2.6.6 3.2 2M14.5 10h4M14.5 13.5h3"/></svg>', "كودي", sendMyCard]].forEach(([bg, ic, t, fn]) => {
-    const b = el("button", "apick"); b.type = "button"; const i = el("i"); i.style.background = bg; i.innerHTML = ic;
-    b.append(i, document.createTextNode(t)); b.onclick = () => { $("msheet").hidden = true; fn(); }; g.append(b);
-  });
-  c.append(g); $("msheet").hidden = false;
+  const wrap = el("div", "acts att"), P = d => '<svg viewBox="0 0 24 24">' + d + '</svg>';
+  wrap.append(el("div", "agr"), el("h3", "atit", "إرسال"));
+  const sec = (title, items, cols) => {
+    wrap.append(el("div", "asl", title)); const g = el("div", "asec c" + cols);
+    items.forEach(([bg, ic, t, fn]) => { const b = el("button", "apick"); b.type = "button"; const i = el("i"); i.style.background = bg; i.innerHTML = ic; b.append(i, document.createTextNode(t)); b.onclick = () => { $("msheet").hidden = true; fn(); }; g.append(b); });
+    wrap.append(g);
+  };
+  sec("ملفات ووسائط", [
+    ["#7c5cff", P('<rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="10" r="1.6"/><path d="M4 18l5-5 4 4 3-3 4 4"/>'), "المعرض", () => $("aMix").click()],
+    ["#ec4899", P('<path d="M4 8h3l1.6-2.4h6.8L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13" r="3.6"/>'), "كاميرا", () => { if (mediaGuard()) $("aCam").click(); }],
+    ["#ef4444", P('<rect x="3" y="6" width="13" height="12" rx="3"/><path d="M16 10.5l5-3v9l-5-3"/>'), "فيديو", () => { if (mediaGuard()) $("aCamV").click(); }],
+    ["#14b8a6", P('<path d="M7 3h7l5 5v12a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M14 3v5h5M9 13h6M9 17h4"/>'), "مستند", () => { if (mediaGuard()) $("aDoc").click(); }]
+  ], 4);
+  sec("تفاعل ومشاركة", [
+    ["#22b573", P('<path d="M5 20V10M12 20V4M19 20v-7"/>'), "استطلاع", openPollMaker],
+    ["#f08c2e", P('<path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>'), "غرفة", openSharePicker],
+    ["#2f8cff", P('<rect x="3" y="5" width="18" height="14" rx="3"/><circle cx="9" cy="11" r="2.2"/><path d="M5.8 16c.6-1.4 1.8-2 3.2-2s2.6.6 3.2 2M14.5 10h4M14.5 13.5h3"/>'), "كودي", sendMyCard]
+  ], 3);
+  c.append(wrap); $("msheet").hidden = false;
 };
+// ───── مستندات: رفع على قطع (نفس نظام الفيديو) ─────
+const DOC_MAX = 15 * 1024 * 1024;
+const docSize = n => n >= 1048576 ? arN((n / 1048576).toFixed(1)) + " ميجا" : arN(Math.max(1, Math.round(n / 1024))) + " كيلو";
+const DOC_COL = { pdf: "#e5484d", doc: "#2f7de1", docx: "#2f7de1", xls: "#1f9d55", xlsx: "#1f9d55", csv: "#1f9d55", ppt: "#e8702a", pptx: "#e8702a", zip: "#7c5cff", rar: "#7c5cff", "7z": "#7c5cff", txt: "#5b6b78", apk: "#3ddc84" };
+async function sendDocFile(file, rid) {
+  rid = rid || room; if (!mediaGuard(rid)) return;
+  if (!file.size) { flash("الملف فاضي"); return; }
+  if (file.size > DOC_MAX) { flash("📄 الحد الأقصى للمستند ١٥ ميجا"); return; }
+  const nm = String(file.name || "مستند").slice(0, 80), ui = upChip(rid, "📄 " + nm.slice(0, 22));
+  try {
+    const id = await uploadChunks(file, "application/octet-stream", ui, nm.slice(0, 22));
+    ui.done();
+    await postMedia({ mid: id, mk: "doc", fname: nm, fsize: file.size, ftype: String(file.type || "").slice(0, 80) }, rid);
+  } catch (e) { ui.done(); if (!ui.cancel) flash("المستند ماتبعتش، اتأكد من النت وجرّب تاني."); }
+}
+$("aDoc").onchange = async e => { const f = [...e.target.files].slice(0, 3); e.target.value = ""; for (const x of f) await sendDocFile(x, room); };
+function docBox(m) {
+  const nm = String(m.fname || "مستند"), ext = (nm.includes(".") ? nm.split(".").pop() : "").toLowerCase().slice(0, 4);
+  const box = el("div", "dcard"), ic = el("div", "dic", ext ? ext.toUpperCase() : "📄"); ic.style.background = DOC_COL[ext] || "#5b6b78";
+  const t = el("div", "dt"), n = el("b", "", nm); n.dir = "auto"; t.append(n, el("small", "", docSize(+m.fsize || 0) + (ext ? " · " + ext.toUpperCase() : "")));
+  const act = el("button", "dact"); act.type = "button"; act.setAttribute("aria-label", "تحميل المستند");
+  const DL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11m0 0-4.5-4.5M12 15l4.5-4.5M5 20h14"/></svg>';
+  act.innerHTML = DL; let busy = false;
+  const go = async () => {
+    if (selMode || busy) return; busy = true; act.textContent = "…";
+    try {
+      const u = await getMedia(m.mid, f => { act.textContent = Math.round(f * 100) + "%"; }); if (!u) throw 0;
+      const b = await (await fetch(u)).blob(), url = URL.createObjectURL(new Blob([b], { type: m.ftype || "application/octet-stream" }));
+      const a = document.createElement("a"); a.href = url; a.download = nm; document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 60000);
+      act.textContent = "✓"; setTimeout(() => { act.innerHTML = DL; }, 2200);
+    } catch (e) { flash("تعذّر تحميل المستند"); act.innerHTML = DL; }
+    busy = false;
+  };
+  box.onclick = e => { e.stopPropagation(); go(); };
+  box.append(ic, t, act); return box;
+}
+// ───── استطلاع رأي ─────
+function openPollMaker() {
+  const rid = room; if (!mediaGuard(rid)) return;
+  const c = $("mcard"); c.textContent = ""; const w = el("div", "plm");
+  w.append(el("div", "agr"), el("h3", "atit", "📊 استطلاع رأي"));
+  const q = el("textarea", "plq"); q.rows = 2; q.maxLength = 120; q.placeholder = "اسأل سؤالك…"; q.dir = "auto";
+  const ol = el("div", "plo"), add = el("button", "pla", "＋ أضف اختيار"); add.type = "button";
+  const sync = () => { add.hidden = ol.children.length >= 6; ol.classList.toggle("min", ol.children.length <= 2); };
+  const mk = () => { const r = el("div", "plr"), i = el("input"); i.type = "text"; i.maxLength = 40; i.placeholder = "اختيار " + arN(ol.children.length + 1); i.dir = "auto"; const x = el("button", "plx", "✕"); x.type = "button"; x.setAttribute("aria-label", "حذف الاختيار"); x.onclick = () => { if (ol.children.length > 2) { r.remove(); sync(); } }; r.append(i, x); ol.append(r); sync(); return i; };
+  mk(); mk(); add.onclick = () => mk().focus();
+  const mt = el("label", "plt"), mc = el("input"); mc.type = "checkbox"; mc.className = "tgl"; mt.append(el("span", "", "السماح بأكتر من اختيار"), mc);
+  const row = el("div", "plb"), cn = el("button", "plc", "إلغاء"), go = el("button", "plg", "إرسال الاستطلاع"); cn.type = go.type = "button"; row.append(cn, go);
+  cn.onclick = () => { $("msheet").hidden = true; };
+  go.onclick = async () => {
+    const qq = q.value.trim(), opts = [...new Set([...ol.querySelectorAll("input")].map(i => i.value.trim()).filter(Boolean))];
+    if (!qq) { q.focus(); return; } if (opts.length < 2) { flash("اكتب اختيارين مختلفين على الأقل"); return; }
+    $("msheet").hidden = true; if (!mediaGuard(rid)) return;
+    try { await postMedia({ poll: { q: qq, opts, multi: !!mc.checked } }, rid); } catch (e) { setStatus("الاستطلاع ماتبعتش."); }
+  };
+  w.append(q, el("div", "asl", "الاختيارات"), ol, add, mt, row); c.append(w); $("msheet").hidden = false; setTimeout(() => q.focus(), 250);
+}
+function pollBox(m) {
+  const P = m.poll || {}, V = m.votes || {}, opts = Array.isArray(P.opts) ? P.opts : [], mine = Array.isArray(V[myId]) ? V[myId] : [];
+  const cnt = opts.map((_, i) => Object.values(V).filter(a => Array.isArray(a) && a.includes(i)).length), total = Object.values(V).filter(a => Array.isArray(a) && a.length).length, top = Math.max(0, ...cnt);
+  const box = el("div", "poll"), q = el("div", "pq", P.q || "استطلاع"); q.dir = "auto";
+  box.append(q, el("div", "ph", P.multi ? "اختار أكتر من إجابة" : "اختار إجابة واحدة"));
+  opts.forEach((t, i) => {
+    const r = el("button", "po" + (mine.includes(i) ? " on" : "") + (top && cnt[i] === top ? " lead" : "")); r.type = "button";
+    const pct = total ? Math.round(cnt[i] / total * 100) : 0, fill = el("i", "pf"); fill.style.width = pct + "%";
+    const ck = el("span", "pk", mine.includes(i) ? "✓" : ""), lb = el("span", "pl", t); lb.dir = "auto";
+    r.append(fill, ck, lb, el("b", "pn", arN(cnt[i]))); r.onclick = e => { e.stopPropagation(); if (!selMode) votePoll(m, i); }; box.append(r);
+  });
+  const ft = el("button", "pft", total ? arN(total) + " صوت · التفاصيل" : "مفيش أصوات لسه"); ft.type = "button"; ft.onclick = e => { e.stopPropagation(); if (total && !selMode) openVoters(m, cnt); }; box.append(ft);
+  return box;
+}
+async function votePoll(m, i) {
+  const P = m.poll || {}, cur = Array.isArray((m.votes || {})[myId]) ? m.votes[myId] : [];
+  const next = P.multi ? (cur.includes(i) ? cur.filter(x => x !== i) : [...cur, i]) : (cur.length === 1 && cur[0] === i ? [] : [i]);
+  try { await db.collection(isDM(m.room || room) ? "dmsgs" : "msgs").doc(m.id).update({ ["votes." + myId]: next }); }
+  catch (e) { flash(errMsg(e)); }
+}
+function openVoters(m, cnt) {
+  const c = $("mcard"); c.textContent = ""; const w = el("div", "plm"), V = m.votes || {};
+  w.append(el("div", "agr"), el("h3", "atit", "📊 " + (m.poll.q || "")));
+  (m.poll.opts || []).forEach((t, i) => {
+    const us = Object.keys(V).filter(u => Array.isArray(V[u]) && V[u].includes(i)), g = el("div", "pvg"), h = el("div", "pvh"); h.append(el("span", "", t), el("b", "", arN(us.length)));
+    g.append(h); us.forEach(u => g.append(el("div", "pvu", u === myId ? "أنت" : nameOf(u)))); if (!us.length) g.append(el("div", "pvu mut", "—")); w.append(g);
+  });
+  const x = el("button", "plc", "إغلاق"); x.type = "button"; x.onclick = () => { $("msheet").hidden = true; }; w.append(x); c.append(w); $("msheet").hidden = false;
+}
 // تعطيل + لما الكتابة ممنوعة
 setInterval(() => { try { updateComposer(); } catch (e) {} }, 20000);
 setInterval(() => { $("plusBtn").disabled = $("camBtn").disabled = !db || !!writeBlock(curR()); }, 400);
@@ -2831,7 +2975,7 @@ if (APPCHECK_KEY && firebase.appCheck) { try { firebase.appCheck().activate(APPC
   db.collection("dms").where("members", "array-contains", myId).onSnapshot(s => {
     const prevClr = dmClearedAt(dms[room]); dms = {}; s.docs.forEach(d => { dms[d.id] = { ...d.data(), id: d.id }; });
     s.docChanges().forEach(ch => { const d = ch.doc.data(); if (!dmFirst && ch.type !== "removed" && d.last && d.last.uid !== myId && d.last.ts >= T0 - 2000 && d.last.ts > (dmDone[ch.doc.id] || 0) && !s.metadata.hasPendingWrites) { dmDone[ch.doc.id] = d.last.ts; pendingIn(d) ? reqToast(d, ch.doc.id) : notifyDM({ ...d, id: ch.doc.id }); } });
-    { const wasFirst = dmFirst, nc = isDM(room) ? dmClearedAt(dms[room]) : 0; dmFirst = false; buildChips(); updateTotal(); if (isDM(room)) { refreshMe(); if (nc !== prevClr || (wasFirst && nc)) openRoom(room); } }
+    { const wasFirst = dmFirst, nc = isDM(room) ? dmClearedAt(dms[room]) : 0; dmFirst = false; buildChips(); updateTotal(); if (isDM(room)) { try { renderPin(); } catch (_) {} } if (isDM(room)) { refreshMe(); if (nc !== prevClr || (wasFirst && nc)) openRoom(room); } }
   }, () => {});
   buildChips(); openRoom(room); presenceStart();
 }
