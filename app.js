@@ -4,7 +4,7 @@
 // الإشعارات (Push): الصق هنا رابط الـ Worker ومفتاح VAPID (Firebase ← Project settings ← Cloud Messaging ← Web Push certificates). فاضي = متوقفة
 const PUSH_URL = "https://verychat-push.adhamemaad14.workers.dev";
 const VAPID_KEY = "BLUhjxf71Ma_N_REq1eyVUo1-Pwl6j96_Cmkh05pvz2l_K3fnXeyPTsKp6AiL0xsbfHPKu1vzpVtr0OGDPk1iu0";
-const APPCHECK_KEY = "6LdvzCsuAAAAAHvmMunzSxfkhomq9hmeyc4W9598";
+const APPCHECK_KEY = "";
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyA2G05p10GHyhFR8hOfdx0f__pYRw8fG9s",
   authDomain: "very-chat-c7e65.firebaseapp.com",
@@ -32,8 +32,11 @@ const $ = id => document.getElementById(id);
 })();
 // أرقام عربية — لازم تكون عامة: كانت معرّفة جوه محرر الوسائط بس، فالاستطلاع والمستندات والتثبيت المتعدد كانوا بيفشلوا في الرسم
 const arN = n => String(n).replace(/\d/g, d => "٠١٢٣٤٥٦٧٨٩"[d]);
-const okSrc = (u, k) => { u = String(u || ""); return u.startsWith("blob:") || u.startsWith("data:" + k + "/"); };
-const okPhoto = u => { u = String(u || ""); return u.startsWith("data:image/") || /^https:\/\/[a-z0-9.-]+\.googleusercontent\.com\//i.test(u); };
+// ─── تحقّق صارم من أي مصدر ميديا/لون جاي من مستخدم تاني (بيمنع SVG وحقن CSS وتسريب الـ IP عبر url()) ───
+const BAD_CH = /[()"'\\\s<>]/;
+const okSrc = (u, k) => { u = String(u || ""); if (u.length > 3e7 || BAD_CH.test(u)) return false; if (u.startsWith("blob:")) return true; if (!u.startsWith("data:" + k + "/")) return false; return !(k === "image" && /^data:image\/svg/i.test(u)); };
+const safeCol = c => { c = String(c || "").trim(); return /^#[0-9a-fA-F]{3,8}$/.test(c) || /^(rgb|hsl)a?\([0-9.,%\s\/-]{1,40}\)$/i.test(c) ? c : ""; };
+const okPhoto = u => { u = String(u || ""); if (u.length > 3e6 || BAD_CH.test(u)) return false; return /^data:image\/(png|jpe?g|webp|gif);base64,/i.test(u) || /^https:\/\/[a-z0-9.-]+\.googleusercontent\.com\//i.test(u); };
 const logo = id => `<svg viewBox='0 0 100 100'><defs><linearGradient id='${id}' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='#2cc4a9'/><stop offset='1' stop-color='#0f8f7a'/></linearGradient></defs><rect width='100' height='100' rx='26' fill='url(#${id})'/><path d='M50 18c-18 0-32 12-32 28 0 8 4 15 10 20l-3 14 15-7c3 1 6 1 10 1 18 0 32-12 32-28S68 18 50 18z' fill='#fff'/><path d='M36 38l14 22 14-22' fill='none' stroke='#0f8f7a' stroke-width='8' stroke-linecap='round' stroke-linejoin='round'/></svg>`;
 $("sLogo").innerHTML = logo("lgS"); $("dLogo").innerHTML = logo("lgD");
 const draftKey = r => "vc_draft_" + r;
@@ -131,7 +134,7 @@ function openPeer(u) {
   c.append(go, bl); $("msheet").hidden = false;
 }
 function dmRow(d) {
-  const u = dmPeerOf(d.id), p = profiles[u] || {}, row = el("button", "rrow" + (d.id === room ? " on" : "")); row.type = "button"; row.style.setProperty("--rc", p.color || "#5b6b78");
+  const u = dmPeerOf(d.id), p = profiles[u] || {}, row = el("button", "rrow" + (d.id === room ? " on" : "")); row.type = "button"; row.style.setProperty("--rc", safeCol(p.color) || "#5b6b78");
   const tx = el("div", "rt"), sb = el("small"); sb.dir = "rtl";
   const hid = !!d.last && d.last.ts <= dmClearedAt(d); if (hid) row.classList.add("hid");
   sb.textContent = hid ? "🧹 مخفية من القائمة · اضغط للمراسلة" : ((d.blockedBy || []).length ? "🚫 " : "") + (d.req === myId && !d.acc ? "⏳ " : "") + (d.last ? (d.last.uid === myId ? "أنت: " : "") + d.last.text : "");
@@ -255,10 +258,10 @@ function avatar(p, big) {
   const d = document.createElement("div"); d.className = "av"; d.dataset.name = (p && p.name) || "";
   if (p && p.photo) { d._photo = p.photo; }
   if (p && okPhoto(p.photo)) { const i = document.createElement("img"); i.src = p.photo; i.alt = ""; d.appendChild(i); }
-  else { d.style.background = (p && p.color) || "var(--line)"; d.textContent = (p && p.emoji) || "👤"; }
+  else { d.style.background = safeCol(p && p.color) || "var(--line)"; d.textContent = (p && p.emoji) || "👤"; }
   return d;
 }
-function setAvatar(el, p) { el._photo = p && p.photo || ""; el.dataset.name = (p && p.name) || ""; el.replaceChildren(...avatar(p).childNodes); el.style.background = (p && !p.photo && p.color) || "var(--line)"; }
+function setAvatar(el, p) { el._photo = p && p.photo || ""; el.dataset.name = (p && p.name) || ""; el.replaceChildren(...avatar(p).childNodes); el.style.background = safeCol(p && !p.photo && p.color) || "var(--line)"; }
 
 function closeDrawer() { $("drawer").hidden = true; }
 const nzq = t => String(t || "").toLowerCase().replace(/[\u064B-\u0652\u0640]/g, "").replace(/[أإآٱ]/g, "ا").replace(/ى/g, "ي").replace(/ة/g, "ه").replace(/\s+/g, " ").trim();
@@ -269,7 +272,7 @@ function roomMatches(r, q) {
   return n.includes(qq) || (qc.length >= 2 && nzc(r.code).includes(qc));
 }
 function roomRow(r) {
-  const row = document.createElement("button"); row.className = "rrow" + (r.id === room ? " on" : ""); row.style.setProperty("--rc", r.color || "#5b6b78");
+  const row = document.createElement("button"); row.className = "rrow" + (r.id === room ? " on" : ""); row.style.setProperty("--rc", safeCol(r.color) || "#5b6b78");
   const ic = avatar(r.id === "general" || r.emoji || r.photo ? r : { emoji: "💬", color: "#5b6b78" });
   const tx = document.createElement("div"); tx.className = "rt";
   const nm = document.createElement("b"); nm.textContent = r.name;
@@ -424,7 +427,7 @@ function render(list) {
 
 const DEL_TXT = "🚫 تم حذف هذه الرسالة";
 const mtext = m => m.del ? DEL_TXT : m.audio ? "🎤 رسالة صوتية" : m.poll ? "📊 " + (m.poll.q || "استطلاع") : m.mk === "doc" ? "📄 " + (m.fname || "مستند") : (m.mid ? m.mk === "vid" : false) || m.vid ? "🎥 فيديو" + (m.text ? " · " + m.text : "") : m.mid || m.img ? "🖼 صورة" + (m.text ? " · " + m.text : "") : m.ucard ? "🆔 كارت تعريف" : m.share ? "🏠 غرفة: " + (m.share.name || "") : (m.text || "");
-const EMO = {
+const EMO = Object.assign(Object.create(null), {
   fol: { n: "فل", s: `<svg viewBox='0 0 40 40'><g fill='#fff' stroke='#e7a8c8' stroke-width='1.5'><circle cx='20' cy='9' r='7'/><circle cx='31' cy='17' r='7'/><circle cx='27' cy='30' r='7'/><circle cx='13' cy='30' r='7'/><circle cx='9' cy='17' r='7'/></g><circle cx='20' cy='20' r='9' fill='#ffd34d'/><circle cx='17' cy='19' r='1.4' fill='#4a3200'/><circle cx='23' cy='19' r='1.4' fill='#4a3200'/><path d='M16 23q4 4 8 0' fill='none' stroke='#4a3200' stroke-width='1.6' stroke-linecap='round'/></svg>` },
   nar: { n: "نار", s: `<svg viewBox='0 0 40 40'><path d='M20 3c2 7 11 11 11 21a11 11 0 0 1-22 0c0-5 3-8 5-11 1 3 2 4 4 4 0-5 0-8 2-14z' fill='#ff7a2f'/><path d='M20 17c1 4 6 6 6 11a6 6 0 0 1-12 0c0-3 2-5 3-7 1 2 2 2 3 2z' fill='#ffd34d'/><rect x='12' y='22' width='7' height='5' rx='2' fill='#1b1b1b'/><rect x='21' y='22' width='7' height='5' rx='2' fill='#1b1b1b'/><path d='M19 24h2' stroke='#1b1b1b' stroke-width='1.5'/></svg>` },
   qalb: { n: "قلب", s: `<svg viewBox='0 0 40 40'><path d='M20 35C5 25 3 14 10 9c5-3 9 0 10 4 1-4 5-7 10-4 7 5 5 16-10 26z' fill='#ff4d79'/><circle cx='15' cy='20' r='1.5' fill='#3a0a1a'/><circle cx='25' cy='20' r='1.5' fill='#3a0a1a'/><path d='M17 24q3 3 6 0' fill='none' stroke='#3a0a1a' stroke-width='1.5' stroke-linecap='round'/><circle cx='12.5' cy='23' r='2' fill='#ff9db5'/><circle cx='27.5' cy='23' r='2' fill='#ff9db5'/></svg>` },
@@ -435,7 +438,7 @@ const EMO = {
   kool: { n: "كوول", s: `<svg viewBox='0 0 40 40'><circle cx='20' cy='20' r='16' fill='#ffd34d'/><path d='M6 15h28v3q0 6-6 6t-6-5h-4q0 5-6 5t-6-6z' fill='#1b1b1b'/><path d='M14 28q6 4 12 0' fill='none' stroke='#4a3200' stroke-width='2' stroke-linecap='round'/></svg>` },
   like: { n: "إعجاب", s: `<svg viewBox='0 0 40 40'><circle cx='20' cy='20' r='17' fill='#4f8cff'/><rect x='9' y='19' width='5' height='12' rx='1.5' fill='#fff'/><path d='M16 19l4-9c2.5 0 3.5 1.5 3 4l-1 4h7c1.6 0 2.7 1.5 2.2 3l-2.2 8c-.4 1.3-1.5 2-2.8 2H16z' fill='#fff'/></svg>` },
   oyoun: { n: "عيون", s: `<svg viewBox='0 0 40 40'><ellipse cx='12' cy='20' rx='9' ry='12' fill='#fff' stroke='#333' stroke-width='2'/><ellipse cx='28' cy='20' rx='9' ry='12' fill='#fff' stroke='#333' stroke-width='2'/><circle cx='14' cy='23' r='4.5' fill='#222'/><circle cx='30' cy='23' r='4.5' fill='#222'/></svg>` }
-};
+});
 function toggleReact(m, k) {
   if (selMode) return;
   const cr = curR(); if (cr && cr.noReact && !adminOf(cr)) { setStatus("التفاعلات متوقفة في الغرفة دي"); return; }
@@ -1464,7 +1467,7 @@ function renderInfo(tabSwitch) {
   box.textContent = ""; window.__memPaint = null;
   const owner = ownerOf(r), admin = adminOf(r), mem = [...new Set([...(r.members || []), ...(r.by ? [r.by] : [])])];
   /* ── الهيرو (زي الأول) ── */
-  const hero = el("div", "ri-hero"); hero.style.background = "linear-gradient(160deg," + (r.color || "#5b6b78") + ",#0d1413)";
+  const hero = el("div", "ri-hero"); hero.style.background = "linear-gradient(160deg," + (safeCol(r.color) || "#5b6b78") + ",#0d1413)";
   const av = avatar(r.emoji || r.photo ? r : { emoji: "💬", color: "#5b6b78" }); av.classList.add("ri-av");
   hero.append(av, el("h2", "", r.name)); if (r.desc) hero.append(el("p", "", r.desc));
   const canCode = !!r.code && (admin || !r.lockInvite);
@@ -3199,7 +3202,7 @@ async function checkUpdate() {
   if (!BUILD || updating || !/^https?:/.test(location.protocol) || !navigator.onLine) return;
   try {
     const r = await withTimeout(fetch(PAGE_URL + "?_=" + Date.now(), { cache: "no-store" }), 6000); if (!r || !r.ok) return;
-    const m = (await r.text()).match(/name="vc-build" content="([^"]+)"/); if (!m || m[1] === BUILD) return;
+    const m = (await r.text()).match(/name="vc-build" content="([^"]+)"/); if (!m || m[1] === BUILD || !/^[0-9A-Za-z._-]{1,40}$/.test(m[1])) return;
     updating = true; setStatus("🔄 فيه تحديث جديد، جاري التحميل…");
     await withTimeout((async () => { if (window.caches) await Promise.all((await caches.keys()).map(k => caches.delete(k))); const rs = await navigator.serviceWorker.getRegistrations(); await Promise.all(rs.map(x => x.update().catch(() => {}))); })(), 2500);
     location.replace(PAGE_URL + "?v=" + m[1] + location.hash);
