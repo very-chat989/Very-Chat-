@@ -1222,3 +1222,9 @@ html[dir=rtl] .stu-send.go svg.pl{animation-name:stuFlyR}
 
 /* بحث نافذة مشاركة الغرفة */
 #mcard .dsearch{margin:10px 0 8px;flex:none}
+
+/* زرار حفظ الصورة في المعاينة الكاملة */
+#pvSave{position:absolute;inset-inline-start:16px;top:calc(env(safe-area-inset-top,0px) + 14px);width:46px;height:46px;border:0;border-radius:50%;display:grid;place-items:center;color:#fff;background:rgba(0,0,0,.5);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);cursor:pointer;z-index:3;-webkit-tap-highlight-color:transparent}
+#pvSave:active{transform:scale(.9)}
+#pvSave:focus-visible{outline:3px solid #fff;outline-offset:2px}
+#pview #pvSave{inset-inline-start:auto;inset-inline-end:12px;width:42px;height:42px;background:rgba(255,255,255,.18);display:grid;place-items:center;font-size:0}

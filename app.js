@@ -463,6 +463,7 @@ const MXI = {
   reply: '<svg viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 6 6v3"/></svg>',
   copy: '<svg viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2.5"/><path d="M5 15V6.5A2.5 2.5 0 0 1 7.5 4H15"/></svg>',
   fwd: '<svg viewBox="0 0 24 24"><path d="m15 14 5-5-5-5"/><path d="M20 9H10a6 6 0 0 0-6 6v3"/></svg>',
+  save: '<svg viewBox="0 0 24 24"><path d="M12 4v11m0 0-4.5-4.5M12 15l4.5-4.5M5 20h14"/></svg>',
   sel: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m8 12.5 2.8 2.8L16 9.8"/></svg>',
   edit: '<svg viewBox="0 0 24 24"><path d="M4 20h4L19 9a2.1 2.1 0 0 0-3-3L5 17z"/><path d="m14.5 7.5 3 3"/></svg>',
   dm: '<svg viewBox="0 0 24 24"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/></svg>',
@@ -489,6 +490,29 @@ function openDelMsg(m) {
   });
   $("msheet").hidden = false; wrap.scrollTop = 0;
 }
+// ───── حفظ الصورة/الفيديو على الجهاز: نفس البايتات بالظبط، من غير أي إعادة ضغط أو تغيير جودة ─────
+const EXT = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/gif": "gif", "image/avif": "avif", "image/heic": "heic", "video/mp4": "mp4", "video/webm": "webm", "video/quicktime": "mov", "video/3gpp": "3gp" };
+async function srcToBlob(src) {
+  src = String(src || "");
+  if (/^(blob|data):/.test(src)) { try { return await (await fetch(src)).blob(); } catch (_) {} }
+  const mm = /^data:([^;,]+)(;base64)?,([\s\S]*)$/.exec(src); if (!mm) return null;
+  if (!mm[2]) return new Blob([decodeURIComponent(mm[3])], { type: mm[1] });
+  const bin = atob(mm[3]), u8 = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+  return new Blob([u8], { type: mm[1] });
+}
+async function exportToDevice(src, vid) {
+  try {
+    const blob = await srcToBlob(src); if (!blob || !blob.size) { flash("ماقدرتش أجهّز الملف للحفظ"); return false; }
+    const type = (blob.type || (vid ? "video/mp4" : "image/jpeg")).split(";")[0], ext = EXT[type] || (vid ? "mp4" : "jpg"), d = new Date(), z = n => String(n).padStart(2, "0");
+    const name = "VeryChat-" + d.getFullYear() + z(d.getMonth() + 1) + z(d.getDate()) + "-" + z(d.getHours()) + z(d.getMinutes()) + z(d.getSeconds()) + "." + ext;
+    const file = new File([blob], name, { type });
+    const ios = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+    if (ios && navigator.canShare && navigator.canShare({ files: [file] })) { try { await navigator.share({ files: [file] }); return true; } catch (e) { if (e && e.name === "AbortError") return false; } }
+    const u = URL.createObjectURL(file), a = document.createElement("a"); a.href = u; a.download = name; a.rel = "noopener"; document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(u), 60000);
+    flash("✓ اتحفظ على جهازك"); return true;
+  } catch (e) { flash("ماقدرتش أحفظ الملف"); return false; }
+}
+$("pvSave").onclick = e => { e.stopPropagation(); exportToDevice($("pvImg").src, false); };
 function openMsg(m) {
   if (m.del) { openDelMsg(m); return; }
   const c = $("mcard"); c.textContent = ""; const cr0 = curR(), fb = fwdBlocked(), rid = m.room || room, mine = m.uid === myId;
@@ -519,6 +543,11 @@ function openMsg(m) {
   qb("mx-blue", MXI.reply, "رد", () => { close(); startReply(m); });
   if (!fb && !m.audio && m.text) qb("mx-green", MXI.copy, "نسخ", async (b, sp) => { const ok = await copyText(m.text); sp.textContent = ok ? "تم ✓" : "فشل"; if (ok) setTimeout(close, 600); });
   if (!fb) qb("mx-orange", MXI.fwd, "توجيه", () => openForward([m]));
+  if (!fb && m.mk !== "doc" && (m.mid || m.img || m.vid)) qb("mx-green", MXI.save, "حفظ", async (b, sp) => {
+    const vid = m.mk === "vid" || !!m.vid; sp.textContent = "جاري…"; let src = ""; try { src = m.mid ? await getMedia(m.mid) : (m.img || m.vid); } catch (_) {}
+    if (!src) { sp.textContent = "فشل"; return; }
+    const ok = await exportToDevice(src, vid); sp.textContent = ok ? "تم ✓" : "حفظ"; if (ok) setTimeout(close, 600);
+  });
   qb("mx-purple", MXI.sel, "تحديد", () => { close(); enterSel(m.id); });
   quick.style.gridTemplateColumns = "repeat(" + quick.children.length + ",1fr)"; wrap.appendChild(quick);
   // 4) باقي الأوامر: قايمة
