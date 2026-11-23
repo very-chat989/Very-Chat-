@@ -243,7 +243,7 @@ function buildDMs(q) {
     tx.append(el("b", "", p.name || "مجهول"), el("small", "", "اضغط للمراسلة")); row.append(avatar(p), tx);
     row.onclick = () => { closeDrawer(); openPeer(pu); }; box.appendChild(row);
   }
-  sub.hidden = !box.children.length;
+  sub.hidden = false;
 }
 function notifyDM(d) {
   vcSnd(d.id === room ? "in" : "ping");
@@ -306,29 +306,42 @@ function buildChips() {
   refreshMe(); updateTotal(); applyFold();
 }
 
-// ───── طي/فتح قسمي الخاص والغرف (الحالة بتتحفظ) ─────
-let foldSt = { dm: false, rooms: false };
-try { foldSt = Object.assign(foldSt, JSON.parse(localStorage.getItem("vc_fold") || "{}")); } catch (e) {}
+// ───── تبويبين جنب بعض: «الخاص» و«الغرف» (آخر تبويب بتختاره بيتحفظ، والسحب يمين/شمال بيبدّل بينهم) ─────
+let dTab = ""; try { dTab = localStorage.getItem("vc_dtab") || ""; } catch (e) {}
+const rowUnread = box => [...box.querySelectorAll(".rrow .bdg")].reduce((n, b) => n + (parseInt(b.textContent, 10) || 0), 0);
 function applyFold() {
-  const q = $("dSearch").value.trim();
-  [["dm", "dmSub", "dmList", "flex"], ["rooms", "rmSub", "dlist", ""]].forEach(([k, sid, lid, disp]) => {
-    const f = !!foldSt[k] && !q, h = $(sid), l = $(lid);   // أثناء البحث الأقسام بتتفتح تلقائيًا
-    h.classList.toggle("fold", f); h.setAttribute("aria-expanded", String(!f));
-    l.style.display = f ? "none" : disp;
-    const n = k === "dm" ? $("dmList").children.length : rooms.filter(canSee).length;
-    h.querySelector(".cnt").textContent = n || "";
+  const q = $("dSearch").value.trim(), dmL = $("dmList"), rmL = $("dlist");
+  const nDm = dmL.querySelectorAll(".rrow").length, nRm = rmL.querySelectorAll(".rrow").length;
+  let k = dTab === "dm" || dTab === "rooms" ? dTab : (nDm ? "dm" : "rooms");
+  if (q && ((k === "dm" && !nDm && nRm) || (k === "rooms" && !nRm && nDm))) k = k === "dm" ? "rooms" : "dm";   // أثناء البحث بنروح للتبويب اللي فيه نتايج
+  [["dm", "dmSub", nDm, dmL], ["rooms", "rmSub", nRm, rmL]].forEach(([key, sid, n, box]) => {
+    const t = $(sid), on = key === k, un = rowUnread(box);
+    t.classList.toggle("on", on); t.setAttribute("aria-selected", String(on));
+    t.querySelector(".cnt").textContent = n || "";
+    const u = t.querySelector(".ubd"); u.hidden = !un || on; u.textContent = un > 99 ? "99+" : un || "";
   });
+  dmL.style.display = k === "dm" ? "flex" : "none"; rmL.style.display = k === "rooms" ? "" : "none";
+  $("dHint").textContent = k === "dm" ? "اضغط مطوّلاً على المحادثة للخيارات" : "اضغط مطوّلاً على الغرفة للتعديل";
+  const em = $("dEmpty"), cur = k === "dm" ? nDm : nRm;
+  em.hidden = !!(cur || q);
+  if (!em.hidden) em.textContent = k === "dm" ? "💬 مفيش محادثات خاصة لسه. اضغط الزرار اللي تحت وابدأ محادثة" : "🏠 مفيش غرف لسه. اضغط «غرفة جديدة» أو انضم بكود";
+  $("dTabs").dataset.on = k;
 }
-function toggleFold(k) {
-  foldSt[k] = !foldSt[k];
-  try { localStorage.setItem("vc_fold", JSON.stringify(foldSt)); } catch (e) {}
-  applyFold();
+function setTab(k, save) {
+  dTab = k; if (save !== false) { try { localStorage.setItem("vc_dtab", k); } catch (e) {} }
+  applyFold(); try { vcSnd("tap"); } catch (e) {}
 }
-["dmSub", "rmSub"].forEach(id => {
-  const h = $(id);
-  h.addEventListener("click", () => toggleFold(h.dataset.k));
-  h.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggleFold(h.dataset.k); } });
-});
+["dmSub", "rmSub"].forEach(id => { const h = $(id); h.addEventListener("click", () => setTab(h.dataset.k)); });
+(() => {   // سحب أفقي على القايمة يبدّل التبويب
+  const sc = $("dScroll"); let x0 = 0, y0 = 0, on = false;
+  sc.addEventListener("touchstart", e => { const t = e.touches[0]; x0 = t.clientX; y0 = t.clientY; on = e.touches.length === 1; }, { passive: true });
+  sc.addEventListener("touchend", e => {
+    if (!on) return; on = false; const t = e.changedTouches[0], dx = t.clientX - x0, dy = t.clientY - y0;
+    if (Math.abs(dx) < 70 || Math.abs(dx) < Math.abs(dy) * 1.6) return;
+    const cur = $("dTabs").dataset.on || "dm", want = dx < 0 ? "rooms" : "dm";   // RTL: السحب لشمال = الغرف، لليمين = الخاص
+    if (want !== cur) setTab(want);
+  }, { passive: true });
+})();
 $("dSearch").addEventListener("input", buildChips);
 $("menuBtn").onclick = () => { $("dSearch").value = ""; buildChips(); $("dNotif").hidden = !("Notification" in window) || pushReady; $("drawer").hidden = false; };
 $("drawer").onclick = e => { if (e.target === $("drawer")) closeDrawer(); };
