@@ -2254,13 +2254,14 @@ function mediaBox(m) {
     box.querySelectorAll(".mretry").forEach(x => x.remove());
     if (!data) { const r = el("button", "mretry", "تعذّر التحميل · اضغط للإعادة"); r.type = "button"; r.onclick = e => { e.stopPropagation(); r.remove(); box.append(el("div", "msp")); box._load(); }; box.querySelectorAll(".msp").forEach(x => x.remove()); box.append(r); return; }
     let node;
-    if (vid) { node = el("video", "mvid"); node.src = data; node.controls = true; node.playsInline = true; node.preload = "auto"; if (okSrc(m.thumb, "image")) node.poster = m.thumb; node.controls = false; node.onclick = e => { e.stopPropagation(); if (!selMode) openVideo(data, okSrc(m.thumb, "image") ? m.thumb : ""); }; { let sought = false, fin = false; const finish = u => { if (fin) return; fin = true; if (u) { ph.style.backgroundImage = 'url("' + u + '")'; ph.classList.add("sharp"); ph.style.filter = "none"; ph.style.transform = "none"; } box.classList.add("vok"); };
+    if (vid) { node = el("video", "mvid"); node.src = data; node.controls = true; node.playsInline = true; node.preload = "auto"; if (okSrc(m.thumb, "image")) node.poster = m.thumb; const snap = () => { if (node._sharp) return node._sharp; try { if (node.videoWidth && node.readyState >= 2) { const k = Math.min(1, 720 / Math.max(node.videoWidth, node.videoHeight)), c = document.createElement("canvas"); c.width = Math.max(1, Math.round(node.videoWidth * k)); c.height = Math.max(1, Math.round(node.videoHeight * k)); c.getContext("2d").drawImage(node, 0, 0, c.width, c.height); return c.toDataURL("image/jpeg", .88); } } catch (_) {} return ""; };   // لقطة واضحة من الفيديو نفسه؛ ومابنستخدمش الصورة المصغّرة المشوّشة أبدًا في شاشة التشغيل
+      node.controls = false; node.onclick = e => { e.stopPropagation(); if (!selMode) openVideo(data, snap()); }; { let sought = false, fin = false; const finish = u => { if (fin) return; fin = true; if (u) { node._sharp = u; ph.style.backgroundImage = 'url("' + u + '")'; ph.classList.add("sharp"); ph.style.filter = "none"; ph.style.transform = "none"; } box.classList.add("vok"); };
       let best = null, ti = 0, times = [];   // بنجرّب كذا لقطة ونختار الأنور وبجودة عالية، ولو كلهم سودا بنفضل على الصورة المصغّرة
       const cap = () => { try { const k = Math.min(1, 720 / Math.max(node.videoWidth, node.videoHeight, 1)), c = document.createElement("canvas"); c.width = Math.max(1, Math.round(node.videoWidth * k)); c.height = Math.max(1, Math.round(node.videoHeight * k)); const g = c.getContext("2d"); g.drawImage(node, 0, 0, c.width, c.height); const d = g.getImageData(0, 0, c.width, c.height).data; let t = 0, n = 0; for (let i = 0; i < d.length; i += 64) { t += d[i] + d[i + 1] + d[i + 2]; n++; } return n ? { c, b: t / n / 3 } : null; } catch (_) { return null; } };
       const fb = () => finish(best && best.b >= 6 ? best.c.toDataURL("image/jpeg", .88) : "");
       const go = () => { if (sought) return; sought = true; try { const d = node.duration; times = isFinite(d) && d > 0 ? [Math.min(0.3, d / 2), d * .15, d * .3, d * .5, d * .7] : [0.1]; node.currentTime = times[0]; } catch (_) { fb(); } };
       node.onloadedmetadata = go; node.onloadeddata = go; node.onseeked = () => { const r = cap(); if (r && (!best || r.b > best.b)) best = r; if ((best && best.b >= 35) || ti >= times.length - 1) return fb(); ti++; try { node.currentTime = times[ti]; } catch (_) { fb(); } }; node.onerror = () => finish(""); setTimeout(fb, 8000); }
-      const pl = el("div", "mplay"); pl.innerHTML = '<svg viewBox="0 0 24 24"><path d="M8 5.5v13l11-6.5z" fill="currentColor"/></svg>'; pl.onclick = e => { e.stopPropagation(); if (!selMode) openVideo(data, okSrc(m.thumb, "image") ? m.thumb : ""); }; box.append(pl); }
+      const pl = el("div", "mplay"); pl.innerHTML = '<svg viewBox="0 0 24 24"><path d="M8 5.5v13l11-6.5z" fill="currentColor"/></svg>'; pl.onclick = e => { e.stopPropagation(); if (!selMode) openVideo(data, snap()); }; box.append(pl); }
     else { node = el("img", "mimg"); node.alt = "صورة"; node.decoding = "async"; node.onload = () => box.classList.add("ok"); node.onclick = e => { e.stopPropagation(); if (!selMode) { $("pvImg").src = data; $("pview").hidden = false; } }; node.src = data; }
     box.querySelectorAll(".mpct").forEach(x => x.remove()); box.append(node); if (key && !DLD.has(key) && !String(data).startsWith("blob:")) { DLD.add(key); dlSave(); }
   };
@@ -2297,7 +2298,8 @@ async function shrinkImage(file) {
   const close = () => { try { v.pause(); } catch (_) {} v.removeAttribute("src"); try { v.load(); } catch (_) {} o.hidden = true; };
   x.onclick = close; o.addEventListener("click", e => { if (e.target === o) close(); });
   document.addEventListener("keydown", e => { if (e.key === "Escape" && !o.hidden) close(); });
-  window.openVideo = (src, poster) => { if (!src) return; v.poster = poster || ""; v.src = src; o.hidden = false; const p = v.play(); if (p && p.catch) p.catch(() => {}); };
+  // الـ poster هنا هو نفس اللقطة الواضحة اللي ظاهرة في الرسالة، فمفيش لا تشويش ولا شاشة سودا
+  window.openVideo = (src, poster) => { if (!src) return; if (poster) v.poster = poster; else v.removeAttribute("poster"); v.style.opacity = ""; v.src = src; o.hidden = false; const p = v.play(); if (p && p.catch) p.catch(() => {}); };
 })();
 async function sendImages(files, rid) {
   rid = rid || room;
