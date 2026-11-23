@@ -421,7 +421,7 @@ function render(list) {
     }
     const t = document.createElement("div"); t.className = "t";
     if (m.edited) { const ed = document.createElement("span"); ed.textContent = "معدّلة"; t.appendChild(ed); }
-    if (mine) { const sc = document.createElement("span"); const n = seenOK() ? seenBy(m).length : 0; if (m._p) { sc.className = "pend"; sc.innerHTML = SVG_CLOCK; sc.title = "في انتظار الإرسال"; b.classList.add("pending"); } else sc.textContent = n ? "👁 " + n : "✓"; t.appendChild(sc); }
+    if (mine) { const sc = document.createElement("span"); const n = seenOK() ? seenBy(m).length : 0; if (m._p) { sc.className = "pend"; sc.innerHTML = SVG_CLOCK; sc.title = "في انتظار الإرسال"; b.classList.add("pending"); } else if (isDM(m.room || room)) { sc.textContent = n ? "✓✓" : "✓"; if (n) sc.className = "rd"; } else sc.textContent = n ? "👁 " + n : "✓"; t.appendChild(sc); }
     const tm = document.createElement("span"); tm.textContent = new Date(m.ts).toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit" }); t.appendChild(tm);
     b.appendChild(t); holdMenu(b, m); row.appendChild(b);
     if (selMode) { const ck = document.createElement("span"); ck.className = "ck"; ck.textContent = sel.has(m.id) ? "✓" : ""; row.appendChild(ck); }
@@ -551,7 +551,7 @@ $("selDel").onclick = () => {
   exitSel();
 };
 let editingId = null, reads = {}, myReads = {}, readsLoaded = false;
-function seenBy(m) { if (isDM(room)) { const rd = (dms[room] || {}).read || {}; return Object.keys(rd).filter(u => u !== m.uid && rd[u] >= m.ts); } return Object.keys(reads).filter(u => u !== m.uid && ((reads[u] || {})[room] || 0) >= m.ts); }
+function seenBy(m) { const rid = m.room || room; if (isDM(rid)) { const rd = (dms[rid] || {}).read || {}; return Object.keys(rd).filter(u => u !== m.uid && rd[u] >= m.ts); } return Object.keys(reads).filter(u => u !== m.uid && ((reads[u] || {})[rid] || 0) >= m.ts); }
 function markSeen(list) {
   if (!db || !readsLoaded || document.hidden) return;
   if (isDM(room) && !list.length) { const d0 = dms[room]; if (d0 && ((d0.unread || {})[myId] || 0)) { d0.unread = { ...(d0.unread || {}), [myId]: 0 }; db.collection("dms").doc(room).update({ ["unread." + myId]: 0 }).catch(() => {}); } return; }
@@ -559,8 +559,8 @@ function markSeen(list) {
   if (isDM(room)) {
     const d = dms[room] || {}, lt = list[list.length - 1].ts;
     if (!d.id || (((d.read || {})[myId] || 0) >= lt && !(d.unread || {})[myId])) return;
-    d.read = { ...(d.read || {}), [myId]: lt }; d.unread = { ...(d.unread || {}), [myId]: 0 };
-    db.collection("dms").doc(room).update({ ["read." + myId]: lt, ["unread." + myId]: 0 }).catch(() => {}); return;
+    const nowT = Date.now(); d.read = { ...(d.read || {}), [myId]: lt }; d.readAt = { ...(d.readAt || {}), [myId]: nowT }; d.unread = { ...(d.unread || {}), [myId]: 0 };
+    db.collection("dms").doc(room).update({ ["read." + myId]: lt, ["readAt." + myId]: nowT, ["unread." + myId]: 0 }).catch(() => {}); return;
   }
   const last = list[list.length - 1].ts;
   if ((myReads[room] || 0) >= last) return;
@@ -731,11 +731,11 @@ function openMsg(m) {
     });
     wrap.appendChild(fold(MXI.heart, "linear-gradient(135deg,#ff7aa8,#e0457b)", "التفاعلات", rx.length, kinds, rows, rx.length <= 4));
   }
-  if (seenOK()) {
-    const seen = seenBy(m), n = seen.length, stack = seen.slice(0, 3).map(u => avatar(profileFor(u)));
+  if (seenOK() && mine) {   // «شوهدت بواسطة» على رسايلك إنت بس (خاص / غرف / عام)
+    const seen = seenBy(m).filter(u => u !== myId), n = seen.length, stack = seen.slice(0, 3).map(u => avatar(profileFor(u, rid)));
     if (n > 3) stack.push(el("span", "more", "+" + (n - 3)));
-    const rows = seen.map(u => { const r = el("div", "seen-r"), nm = el("span", "nm"); nm.dir = "rtl"; nm.textContent = nameOf(u); r.append(avatar(profileFor(u)), nm, el("span", "ok", "✓✓")); return r; });
-    wrap.appendChild(fold(MXI.eye, "", n ? "شوهدت بواسطة" : "لسه محدش شافها", n, stack, rows, n <= 3));
+    const rows = seen.map(u => { const r = el("div", "seen-r"), nm = el("span", "nm"); nm.dir = "rtl"; nm.textContent = u === myId ? "أنت" : nameOf(u, rid); r.append(avatar(profileFor(u, rid)), nm); const at = isDM(rid) ? (((dms[rid] || {}).readAt || {})[u] || 0) : 0; if (at) { const d1 = new Date(at); r.append(el("small", "seen-hint", (d1.toDateString() === new Date().toDateString() ? "اليوم" : d1.toLocaleDateString("ar-EG", { day: "numeric", month: "long" })) + " · " + d1.toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit" }))); } r.append(el("span", "ok", "✓✓")); return r; });
+    if (n) wrap.appendChild(fold(MXI.eye, "", "شوهدت بواسطة", n, stack, rows, n <= 3));   // لو محدش شافها مفيش كارت خالص
   }
   $("msheet").hidden = false;
   wrap.scrollTop = 0;
