@@ -13,6 +13,8 @@ const FIREBASE_CONFIG = {
   appId: "1:351423421163:web:f61b829b9b65deb38abcae"
 };
 const $ = id => document.getElementById(id);
+// أرقام عربية — لازم تكون عامة: كانت معرّفة جوه محرر الوسائط بس، فالاستطلاع والمستندات والتثبيت المتعدد كانوا بيفشلوا في الرسم
+const arN = n => String(n).replace(/\d/g, d => "٠١٢٣٤٥٦٧٨٩"[d]);
 const okSrc = (u, k) => { u = String(u || ""); return u.startsWith("blob:") || u.startsWith("data:" + k + "/"); };
 const okPhoto = u => { u = String(u || ""); return u.startsWith("data:image/") || /^https:\/\/[a-z0-9.-]+\.googleusercontent\.com\//i.test(u); };
 const logo = id => `<svg viewBox='0 0 100 100'><defs><linearGradient id='${id}' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='#2cc4a9'/><stop offset='1' stop-color='#0f8f7a'/></linearGradient></defs><rect width='100' height='100' rx='26' fill='url(#${id})'/><path d='M50 18c-18 0-32 12-32 28 0 8 4 15 10 20l-3 14 15-7c3 1 6 1 10 1 18 0 32-12 32-28S68 18 50 18z' fill='#fff'/><path d='M36 38l14 22 14-22' fill='none' stroke='#0f8f7a' stroke-width='8' stroke-linecap='round' stroke-linejoin='round'/></svg>`;
@@ -1004,7 +1006,11 @@ function jumpToMsg(id) {
   const box = $("msgs"), row = [...box.querySelectorAll(".row")].find(r => r.dataset.mid === id);
   if (!row) { flash("الرسالة دي مش موجودة"); return; }
   box._pin = 0; try { row.scrollIntoView({ block: "center", behavior: "smooth" }); } catch (_) { row.scrollIntoView(); }
-  row.classList.remove("jhl"); void row.offsetWidth; row.classList.add("jhl"); setTimeout(() => row.classList.remove("jhl"), 2400);
+  // إضاءة موضعية: باقي الرسايل بتخفت لحظة والفقاعة بس بتلمع (من غير مربع ملوّن ورا الصف)
+  document.querySelectorAll("#msgs .row.jhl").forEach(r => r.classList.remove("jhl"));
+  clearTimeout(jumpToMsg._t); box.classList.add("spot");
+  setTimeout(() => { row.classList.remove("jhl"); void row.offsetWidth; row.classList.add("jhl"); }, 260);
+  jumpToMsg._t = setTimeout(() => { row.classList.remove("jhl"); box.classList.remove("spot"); }, 2500);
 }
 const PIN_I = {};
 function livePins(r) { return pinsOf(r).map(p => ({ p, m: pinMsg(p) })).filter(x => !(x.m !== undefined && (!x.m || x.m.del))); }
@@ -2307,6 +2313,19 @@ const STU = (() => {
     undo: '<path d="M9 14L4 9l5-5M4 9h10a6 6 0 0 1 0 12h-3"/>',
   };
   const svg = (k, s) => '<svg viewBox="0 0 24 24" width="' + (s || 22) + '" height="' + (s || 22) + '" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + ICO[k] + "</svg>";
+  // لقطات مصغّرة من الفيديو لشريط القص (بتتولّد مرة واحدة وبتتخزّن على الملف)
+  function filmFor(it, cb) {
+    if (it._film) { cb(it._film); return; }
+    if (!it._filmP) it._filmP = new Promise(res => {
+      const N = 8, out = [], v = document.createElement("video"); v.muted = true; v.playsInline = true; v.preload = "auto";
+      let k = 0, done = false;
+      const fin = () => { if (done) return; done = true; it._film = out.filter(Boolean); try { v.removeAttribute("src"); v.load(); } catch (_) {} res(it._film); };
+      const next = () => { if (k >= N) return fin(); try { v.currentTime = Math.min(Math.max(0, it.dur - .05), it.dur * (k + .5) / N); } catch (_) { fin(); } };
+      v.onseeked = () => { try { const c = document.createElement("canvas"), w = 80; c.width = w; c.height = Math.max(1, Math.round(w * (v.videoHeight || 1) / (v.videoWidth || 1))); c.getContext("2d").drawImage(v, 0, 0, c.width, c.height); out.push(c.toDataURL("image/jpeg", .6)); } catch (_) { out.push(""); } k++; next(); };
+      v.onloadeddata = next; v.onerror = fin; setTimeout(fin, 12000); v.src = it.url;
+    });
+    it._filmP.then(cb);
+  }
   const fmt = s => { s = Math.max(0, s || 0); return Math.floor(s / 60) + ":" + String(Math.floor(s % 60)).padStart(2, "0"); };
   const arN = n => String(n).replace(/\d/g, d => "٠١٢٣٤٥٦٧٨٩"[d]);
   let S = null, root = null, R = {}, uid = 0, raf = 0;
@@ -2391,7 +2410,7 @@ const STU = (() => {
     const fitV = () => { const it = cur(); if (!it || it.kind !== "vid" || !it.tw || !it.th) return; const fw = R.frame.clientWidth, fh = R.frame.clientHeight; if (!fw || !fh) return; const k = Math.min(fw / it.tw, fh / it.th); R.vw.style.width = Math.floor(it.tw * k) + "px"; R.vw.style.height = Math.floor(it.th * k) + "px"; };
     // تحكم فيديو مخصص (بدل أزرار المتصفح): تشغيل بلمسة + شريط تقدّم داخل حدود القص
     let seeking = false;
-    const vsync = () => { const it = cur(); if (!it || it.kind !== "vid") return; const lo = it.st || 0, hi = it.en || it.dur || 1; R.seek.min = lo; R.seek.max = hi; const t = Math.min(hi, Math.max(lo, R.v.currentTime)); if (!seeking) R.seek.value = t; R.tm.textContent = fmt(t - lo) + " / " + fmt(hi - lo); R.vw.classList.toggle("playing", !R.v.paused); R.play.setAttribute("aria-label", R.v.paused ? "تشغيل" : "إيقاف"); };
+    const vsync = () => { const it = cur(); if (!it || it.kind !== "vid") return; const lo = it.st || 0, hi = it.en || it.dur || 1; R.seek.min = lo; R.seek.max = hi; const t = Math.min(hi, Math.max(lo, R.v.currentTime)); if (!seeking) R.seek.value = t; R.tm.textContent = fmt(t - lo) + " / " + fmt(hi - lo); if (R.trimUpd) R.trimUpd(); R.vw.classList.toggle("playing", !R.v.paused); R.play.setAttribute("aria-label", R.v.paused ? "تشغيل" : "إيقاف"); };
     R.vsync = vsync;
     ["timeupdate", "play", "pause", "seeked", "loadedmetadata"].forEach(ev => R.v.addEventListener(ev, vsync));
     R.play.onclick = () => { if (R.v.paused) R.v.play().catch(() => {}); else R.v.pause(); };
@@ -2440,7 +2459,7 @@ const STU = (() => {
     B("reset", "إلغاء", resetIt, false, !edited(it));
   }
   function panel() {
-    const it = cur(), p = R.panel; p.textContent = ""; const m = it && S.mode; p.hidden = !m; R.frame.classList.toggle("tall", !!m); if (!m) { tip(); return; }
+    R.trimUpd = null; const it = cur(), p = R.panel; p.textContent = ""; const m = it && S.mode; p.hidden = !m; R.frame.classList.toggle("tall", !!m); if (!m) { tip(); return; }
     const row = (cls) => { const d = document.createElement("div"); d.className = "stu-row " + (cls || ""); p.append(d); return d; };
     const chip = (host, label, on, fn) => { const b = document.createElement("button"); b.type = "button"; b.className = "stu-c" + (on ? " on" : ""); b.textContent = label; b.onclick = () => { tick(); fn(); }; host.append(b); return b; };
     const dots = (host, sel, fn) => COL.forEach(c => { const b = document.createElement("button"); b.type = "button"; b.className = "stu-dot" + (c === sel ? " on" : ""); b.style.background = c; b.setAttribute("aria-label", "لون"); b.onclick = () => { tick(); fn(c); }; host.append(b); });
@@ -2467,10 +2486,41 @@ const STU = (() => {
     } else if (m === "emo") {
       const d = row("emo"); EMO.forEach(e => { const b = document.createElement("button"); b.type = "button"; b.textContent = e; b.onclick = () => { tick(); it.layers.push({ t: e, e: 1, x: .5, y: .5, s: .17, c: "#fff" }); S.sel = it.layers.length - 1; thumbOf(it); panel(); dock(); sched(); }; d.append(b); });
     } else if (m === "trim") {
-      const d = row("trim"), mk = (lb, key) => { const w = document.createElement("label"); const s = document.createElement("span"), i = document.createElement("input"), o = document.createElement("b"); s.textContent = lb; i.type = "range"; i.min = 0; i.max = it.dur; i.step = .1; i.value = it[key]; o.textContent = fmt(it[key]);
-        i.oninput = () => { let v = +i.value; if (key === "st") { v = Math.min(v, it.en - .5); it.st = Math.max(0, v); R.v.currentTime = it.st; } else { v = Math.max(v, it.st + .5); it.en = Math.min(it.dur, v); R.v.currentTime = Math.max(it.st, it.en - .3); } i.value = it[key]; o.textContent = fmt(it[key]); len.textContent = "المدة " + fmt(it.en - it.st); if (R.vsync) R.vsync(); };
-        i.onchange = () => { dock(); strip(); }; w.append(s, i, o); d.append(w); }, len = document.createElement("div"); len.className = "stu-len"; mk("من", "st"); mk("إلى", "en"); len.textContent = "المدة " + fmt(it.en - it.st); d.append(len);
-      if (it.dur > 300) { const w = document.createElement("div"); w.className = "stu-len"; w.textContent = "الحد الأقصى ٥ دقايق"; d.append(w); }
+      const d = row("trim"), W = document.createElement("div"); W.className = "stu-trim"; d.append(W);
+      const bs = document.createElement("b"), be = document.createElement("b"), bl = document.createElement("span"), tt = document.createElement("div"); tt.className = "stu-tt"; tt.append(bs, bl, be); W.append(tt);
+      if (it.dur > 0) {
+        const tk = document.createElement("div"); tk.className = "stu-tk"; tk.dir = "ltr";
+        const fs = document.createElement("div"); fs.className = "stu-fs"; const tiles = []; for (let k = 0; k < 8; k++) { const t = document.createElement("i"); fs.append(t); tiles.push(t); }
+        const shl = document.createElement("div"), shr = document.createElement("div"), win = document.createElement("div"), ph = document.createElement("div"), hs = document.createElement("div"), he = document.createElement("div");
+        shl.className = "stu-sh l"; shr.className = "stu-sh r"; win.className = "stu-win"; ph.className = "stu-ph"; hs.className = "stu-hd s"; he.className = "stu-hd e";
+        [[hs, "بداية المقطع"], [he, "نهاية المقطع"]].forEach(([h, lb]) => { h.setAttribute("role", "slider"); h.tabIndex = 0; h.setAttribute("aria-label", lb); });
+        tk.append(fs, shl, shr, win, ph, hs, he); W.append(tk);
+        const MINL = .5, MAXL = 300, pc = x => Math.min(100, Math.max(0, x / it.dur * 100));
+        const upd = () => {
+          shl.style.width = pc(it.st) + "%"; shr.style.width = (100 - pc(it.en)) + "%"; win.style.left = pc(it.st) + "%"; win.style.right = (100 - pc(it.en)) + "%";
+          hs.style.left = pc(it.st) + "%"; he.style.left = pc(it.en) + "%"; hs.setAttribute("aria-valuenow", it.st.toFixed(1)); he.setAttribute("aria-valuenow", it.en.toFixed(1));
+          bs.textContent = fmt(it.st); be.textContent = fmt(it.en); bl.textContent = "المدة " + fmt(it.en - it.st);
+          const t = R.v.currentTime || 0; ph.style.left = pc(t) + "%"; ph.hidden = t < it.st - .1 || t > it.en + .1;
+        };
+        R.trimUpd = upd; upd();
+        const setSt = t => { it.st = Math.max(0, Math.min(t, it.en - MINL)); if (it.en - it.st > MAXL) it.st = it.en - MAXL; R.v.currentTime = it.st; };
+        const setEn = t => { it.en = Math.min(it.dur, Math.max(t, it.st + MINL)); if (it.en - it.st > MAXL) it.en = it.st + MAXL; R.v.currentTime = Math.max(it.st, it.en - .3); };
+        const tOf = e => { const r = tk.getBoundingClientRect(); return Math.min(it.dur, Math.max(0, (e.clientX - r.left) / (r.width || 1) * it.dur)); };
+        const drag = (h, set) => {
+          h.addEventListener("pointerdown", e => {
+            e.preventDefault(); e.stopPropagation(); try { h.setPointerCapture(e.pointerId); } catch (_) {} h.classList.add("on"); tick();
+            const mv = ev => { set(tOf(ev)); upd(); if (R.vsync) R.vsync(); };
+            const up = () => { h.classList.remove("on"); h.removeEventListener("pointermove", mv); h.removeEventListener("pointerup", up); h.removeEventListener("pointercancel", up); dock(); strip(); };
+            h.addEventListener("pointermove", mv); h.addEventListener("pointerup", up); h.addEventListener("pointercancel", up);
+          });
+          h.addEventListener("keydown", e => { const k = e.key === "ArrowLeft" ? -.5 : e.key === "ArrowRight" ? .5 : 0; if (!k) return; e.preventDefault(); set((h === hs ? it.st : it.en) + k); upd(); if (R.vsync) R.vsync(); dock(); strip(); });
+        };
+        drag(hs, setSt); drag(he, setEn);
+        // الضغط على الشريط نفسه بيحرّك رأس التشغيل جوه المقطع المحدد
+        tk.addEventListener("pointerdown", e => { if (e.target === hs || e.target === he) return; R.v.currentTime = Math.min(it.en - .05, Math.max(it.st, tOf(e))); upd(); if (R.vsync) R.vsync(); });
+        filmFor(it, fr => { if (!tk.isConnected) return; tiles.forEach((t, k) => { const u = fr[Math.min(fr.length - 1, Math.floor(k * fr.length / tiles.length))]; if (u) t.style.backgroundImage = 'url("' + u + '")'; }); tk.classList.add("lit"); });
+      } else { bs.textContent = fmt(it.st); be.textContent = fmt(it.en); bl.textContent = "المدة " + fmt(it.en - it.st); }
+      if (it.dur > 300) { const w = document.createElement("div"); w.className = "stu-len"; w.textContent = "الحد الأقصى ٥ دقايق"; W.append(w); }
     }
     if (it.kind === "img" && (m === "text" || m === "emo") && S.sel >= 0 && it.layers[S.sel]) {
       const d = row("lay"), L = it.layers[S.sel];
@@ -2668,7 +2718,7 @@ $("aDoc").onchange = async e => { const f = [...e.target.files].slice(0, 3); e.t
 function docBox(m) {
   const nm = String(m.fname || "مستند"), ext = (nm.includes(".") ? nm.split(".").pop() : "").toLowerCase().slice(0, 4);
   const box = el("div", "dcard"), ic = el("div", "dic", ext ? ext.toUpperCase() : "📄"); ic.style.background = DOC_COL[ext] || "#5b6b78";
-  const t = el("div", "dt"), n = el("b", "", nm); n.dir = "auto"; t.append(n, el("small", "", docSize(+m.fsize || 0) + (ext ? " · " + ext.toUpperCase() : "")));
+  const t = el("div", "dtx"), n = el("b", "", nm); n.dir = "auto"; t.append(n, el("small", "", docSize(+m.fsize || 0) + (ext ? " · " + ext.toUpperCase() : "")));
   const act = el("button", "dact"); act.type = "button"; act.setAttribute("aria-label", "تحميل المستند");
   const DL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11m0 0-4.5-4.5M12 15l4.5-4.5M5 20h14"/></svg>';
   act.innerHTML = DL; let busy = false;
@@ -2686,52 +2736,96 @@ function docBox(m) {
   box.append(ic, t, act); return box;
 }
 // ───── استطلاع رأي ─────
+// الأصوات بتتخزّن في votes.<uid>. لو قواعد Firebase رفضت الحقل ده، بنخزّنها احتياطي في reacts.<uid> بصيغة "p:0,2"
+// (التفاعلات كلها بتتفلتر بـ EMO فالصيغة دي مش بتظهر كإيموجي) — فالاستطلاع يشتغل حتى لو القواعد ما اتعدّلتش.
+function pollVotes(m) {
+  const V = {}, raw = m.votes || {}, ok = a => (Array.isArray(a) ? a : []).filter(n => Number.isInteger(n) && n >= 0);
+  Object.keys(raw).forEach(u => { if (Array.isArray(raw[u])) V[u] = ok(raw[u]); });
+  Object.entries(m.reacts || {}).forEach(([u, k]) => { if (typeof k === "string" && k.indexOf("p:") === 0) V[u] = ok(k.slice(2).split(",").filter(Boolean).map(Number)); });
+  return V;
+}
 function openPollMaker() {
   const rid = room; if (!mediaGuard(rid)) return;
   const c = $("mcard"); c.textContent = ""; const w = el("div", "plm");
   w.append(el("div", "agr"), el("h3", "atit", "📊 استطلاع رأي"));
-  const q = el("textarea", "plq"); q.rows = 2; q.maxLength = 120; q.placeholder = "اسأل سؤالك…"; q.dir = "auto";
+  const qw = el("div", "plqw"), q = el("textarea", "plq"), qn = el("small", "plcnt", "٠/١٢٠"); q.rows = 2; q.maxLength = 120; q.placeholder = "اسأل سؤالك…"; q.dir = "auto"; qw.append(q, qn);
   const ol = el("div", "plo"), add = el("button", "pla", "＋ أضف اختيار"); add.type = "button";
-  const sync = () => { add.hidden = ol.children.length >= 6; ol.classList.toggle("min", ol.children.length <= 2); };
-  const mk = () => { const r = el("div", "plr"), i = el("input"); i.type = "text"; i.maxLength = 40; i.placeholder = "اختيار " + arN(ol.children.length + 1); i.dir = "auto"; const x = el("button", "plx", "✕"); x.type = "button"; x.setAttribute("aria-label", "حذف الاختيار"); x.onclick = () => { if (ol.children.length > 2) { r.remove(); sync(); } }; r.append(i, x); ol.append(r); sync(); return i; };
-  mk(); mk(); add.onclick = () => mk().focus();
+  const err = el("div", "plerr"); err.hidden = true;
   const mt = el("label", "plt"), mc = el("input"); mc.type = "checkbox"; mc.className = "tgl"; mt.append(el("span", "", "السماح بأكتر من اختيار"), mc);
   const row = el("div", "plb"), cn = el("button", "plc", "إلغاء"), go = el("button", "plg", "إرسال الاستطلاع"); cn.type = go.type = "button"; row.append(cn, go);
-  cn.onclick = () => { $("msheet").hidden = true; };
-  go.onclick = async () => {
-    const qq = q.value.trim(), opts = [...new Set([...ol.querySelectorAll("input")].map(i => i.value.trim()).filter(Boolean))];
-    if (!qq) { q.focus(); return; } if (opts.length < 2) { flash("اكتب اختيارين مختلفين على الأقل"); return; }
-    $("msheet").hidden = true; if (!mediaGuard(rid)) return;
-    try { await postMedia({ poll: { q: qq, opts, multi: !!mc.checked } }, rid); } catch (e) { setStatus("الاستطلاع ماتبعتش."); }
+  const vals = () => [...new Set([...ol.querySelectorAll("input")].map(i => i.value.trim()).filter(Boolean))];
+  const check = () => { const okq = !!q.value.trim(), okc = vals().length >= 2; go.disabled = !(okq && okc); go.classList.toggle("off", go.disabled); err.hidden = true; qn.textContent = arN(q.value.length) + "/" + arN(120); };
+  const sync = () => { add.hidden = ol.children.length >= 6; ol.classList.toggle("min", ol.children.length <= 2); [...ol.children].forEach((r, i) => { r.firstChild.placeholder = "اختيار " + arN(i + 1); }); check(); };
+  const mk = () => {
+    const r = el("div", "plr"), i = el("input"); i.type = "text"; i.maxLength = 40; i.dir = "auto"; i.enterKeyHint = "next";
+    const x = el("button", "plx", "✕"); x.type = "button"; x.setAttribute("aria-label", "حذف الاختيار");
+    x.onclick = () => { if (ol.children.length > 2) { r.remove(); sync(); } };
+    i.oninput = check;
+    i.onkeydown = e => { if (e.key !== "Enter") return; e.preventDefault(); const n = r.nextElementSibling; if (n) n.firstChild.focus(); else if (ol.children.length < 6) mk().focus(); else go.focus(); };
+    r.append(i, x); ol.append(r); sync(); return i;
   };
-  w.append(q, el("div", "asl", "الاختيارات"), ol, add, mt, row); c.append(w); $("msheet").hidden = false; setTimeout(() => q.focus(), 250);
+  mk(); mk(); add.onclick = () => mk().focus(); q.oninput = check;
+  cn.onclick = () => { $("msheet").hidden = true; };
+  let sending = false;
+  go.onclick = async () => {
+    if (sending) return;
+    const qq = q.value.trim(), opts = vals();
+    if (!qq) { q.focus(); return; } if (opts.length < 2) { err.textContent = "اكتب اختيارين مختلفين على الأقل"; err.hidden = false; return; }
+    if (!mediaGuard(rid)) { $("msheet").hidden = true; return; }
+    sending = true; go.disabled = true; go.textContent = "جاري الإرسال…";
+    const post = postMedia({ poll: { q: qq, opts: opts.slice(0, 6), multi: !!mc.checked } }, rid);
+    try {
+      // لو الإرسال فشل بسرعة (صلاحيات/قواعد) نفضل في الشاشة ونقول السبب؛ لو بطيء (نت ضعيف) نقفل والرسالة هتتبعت لوحدها
+      const r = await Promise.race([post.then(() => "ok"), new Promise(x => setTimeout(() => x("slow"), 3500))]);
+      if (r === "slow") post.catch(e => { console.warn("poll send", e); flash(errMsg(e)); });
+      $("msheet").hidden = true;
+    } catch (e) {
+      console.warn("poll send", e); sending = false; go.disabled = false; go.textContent = "إرسال الاستطلاع";
+      err.textContent = (e && e.custom ? e.message : errMsg(e)) || "الاستطلاع ماتبعتش، جرّب تاني."; err.hidden = false;
+    }
+  };
+  w.append(qw, el("div", "asl", "الاختيارات"), ol, add, mt, err, row); c.append(w); check(); $("msheet").hidden = false; setTimeout(() => q.focus(), 250);
 }
 function pollBox(m) {
-  const P = m.poll || {}, V = m.votes || {}, opts = Array.isArray(P.opts) ? P.opts : [], mine = Array.isArray(V[myId]) ? V[myId] : [];
-  const cnt = opts.map((_, i) => Object.values(V).filter(a => Array.isArray(a) && a.includes(i)).length), total = Object.values(V).filter(a => Array.isArray(a) && a.length).length, top = Math.max(0, ...cnt);
+  const P = m.poll || {}, V = pollVotes(m), opts = Array.isArray(P.opts) ? P.opts : [], mine = V[myId] || [];
+  const voters = Object.values(V).filter(a => a.length), total = voters.length;
+  const cnt = opts.map((_, i) => voters.filter(a => a.includes(i)).length), top = Math.max(0, ...cnt);
   const box = el("div", "poll"), q = el("div", "pq", P.q || "استطلاع"); q.dir = "auto";
   box.append(q, el("div", "ph", P.multi ? "اختار أكتر من إجابة" : "اختار إجابة واحدة"));
   opts.forEach((t, i) => {
-    const r = el("button", "po" + (mine.includes(i) ? " on" : "") + (top && cnt[i] === top ? " lead" : "")); r.type = "button";
+    const on = mine.includes(i), r = el("button", "po" + (on ? " on" : "") + (top && cnt[i] === top ? " lead" : "")); r.type = "button"; r.setAttribute("aria-pressed", on ? "true" : "false");
     const pct = total ? Math.round(cnt[i] / total * 100) : 0, fill = el("i", "pf"); fill.style.width = pct + "%";
-    const ck = el("span", "pk", mine.includes(i) ? "✓" : ""), lb = el("span", "pl", t); lb.dir = "auto";
-    r.append(fill, ck, lb, el("b", "pn", arN(cnt[i]))); r.onclick = e => { e.stopPropagation(); if (!selMode) votePoll(m, i); }; box.append(r);
+    const ck = el("span", "pk", on ? "✓" : ""), lb = el("span", "pl", t); lb.dir = "auto";
+    const nb = el("b", "pn", arN(cnt[i])); if (total) nb.append(el("small", "", arN(pct) + "٪"));
+    r.append(fill, ck, lb, nb);
+    r.onclick = e => { e.stopPropagation(); if (!selMode) votePoll(m, i); }; box.append(r);
   });
-  const ft = el("button", "pft", total ? arN(total) + " صوت · التفاصيل" : "مفيش أصوات لسه"); ft.type = "button"; ft.onclick = e => { e.stopPropagation(); if (total && !selMode) openVoters(m, cnt); }; box.append(ft);
+  const ft = el("button", "pft", total ? arN(total) + " صوت · التفاصيل" : "مفيش أصوات لسه، كون أول واحد"); ft.type = "button"; ft.onclick = e => { e.stopPropagation(); if (total && !selMode) openVoters(m); }; box.append(ft);
   return box;
 }
+let _voteLock = 0;
 async function votePoll(m, i) {
-  const P = m.poll || {}, cur = Array.isArray((m.votes || {})[myId]) ? m.votes[myId] : [];
-  const next = P.multi ? (cur.includes(i) ? cur.filter(x => x !== i) : [...cur, i]) : (cur.length === 1 && cur[0] === i ? [] : [i]);
-  try { await db.collection(isDM(m.room || room) ? "dmsgs" : "msgs").doc(m.id).update({ ["votes." + myId]: next }); }
-  catch (e) { flash(errMsg(e)); }
+  if (Date.now() - _voteLock < 220) return; _voteLock = Date.now();
+  const P = m.poll || {}, n = Array.isArray(P.opts) ? P.opts.length : 0; if (!(i >= 0 && i < n)) return;
+  const cur = pollVotes(m)[myId] || [];
+  const next = P.multi ? (cur.includes(i) ? cur.filter(x => x !== i) : [...cur, i].sort((a, b) => a - b)) : (cur.length === 1 && cur[0] === i ? [] : [i]);
+  vcSnd(next.includes(i) ? "react" : "tap");
+  const ref = msgCol(m.room || room).doc(m.id);
+  try { await ref.update({ ["votes." + myId]: next }); }
+  catch (e) {
+    if (e && e.code === "permission-denied") {
+      try { await ref.update({ ["reacts." + myId]: next.length ? "p:" + next.join(",") : FV().delete() }); return; } catch (e2) { e = e2; }
+    }
+    console.warn("vote", e); flash(errMsg(e));
+  }
 }
-function openVoters(m, cnt) {
-  const c = $("mcard"); c.textContent = ""; const w = el("div", "plm"), V = m.votes || {};
-  w.append(el("div", "agr"), el("h3", "atit", "📊 " + (m.poll.q || "")));
+function openVoters(m) {
+  const c = $("mcard"); c.textContent = ""; const w = el("div", "plm"), V = pollVotes(m);
+  const h = el("h3", "atit", "📊 " + (m.poll.q || "")); h.dir = "auto"; w.append(el("div", "agr"), h);
   (m.poll.opts || []).forEach((t, i) => {
-    const us = Object.keys(V).filter(u => Array.isArray(V[u]) && V[u].includes(i)), g = el("div", "pvg"), h = el("div", "pvh"); h.append(el("span", "", t), el("b", "", arN(us.length)));
-    g.append(h); us.forEach(u => g.append(el("div", "pvu", u === myId ? "أنت" : nameOf(u)))); if (!us.length) g.append(el("div", "pvu mut", "—")); w.append(g);
+    const us = Object.keys(V).filter(u => V[u].includes(i)), g = el("div", "pvg"), hd = el("div", "pvh"), tl = el("span", "", t); tl.dir = "auto"; hd.append(tl, el("b", "", arN(us.length)));
+    g.append(hd); us.forEach(u => { const r = el("div", "pvu"); try { const av = avatar(profileFor(u, m.room || room)); av.classList.add("pvav"); r.append(av); } catch (_) {} r.append(el("span", "", u === myId ? "أنت" : nameOf(u, m.room || room))); g.append(r); });
+    if (!us.length) g.append(el("div", "pvu mut", "—")); w.append(g);
   });
   const x = el("button", "plc", "إغلاق"); x.type = "button"; x.onclick = () => { $("msheet").hidden = true; }; w.append(x); c.append(w); $("msheet").hidden = false;
 }
