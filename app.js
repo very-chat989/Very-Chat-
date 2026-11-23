@@ -36,7 +36,8 @@ const arN = n => String(n).replace(/\d/g, d => "٠١٢٣٤٥٦٧٨٩"[d]);
 const BAD_CH = /[()"'\\\s<>]/;
 const okSrc = (u, k) => { u = String(u || ""); if (u.length > 3e7 || BAD_CH.test(u)) return false; if (u.startsWith("blob:")) return true; if (!u.startsWith("data:" + k + "/")) return false; return !(k === "image" && /^data:image\/svg/i.test(u)); };
 const safeCol = c => { c = String(c || "").trim(); return /^#[0-9a-fA-F]{3,8}$/.test(c) || /^(rgb|hsl)a?\([0-9.,%\s\/-]{1,40}\)$/i.test(c) ? c : ""; };
-const okPhoto = u => { u = String(u || ""); if (u.length > 3e6 || BAD_CH.test(u)) return false; return /^data:image\/(png|jpe?g|webp|gif);base64,/i.test(u) || /^https:\/\/[a-z0-9.-]+\.googleusercontent\.com\//i.test(u); };
+const CHAR_URLS = new Set();   // روابط شخصيات الشلة الجاهزة (SVG من صنع التطبيق نفسه): مسموحة بالمطابقة التامة بس
+const okPhoto = u => { u = String(u || ""); if (CHAR_URLS.has(u)) return true; if (u.length > 3e6 || BAD_CH.test(u)) return false; return /^data:image\/(png|jpe?g|webp|gif);base64,/i.test(u) || /^https:\/\/[a-z0-9.-]+\.googleusercontent\.com\//i.test(u); };
 const logo = id => `<svg viewBox='0 0 100 100'><defs><linearGradient id='${id}' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='#2cc4a9'/><stop offset='1' stop-color='#0f8f7a'/></linearGradient></defs><rect width='100' height='100' rx='26' fill='url(#${id})'/><path d='M50 18c-18 0-32 12-32 28 0 8 4 15 10 20l-3 14 15-7c3 1 6 1 10 1 18 0 32-12 32-28S68 18 50 18z' fill='#fff'/><path d='M36 38l14 22 14-22' fill='none' stroke='#0f8f7a' stroke-width='8' stroke-linecap='round' stroke-linejoin='round'/></svg>`;
 $("sLogo").innerHTML = logo("lgS"); $("dLogo").innerHTML = logo("lgD");
 const draftKey = r => "vc_draft_" + r;
@@ -1771,20 +1772,22 @@ function openRoom(id) {
   clearReply(); selMode = false; sel.clear(); $("selBar").hidden = true;
   cancelEdit();
   room = id; creating = false; confirmDel = false; $("inp").placeholder = "اكتب رسالة…"; try { $("inp").value = localStorage.getItem("vc_draft_" + id) || ""; } catch (_) {} buildChips(); refreshMe();
-  if (unsub) unsub();
+  if (unsub) unsub(); if (window._dog) clearTimeout(window._dog);
   setStatus("جاري تحميل الرسايل…");
   const timer = setTimeout(() => setStatus("مش قادر أوصل للرسايل دلوقتي، ممكن النت ضعيف."), 10000);
-  let firstSnap = true, pendSig = "";
+  // لو التحميل علّق (غالبًا بسبب قاعدة بيانات الكاش المحلية): أعد التشغيل مرة واحدة من غير كاش محلي
+  const dog = window._dog = setTimeout(() => { try { if (navigator.onLine && !noPersist && !persistOff && !firstDone) { localStorage.setItem("vc_np", String(Date.now())); location.reload(); } } catch (_) {} }, 5000);
+  let firstSnap = true, firstDone = false, pendSig = "";
   unsub = (isDM(id) ? db.collection("dmsgs").where("room", "==", id).where("members", "array-contains", myId) : db.collection("msgs").where("room", "==", id)).onSnapshot({ includeMetadataChanges: true },
     s => {
-      clearTimeout(timer); NET.cache = s.metadata.fromCache;
+      clearTimeout(timer); clearTimeout(dog); firstDone = true; NET.cache = s.metadata.fromCache;
       const pend = s.docs.filter(d => d.metadata.hasPendingWrites).map(d => d.id).join(",");
       if (!firstSnap && !s.docChanges().length && pend === pendSig) { netUI(); return; }
       firstSnap = false; pendSig = pend;
       const clr = isDM(id) ? dmClearedAt(dms[id]) : 0; { const st = $("status").textContent; if (st.startsWith("جاري تحميل") || st.startsWith("مش قادر أوصل")) setStatus(""); }
       render(s.docs.map(d => ({ ...d.data(), id: d.id, _p: d.metadata.hasPendingWrites })).filter(m => m.ts > clr).sort((a, b) => (a.ts - b.ts) || a.id.localeCompare(b.id)).slice(-150));
     },
-    e => { clearTimeout(timer); setStatus(errMsg(e)); });
+    e => { clearTimeout(timer); clearTimeout(dog); setStatus(errMsg(e)); });
   maybePersona();
   if (window.syncHistory) syncHistory();
 }
@@ -1906,7 +1909,7 @@ const CHARS = (() => {
       "<ellipse cx='42' cy='48' rx='4' ry='3' fill='#fff'/><ellipse cx='58' cy='48' rx='4' ry='3' fill='#fff'/><circle cx='42' cy='48' r='1.9' fill='#111'/><circle cx='58' cy='48' r='1.9' fill='#111'/><path d='M36 43q6-4 11 0M53 43q6-4 11 0' stroke='#0c4a6e' stroke-width='2.6' fill='none' stroke-linecap='round'/>" +
       "<path d='M42 64q8 4 16 0l-3 9q-5 4-10 0z' fill='#0f172a'/><path d='M38 59q6-5 12 0 6-5 12 0-6 5-12 2-6 3-12-2z' fill='#0f172a'/>") }
   ];
-  L.forEach(c => { c.url = "data:image/svg+xml;utf8," + encodeURIComponent(c.s.replace("<svg ", "<svg xmlns='http://www.w3.org/2000/svg' ")); });
+  L.forEach(c => { c.url = "data:image/svg+xml;utf8," + encodeURIComponent(c.s.replace("<svg ", "<svg xmlns='http://www.w3.org/2000/svg' ")); CHAR_URLS.add(c.url); });
   return L;
 })();
 function paintDraft() {
@@ -3165,9 +3168,11 @@ async function stoUI() {
 }
 const withTimeout = (p, ms) => Promise.race([Promise.resolve(p).catch(() => {}), new Promise(r => setTimeout(r, ms))]);
 // بيتنفذ في أول تشغيل قبل Firebase: بيمسح قواعد البيانات المحلية بدون ما يعلّق
-let noPersist = false;
+let noPersist = false, persistOff = false;
 async function preWipe() {
+  try { const t = +localStorage.getItem("vc_np") || 0; if (t && Date.now() - t < 3600e3) { noPersist = persistOff = true; localStorage.removeItem("vc_np"); localStorage.setItem("vc_np_clean", "1"); } } catch (e) {}
   let flag = ""; try { flag = localStorage.getItem("vc_wipe") || ""; localStorage.removeItem("vc_wipe"); } catch (e) {}
+  try { if (!flag && localStorage.getItem("vc_np_clean")) { flag = "cache"; localStorage.removeItem("vc_np_clean"); } } catch (e) {}
   if (!flag) return;
   try {
     if (indexedDB.databases) {
