@@ -3,7 +3,7 @@
  * ومكتبات Firebase (نسخة ثابتة) بتتخزّن مرة واحدة وتتقدّم من الكاش.
  * لما تعدّل أي ملف: غيّر رقم BUILD هنا وفي index.html (meta vc-build و ?v= و التعليق الأخير). */
 "use strict";
-const BUILD = "20261123-71";
+const BUILD = "20261123-72";
 const PREFIX = "verychat-";
 const CACHE = PREFIX + BUILD;
 const V = "?v=" + BUILD;
@@ -75,14 +75,32 @@ self.addEventListener("fetch", e => {
   })());
 });
 
+// الاسم اللي إنت مسجّله لصاحبك (مش اسمه الأصلي): الإشعار بييجي باسم المُرسِل نفسه، فبنبدّله من الأسماء المحفوظة على الجهاز (IndexedDB)
+async function dmNick(tag) {
+  try {
+    if (!/^dm_/.test(tag)) return "";
+    const mem = tag.slice(3).split("_");
+    const db = await new Promise(res => { try { const q = indexedDB.open("vc-media"); q.onupgradeneeded = () => { try { q.transaction.abort(); } catch (_) {} }; q.onsuccess = () => res(q.result); q.onerror = q.onblocked = () => res(null); } catch (_) { res(null); } });
+    if (!db) return "";
+    if (!db.objectStoreNames.contains("m")) { db.close(); return ""; }
+    const val = k => new Promise(res => { try { const r = db.transaction("m").objectStore("m").get(k); r.onsuccess = () => res(r.result); r.onerror = () => res(null); } catch (_) { res(null); } });
+    let nick = "";
+    for (const me of mem) {
+      const r = await val("nick:" + me), peer = mem.find(x => x !== me);
+      if (r && r.s && peer) { try { const m = JSON.parse(r.s); if (m && m[peer]) { nick = String(m[peer]); break; } } catch (_) {} }
+    }
+    db.close(); return nick;
+  } catch (_) { return ""; }
+}
 // إشعارات الـ Push (من Firebase Cloud Messaging): بتوصل والتطبيق مقفول
 self.addEventListener("push", e => {
   let p = {}; try { p = e.data ? e.data.json() : {}; } catch (_) { try { p = { data: { body: e.data.text() } }; } catch (__) {} }
   const d = p.data || p.notification || p || {};
-  const title = String(d.title || "Very Chat"), body = String(d.body || ""), tag = String(d.tag || "vc");
+  let title = String(d.title || "Very Chat"); const body = String(d.body || ""), tag = String(d.tag || "vc");
   e.waitUntil((async () => {
     const cs = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
-    if (cs.some(c => c.visibilityState === "visible")) return;          // التطبيق مفتوح قدامك، مش محتاج إشعار
+    if (cs.some(c => c.visibilityState === "visible")) return;
+    { const nk = await dmNick(tag); if (nk) title = "💬 " + nk; }          // التطبيق مفتوح قدامك، مش محتاج إشعار
     const ex = await self.registration.getNotifications({ tag });
     const bt = n => (n.data && n.data.title) || n.title, bb = n => (n.data && n.data.body) || n.body;
     if (ex.some(n => bt(n) === title && bb(n) === body && Date.now() - n.timestamp < 20000)) return;   // نفس الإشعار اتعرض لسه من التطبيق نفسه
