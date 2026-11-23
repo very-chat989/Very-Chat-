@@ -3165,13 +3165,15 @@ async function stoUI() {
 }
 const withTimeout = (p, ms) => Promise.race([Promise.resolve(p).catch(() => {}), new Promise(r => setTimeout(r, ms))]);
 // بيتنفذ في أول تشغيل قبل Firebase: بيمسح قواعد البيانات المحلية بدون ما يعلّق
+let noPersist = false;
 async function preWipe() {
   let flag = ""; try { flag = localStorage.getItem("vc_wipe") || ""; localStorage.removeItem("vc_wipe"); } catch (e) {}
   if (!flag) return;
   try {
     if (indexedDB.databases) {
       const dbs = await withTimeout(indexedDB.databases(), 1500) || [];
-      await Promise.all(dbs.filter(d => d.name && (d.name.startsWith("firestore/") || (flag === "all" && d.name.startsWith("firebase")))).map(d => withTimeout(new Promise(r => { const q = indexedDB.deleteDatabase(d.name); q.onsuccess = q.onerror = q.onblocked = r; }), 2000)));
+      // مابنمسحش قاعدة بيانات تسجيل الدخول (firebaseLocalStorageDb) أبدًا: لو تبويب تاني فاتحها المسح بيتعلّق وكل فتح بعده بيستنى للأبد
+      await Promise.all(dbs.filter(d => d.name && d.name.startsWith("firestore/")).map(d => withTimeout(new Promise(r => { const q = indexedDB.deleteDatabase(d.name); q.onsuccess = q.onerror = r; q.onblocked = () => { noPersist = true; r(); }; }), 2000)));
     }
   } catch (e) {}
   if (flag === "all") { try { localStorage.clear(); sessionStorage.clear(); } catch (e) {} }
@@ -3181,7 +3183,13 @@ async function wipeStorage(everything) {
   try { localStorage.setItem("vc_wipe", everything ? "all" : "cache"); } catch (e) {}
   await withTimeout((async () => { if (window.caches) await Promise.all((await caches.keys()).map(k => caches.delete(k))); })(), 1500);
   if (everything) await withTimeout((async () => { const rs = await navigator.serviceWorker.getRegistrations(); await Promise.all(rs.map(r => r.unregister())); })(), 1500);
-  try { db && db.terminate(); } catch (e) {}
+  if (everything) {
+    // تسجيل خروج حقيقي قبل أي مسح، علشان مانعتمدش على مسح قاعدة بيانات الدخول
+    try { if (window.firebase && firebase.apps && firebase.apps.length) await withTimeout(firebase.auth().signOut(), 2500); } catch (e) {}
+    try { if (typeof pushUnreg === "function") await withTimeout(pushUnreg(), 2500); } catch (e) {}
+  }
+  try { if (db) { await withTimeout(db.terminate(), 2000); if (everything) await withTimeout(db.clearPersistence(), 2500); } } catch (e) {}
+  if (everything) { try { localStorage.clear(); sessionStorage.clear(); } catch (e) {} }
 }
 $("stoClear").onclick = async () => {
   const b = $("stoClear"); b.disabled = true; b.textContent = "جاري المسح…";
@@ -3353,7 +3361,7 @@ if (APPCHECK_KEY && firebase.appCheck) { try { firebase.appCheck().activate(APPC
     const au = firebase.auth(); au.getRedirectResult().catch(e => lerr(authMsg(e)));
     let user = await new Promise(res => { const un = au.onAuthStateChanged(u => { un(); res(u); }); });
     if (!user) user = await askLogin();
-    myId = user.uid; db = firebase.firestore(); try { await db.enablePersistence({ synchronizeTabs: true }); } catch (e) {}
+    myId = user.uid; db = firebase.firestore(); if (!noPersist) { try { db.settings({ cacheSizeBytes: firebase.firestore.CACHE_SIZE_UNLIMITED }); } catch (e) {} try { await withTimeout(db.enablePersistence({ synchronizeTabs: true }), 4000); } catch (e) {} }
   } catch (e) { setStatus(e.code === "auth/operation-not-allowed" || e.code === "auth/admin-restricted-operation" ? "فعّل تسجيل الدخول Anonymous من Firebase ← Authentication ← Sign-in method." : "ماقدرتش أتصل بـ Firebase: " + (e.code || e.message)); $("sendBtn").disabled = true; starting = false; setTimeout(() => { if (!started) start(); }, 6000); return; }
   started = true; starting = false; $("sendBtn").disabled = false; syncNicks();
   db.collection("profiles").onSnapshot(s => {
