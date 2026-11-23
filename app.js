@@ -286,6 +286,8 @@ function jumpBottom(smooth) {
 $("toBottom").onclick = () => { jumpBottom(true); if (lastList.length) setSeen(room, lastList[lastList.length - 1].ts); setTimeout(boxScrolled, 350); };
 ["touchstart", "wheel", "mousedown"].forEach(ev => $("msgs").addEventListener(ev, () => { $("msgs")._pin = 0; }, { passive: true }));
 /* Very Chat — رسم الرسايل والتفاعلات والتحديد */
+// توقيع الرسالة: لو ما اتغيرش نسيب العنصر في مكانه، فالفيديوهات والصور ما بتترعشش
+const sgs = o => { try { return JSON.stringify(o, (k, x) => typeof x === "string" && x.length > 160 ? x.length + ":" + x.slice(0, 40) + x.slice(-40) : x); } catch (_) { return "r" + Math.random(); } };
 function render(list) {
   lastList = list;
   const box = $("msgs");
@@ -294,16 +296,19 @@ function render(list) {
   // لو في فيديو شغّال، نأجّل إعادة الرسم علشان ما يقفلش في وشك
   if ([...box.querySelectorAll("video")].some(v => !v.paused && !v.ended)) { clearTimeout(render._t); render._t = setTimeout(() => render(lastList), 1500); return; }
   const near = box.scrollHeight - box.scrollTop - box.clientHeight < 90;
-  const frag = document.createDocumentFragment(), oldIds = !fresh && box._ids ? box._ids : null;
+  const nodes = [], oldIds = !fresh && box._ids ? box._ids : null, RC = fresh || !box._rc ? (box._rc = new Map()) : box._rc, keep = new Set();   // RC: الرسايل اللي ما اتغيرتش بنسيبها زي ما هي (من غير إعادة رسم)
   { const hs = hidSet(room); if (hs.size) list = list.filter(m => !(m.del && hs.has(m.id))); }
   list.forEach((m, i) => { try {
     const prev = list[i - 1], mine = m.uid === myId, p = profileFor(m.uid);
     const newDay = !prev || new Date(prev.ts).toDateString() !== new Date(m.ts).toDateString();
-    if (newDay) { const dv = document.createElement("div"), d0 = new Date(m.ts); dv.className = "day"; dv.textContent = d0.toDateString() === new Date().toDateString() ? "اليوم" : d0.toLocaleDateString("ar-EG", { day: "numeric", month: "long" }); frag.appendChild(dv); }
+    if (newDay) { const dv = document.createElement("div"), d0 = new Date(m.ts); dv.className = "day"; dv.textContent = d0.toDateString() === new Date().toDateString() ? "اليوم" : d0.toLocaleDateString("ar-EG", { day: "numeric", month: "long" }); nodes.push(dv); }
     const first = newDay || prev.uid !== m.uid || m.ts - prev.ts > 300000;
     const row = document.createElement("div"); row.className = "row" + (mine ? " me" : "") + (first ? " first" : "") + (sel.has(m.id) ? " sel" : "");
     row.dataset.uid = m.uid; row.dataset.ts = m.ts; row.dataset.mid = m.id;
-    if (box._unr && m.ts >= box._unr && !(prev && prev.ts >= box._unr)) { const u = document.createElement("div"); u.className = "unr"; u.id = "unrDiv"; const cnt = list.filter(x => x.uid !== myId && x.ts >= box._unr).length; u.textContent = "⬇ " + cnt + " رسالة غير مقروءة"; frag.appendChild(u); } if (first) row.appendChild(avatar(p)); else { const s = document.createElement("div"); s.className = "sp"; row.appendChild(s); }
+    if (box._unr && m.ts >= box._unr && !(prev && prev.ts >= box._unr)) { const u = document.createElement("div"); u.className = "unr"; u.id = "unrDiv"; const cnt = list.filter(x => x.uid !== myId && x.ts >= box._unr).length; u.textContent = "⬇ " + cnt + " رسالة غير مقروءة"; nodes.push(u); } if (first) row.appendChild(avatar(p)); else { const s = document.createElement("div"); s.className = "sp"; row.appendChild(s); }
+    const p2 = m.ucard ? (profiles[m.ucard.uid] || {}) : null;
+    const sig = [sgs(m), mine ? 1 : 0, first ? 1 : 0, sel.has(m.id) ? 1 : 0, selMode ? 1 : 0, first ? sgs(p) : "", mine && seenOK() ? seenBy(m).length : -1, p2 ? (p2.name || "") + (p2.fcode || "") : "", m.share ? rooms.length : ""].join("¦");
+    const hit = RC.get(m.id); if (hit && hit.sig === sig) { keep.add(m.id); nodes.push(hit.row); return; }
     const b = document.createElement("div"); b.className = "b";
     if (first && !mine) { const n = document.createElement("div"); n.className = "n"; n.dir = "rtl"; n.textContent = (p && p.name) || "مجهول"; n.style.cursor = "pointer"; n.onclick = e => { e.stopPropagation(); if (Date.now() - (b._f || 0) > 800) peerTap(m.uid, m.room || room); }; b.appendChild(n); }
     const dl = !!m.del;
@@ -334,9 +339,9 @@ function render(list) {
     const tm = document.createElement("span"); tm.textContent = new Date(m.ts).toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit" }); t.appendChild(tm);
     b.appendChild(t); holdMenu(b, m); row.appendChild(b);
     if (selMode) { const ck = document.createElement("span"); ck.className = "ck"; ck.textContent = sel.has(m.id) ? "✓" : ""; row.appendChild(ck); }
-    row.onclick = () => { if (selMode) toggleSel(m.id); }; frag.appendChild(row);
+    row.onclick = () => { if (selMode) toggleSel(m.id); }; nodes.push(row); RC.set(m.id, { sig, row }); keep.add(m.id);
   } catch (err) { console.warn("رسالة تالفة اتخطّت", err); } });
-  box.replaceChildren(frag); box._ids = new Set(list.map(x => x.id)); try { UPL.mount(list, box); } catch (_) {}
+  { const ns = new Set(nodes); [...box.childNodes].forEach(c => { if (!ns.has(c)) c.remove(); }); let cur = box.firstChild; for (const n of nodes) { if (n === cur) cur = cur.nextSibling; else box.insertBefore(n, cur); } for (const k of [...RC.keys()]) if (!keep.has(k)) RC.delete(k); } box._ids = new Set(list.map(x => x.id)); try { UPL.mount(list, box); } catch (_) {}
   const lm = list[list.length - 1], mineNew = lm && lm.uid === myId && Date.now() - lm.ts < 5000;
   if (fresh) { box.scrollTop = box.scrollHeight; box._pin = 1; requestAnimationFrame(() => { if (box._pin) box.scrollTop = box.scrollHeight; setTimeout(() => { if (box._pin) box.scrollTop = box.scrollHeight; box._pin = 0; }, 400); }); }
   else if (near || mineNew || list.length < 4) box.scrollTop = box.scrollHeight;
@@ -2010,12 +2015,42 @@ try { if (navigator.storage && navigator.storage.persist) navigator.storage.pers
 // الفيديو الكبير بيتقسّم لقطع (كل قطعة document في media). أول قطعة header: data:video/..;vcn=N;base64,
 const VCN = /^data:((?:video|application)\/[a-z0-9.+-]+);vcn=(\d+);base64,/i, MEDIA_CB = new Map(), sleep = ms => new Promise(r => setTimeout(r, ms));
 const b64Bytes = b => { const bin = atob(b), u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return u; };
+// ───── إبقاء الشاشة صاحية أثناء النقل (الشاشة لو اتقفلت المتصفح بيوقّف النقل) ─────
+const WL = (() => {
+  let n = 0, lock = null;
+  const get = async () => { if (n < 1 || lock || document.hidden || !navigator.wakeLock) return; try { lock = await navigator.wakeLock.request("screen"); lock.addEventListener("release", () => { lock = null; }); } catch (_) {} };
+  document.addEventListener("visibilitychange", get);
+  return { on() { n++; get(); }, off() { n = Math.max(0, n - 1); if (!n && lock) { try { lock.release(); } catch (_) {} lock = null; } } };
+})();
+// قايمة التحميلات الشغّالة: لو التطبيق اتقفل أو المتصفح وقّفه، بتكمّل أول ما ترجع
+const dlqGet = () => { try { return JSON.parse(localStorage.getItem("vc_dlq") || "[]"); } catch (_) { return []; } };
+const dlq = (id, on) => { try { const q = dlqGet().filter(x => x !== id); if (on) q.push(id); localStorage.setItem("vc_dlq", JSON.stringify(q.slice(-30))); } catch (_) {} };
+const waitBack = () => new Promise(res => {
+  let iv; const go = () => { if (document.hidden || navigator.onLine === false) return; document.removeEventListener("visibilitychange", go); window.removeEventListener("online", go); clearInterval(iv); res(); };
+  document.addEventListener("visibilitychange", go); window.addEventListener("online", go); iv = setInterval(go, 5000);
+});
 async function loadChunked(id, first, mm) {
-  const n = +mm[2], parts = new Array(n); parts[0] = first.slice(mm[0].length); let done = 1, next = 1;
+  const n = +mm[2], parts = new Array(n), dk = i => "dp:" + id + ":" + i; parts[0] = first.slice(mm[0].length); let done = 1, next = 1;
   const tell = () => (MEDIA_CB.get(id) || []).forEach(f => { try { f(done / n); } catch (_) {} });
-  const one = async i => { for (let t = 0; t < 4; t++) { try { const d = await db.collection("media").doc(id + "_" + i).get(); if (d.exists && typeof d.data().data === "string") return d.data().data; } catch (e) {} await sleep(500 * (t + 1)); } throw new Error("chunk " + i); };
-  await Promise.all(Array.from({ length: Math.min(4, n - 1) }, async () => { while (next < n) { const i = next++; parts[i] = await one(i); done++; tell(); } }));
-  return new Blob(parts.map(b64Bytes), { type: mm[1].toLowerCase() });
+  dlq(id, 1); WL.on();
+  try {
+    // الأجزاء اللي نزلت قبل كده (لو التطبيق اتقفل في النص) ما بتتحمّلش تاني
+    for (let i = 1; i < n; i++) { const s = await idbGet(dk(i)); if (typeof s === "string" && s) { parts[i] = s; done++; } }
+    tell();
+    const one = async i => {
+      const t0 = Date.now();
+      for (let t = 0; ; t++) {
+        try { const d = await db.collection("media").doc(id + "_" + i).get(); if (d.exists && typeof d.data().data === "string") return d.data().data; } catch (e) {}
+        if (Date.now() - t0 > 30 * 60000) throw new Error("chunk " + i);
+        if (t < 3) await sleep(500 * (t + 1)); else await waitBack();      // ما نستسلمش: نستنى النت أو رجوعك للتطبيق ونكمّل
+      }
+    };
+    await Promise.all(Array.from({ length: Math.min(4, n - 1) }, async () => { while (next < n) { const i = next++; if (parts[i] !== undefined) continue; parts[i] = await one(i); idbTx("readwrite", st => st.put(parts[i], dk(i))); done++; tell(); } }));
+    const blob = new Blob(parts.map(b64Bytes), { type: mm[1].toLowerCase() });
+    idbTx("readwrite", st => { for (let i = 1; i < n; i++) st.delete(dk(i)); }); dlq(id, 0);
+    return blob;
+  } catch (e) { dlq(id, 0); throw e; }
+  finally { WL.off(); }
 }
 function getMedia(id, onp) {
   if (onp) { if (!MEDIA_CB.has(id)) MEDIA_CB.set(id, []); MEDIA_CB.get(id).push(onp); }
@@ -2035,6 +2070,9 @@ function getMedia(id, onp) {
   })().catch(() => fin(null));
   MEDIA_P.set(id, p); return p;
 }
+const dlResume = () => { if (!db || !myId) return; dlqGet().forEach(id => { try { getMedia(id).catch(() => {}); } catch (_) {} }); };
+document.addEventListener("visibilitychange", () => { if (!document.hidden) dlResume(); }); window.addEventListener("online", dlResume);
+{ const iv = setInterval(() => { if (db && myId) { clearInterval(iv); dlResume(); } }, 2500); }
 const MIO = "IntersectionObserver" in window ? new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { MIO.unobserve(e.target); if (e.target._load) e.target._load(); } }), { rootMargin: "400px" }) : null;
 function mediaBox(m) {
   const vid = m.mk === "vid" || !!m.vid, w0 = +m.w || 4, h0 = +m.h || 3; let W = 240, H = W * h0 / w0; if (H > 320) { H = 320; W = H * w0 / h0; } if (W < 120) W = 120;
@@ -2226,7 +2264,7 @@ const UPL = (() => {
     try { let q = db.collection(isDM(job.rid) ? "dmsgs" : "msgs").where("room", "==", job.rid).where("mid", "==", job.mid); if (isDM(job.rid)) q = q.where("members", "array-contains", myId); return !(await q.limit(1).get()).empty; } catch (_) { return false; }
   }
   async function run(job) {
-    if (job.running) return; job.running = true; job.cancel = false; job.state = "up"; paint(job); act();
+    if (job.running) return; job.running = true; WL.on(); job.cancel = false; job.state = "up"; paint(job); act();
     try {
       if (job.small) { const url = await readURL(job.file); if (!url) throw new Error("read"); job.state = "post"; paint(job); await postMedia({ ...(await saveMedia("vid", url, job.meta)), ...(job.cap ? { text: job.cap } : {}), ...(job.reply ? { reply: job.reply } : {}) }, job.rid); }
       else {
@@ -2241,7 +2279,7 @@ const UPL = (() => {
       if (job.cancel || (e && e.message === "cancel")) { if (jobs.has(job.id)) cancel(job); }
       else if (e && e.code === "permission-denied") { flash("⚠️ قواعد Firebase مش مسمحة بحفظ الفيديو الكبير (collection media). راجع القواعد."); drop(job); wipe(job); }
       else { job.state = "err"; job.err = navigator.onLine === false ? "مفيش نت" : "اتقطع الرفع"; paint(job); }
-    } finally { job.running = false; act(); }
+    } finally { job.running = false; WL.off(); act(); }
   }
   const make = o => { const job = { id: "u" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), state: "prep", pct: 0, t0: Date.now(), done: new Set(), meta: {}, ...o }; job.ui = { get cancel() { return job.cancel; }, set(_t, p) { if (p != null) job.pct = p; paint(job); note(job); } }; jobs.set(job.id, job); show(job); return job; };
   async function resume() {
