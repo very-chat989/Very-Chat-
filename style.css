@@ -913,3 +913,8 @@ html[dir=rtl] #sendBtn svg{transform:scaleX(-1)}
 .fwrow.nc .fwav .av{width:52px;height:52px;font-size:26px}
 .fwrow.nc .fwrt b{font-size:16.5px}
 .fwrow.nc .fwrt small{font-size:13px}
+
+/* رسالة محذوفة (زي واتساب) */
+.row .b .dl{font-style:italic;opacity:.78;font-size:14px;padding:2px 2px}
+.row .b.deld{opacity:.9;border:1px dashed rgba(150,160,170,.45)}
+.row .b.deld .t{opacity:.7}

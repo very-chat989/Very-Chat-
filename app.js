@@ -293,6 +293,7 @@ function render(list) {
   if ([...box.querySelectorAll("video")].some(v => !v.paused && !v.ended)) { clearTimeout(render._t); render._t = setTimeout(() => render(lastList), 1500); return; }
   const near = box.scrollHeight - box.scrollTop - box.clientHeight < 90;
   const frag = document.createDocumentFragment(), oldIds = !fresh && box._ids ? box._ids : null;
+  { const hs = hidSet(room); if (hs.size) list = list.filter(m => !(m.del && hs.has(m.id))); }
   list.forEach((m, i) => { try {
     const prev = list[i - 1], mine = m.uid === myId, p = profileFor(m.uid);
     const newDay = !prev || new Date(prev.ts).toDateString() !== new Date(m.ts).toDateString();
@@ -303,10 +304,13 @@ function render(list) {
     if (box._unr && m.ts >= box._unr && !(prev && prev.ts >= box._unr)) { const u = document.createElement("div"); u.className = "unr"; u.id = "unrDiv"; const cnt = list.filter(x => x.uid !== myId && x.ts >= box._unr).length; u.textContent = "⬇ " + cnt + " رسالة غير مقروءة"; frag.appendChild(u); } if (first) row.appendChild(avatar(p)); else { const s = document.createElement("div"); s.className = "sp"; row.appendChild(s); }
     const b = document.createElement("div"); b.className = "b";
     if (first && !mine) { const n = document.createElement("div"); n.className = "n"; n.dir = "rtl"; n.textContent = (p && p.name) || "مجهول"; n.style.cursor = "pointer"; n.onclick = e => { e.stopPropagation(); if (Date.now() - (b._f || 0) > 800) peerTap(m.uid, m.room || room); }; b.appendChild(n); }
-    if (m.fwd) b.appendChild(el("div", "fw", "↪️ محوّلة من " + m.fwd));
-    if (m.reply) { const q = el("div", "qt"); q.dir = "rtl"; q.append(el("b", "", m.reply.name || "مجهول"), document.createTextNode(m.reply.text || "")); b.appendChild(q); }
+    const dl = !!m.del;
+    if (dl) { const x = el("div", "dl", delLabel(m)); x.dir = "rtl"; b.appendChild(x); b.classList.add("deld"); }
+    if (!dl && m.fwd) b.appendChild(el("div", "fw", "↪️ محوّلة من " + m.fwd));
+    if (!dl && m.reply) { const q = el("div", "qt"); q.dir = "rtl"; q.append(el("b", "", m.reply.name || "مجهول"), document.createTextNode(m.reply.text || "")); b.appendChild(q); }
     const tx = document.createElement("div"); tx.className = "tx"; tx.dir = "auto";
-    if (m.audio) b.appendChild(audioPlayer(m));
+    if (dl) {}
+    else if (m.audio) b.appendChild(audioPlayer(m));
     else {
       if (m.mid || m.img || m.vid) b.appendChild(mediaBox(m));
       if (m.share) b.appendChild(roomCard(m.share));
@@ -314,7 +318,7 @@ function render(list) {
       if (m.text) { linkify(tx, m.text); if (m.mid || m.img || m.vid) tx.classList.add("mcap"); b.appendChild(tx); const jn = jumboN(m); if (jn) { b.classList.add("jumbo"); if (oldIds && !oldIds.has(m.id)) b.classList.add("pop"); tx.style.fontSize = [0, 64, 52, 44][jn] + "px"; } }
       else if (!m.mid && !m.img && !m.vid && !m.share && !m.ucard) { linkify(tx, m.text || ""); b.appendChild(tx); }
     }
-    const rc = {}; Object.values(m.reacts || {}).forEach(k => { if (EMO[k]) rc[k] = (rc[k] || 0) + 1; });
+    const rc = {}; Object.values(dl ? {} : m.reacts || {}).forEach(k => { if (EMO[k]) rc[k] = (rc[k] || 0) + 1; });
     if (Object.keys(rc).length) {
       const rw = document.createElement("div"); rw.className = "rxs";
       Object.keys(rc).forEach(k => { const c = document.createElement("button"); c.type = "button"; c.className = "rx" + ((m.reacts || {})[myId] === k ? " on" : ""); c.innerHTML = EMO[k].s; c.appendChild(document.createTextNode(" " + rc[k])); c.onclick = () => toggleReact(m, k); rw.appendChild(c); });
@@ -337,7 +341,8 @@ function render(list) {
   setStatus(list.length ? "" : "مفيش رسايل لسه. ابدأ إنت!");
 }
 
-const mtext = m => m.audio ? "🎤 رسالة صوتية" : (m.mid ? m.mk === "vid" : false) || m.vid ? "🎥 فيديو" + (m.text ? " · " + m.text : "") : m.mid || m.img ? "🖼 صورة" + (m.text ? " · " + m.text : "") : m.ucard ? "🆔 كارت تعريف" : m.share ? "🏠 غرفة: " + (m.share.name || "") : (m.text || "");
+const DEL_TXT = "🚫 تم حذف هذه الرسالة";
+const mtext = m => m.del ? DEL_TXT : m.audio ? "🎤 رسالة صوتية" : (m.mid ? m.mk === "vid" : false) || m.vid ? "🎥 فيديو" + (m.text ? " · " + m.text : "") : m.mid || m.img ? "🖼 صورة" + (m.text ? " · " + m.text : "") : m.ucard ? "🆔 كارت تعريف" : m.share ? "🏠 غرفة: " + (m.share.name || "") : (m.text || "");
 const EMO = {
   fol: { n: "فل", s: `<svg viewBox='0 0 40 40'><g fill='#fff' stroke='#e7a8c8' stroke-width='1.5'><circle cx='20' cy='9' r='7'/><circle cx='31' cy='17' r='7'/><circle cx='27' cy='30' r='7'/><circle cx='13' cy='30' r='7'/><circle cx='9' cy='17' r='7'/></g><circle cx='20' cy='20' r='9' fill='#ffd34d'/><circle cx='17' cy='19' r='1.4' fill='#4a3200'/><circle cx='23' cy='19' r='1.4' fill='#4a3200'/><path d='M16 23q4 4 8 0' fill='none' stroke='#4a3200' stroke-width='1.6' stroke-linecap='round'/></svg>` },
   nar: { n: "نار", s: `<svg viewBox='0 0 40 40'><path d='M20 3c2 7 11 11 11 21a11 11 0 0 1-22 0c0-5 3-8 5-11 1 3 2 4 4 4 0-5 0-8 2-14z' fill='#ff7a2f'/><path d='M20 17c1 4 6 6 6 11a6 6 0 0 1-12 0c0-3 2-5 3-7 1 2 2 2 3 2z' fill='#ffd34d'/><rect x='12' y='22' width='7' height='5' rx='2' fill='#1b1b1b'/><rect x='21' y='22' width='7' height='5' rx='2' fill='#1b1b1b'/><path d='M19 24h2' stroke='#1b1b1b' stroke-width='1.5'/></svg>` },
@@ -357,6 +362,23 @@ function toggleReact(m, k) {
   vcSnd(on ? "tap" : "react");
   msgCol(m.room || room).doc(m.id).update({ ["reacts." + myId]: on ? FV().delete() : k }).catch(() => setStatus("ماقدرتش أضيف التفاعل."));
 }
+// ───── حذف الرسالة زي واتساب: بتفضل علامة «تم حذف هذه الرسالة» ومحتواها بيتمسح ─────
+const DEL_KEEP = new Set(["id", "room", "uid", "ts", "members", "reacts", "_p"]);
+async function delMsg(m, rid) {
+  rid = rid || m.room || room; const ref = msgCol(rid).doc(m.id), patch = { del: true, delBy: myId, delTs: Date.now() };
+  Object.keys(m).forEach(k => { if (!DEL_KEEP.has(k) && !(k in patch)) patch[k] = FV().delete(); });
+  try { await ref.update(patch); }
+  catch (e) {
+    if (!e || e.code !== "permission-denied") throw e;
+    await ref.delete(); flash("اتحذفت نهائياً (قواعد Firebase مش بتسمح بعلامة «تم الحذف»)"); return;   // احتياطي لو القواعد بتمنع التعديل
+  }
+  if (isDM(rid)) { const d = dms[rid]; if (d && d.last && d.last.ts === m.ts) db.collection("dms").doc(rid).update({ "last.text": DEL_TXT }).catch(() => {}); }
+}
+const delOne = (m, rid) => (m.del ? msgCol(rid || m.room || room).doc(m.id).delete() : delMsg(m, rid));   // المحذوفة أصلاً = إزالة نهائية
+const delLabel = m => !m.del ? "" : m.delBy && m.delBy !== m.uid ? "🚫 تم حذف هذه الرسالة بواسطة المشرف" : m.uid === myId ? "🚫 حذفت هذه الرسالة" : DEL_TXT;
+const hidKey = r => "vc_hid_" + r;
+function hidSet(r) { try { return new Set(JSON.parse(localStorage.getItem(hidKey(r)) || "[]")); } catch (_) { return new Set(); } }
+function hideLocal(m) { const r = m.room || room, h = hidSet(r); h.add(m.id); try { localStorage.setItem(hidKey(r), JSON.stringify([...h].slice(-300))); } catch (_) {} }
 let selMode = false, selDelArm = false; const sel = new Set();
 function selLbl(id, t) { const l = $(id).querySelector(".l"); if (l) l.textContent = t; }
 function selSetCount(n) { const c = $("selCount"); if (c.textContent !== String(n)) { c.textContent = n; c.classList.remove("pop"); void c.offsetWidth; c.classList.add("pop"); } }
@@ -380,7 +402,7 @@ $("selDel").onclick = () => {
   const cr = curR(), mine = lastList.filter(x => sel.has(x.id) && ((x.uid === myId && (!cr || !cr.noDelOwn || adminOf(cr))) || adminOf(cr)));
   if (!mine.length) { setStatus("تقدر تحذف رسايلك إنت بس."); return; }
   if (!selDelArm) { selDelArm = true; selSetDel(true, mine.length); setTimeout(() => { if (selDelArm) { selDelArm = false; selSetDel(false, 0); } }, 4000); return; }
-  vcSnd("del"); Promise.all(mine.map(x => msgCol(x.room || room).doc(x.id).delete())).catch(() => setStatus("ماقدرتش أحذف بعض الرسايل."));
+  vcSnd("del"); Promise.all(mine.map(x => delOne(x, x.room || room))).catch(() => setStatus("ماقدرتش أحذف بعض الرسايل."));
   exitSel();
 };
 let editingId = null, reads = {}, myReads = {}, readsLoaded = false;
@@ -431,7 +453,24 @@ const MXI = {
   heart: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 21s-7.5-4.6-9.5-9.3C1.3 8.5 3 5 6.4 5c2 0 3.6 1.1 4.4 2.6h.4C12 6.1 13.6 5 15.6 5 19 5 20.7 8.5 19.5 11.7 17.5 16.4 12 21 12 21z"/></svg>',
   chev: '<svg class="seen-ch" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>'
 };
+function openDelMsg(m) {
+  const c = $("mcard"); c.textContent = ""; const close = () => { $("msheet").hidden = true; }, rid = m.room || room, cr0 = curR();
+  const wrap = el("div", "mx"); c.appendChild(wrap);
+  const pv = el("div", "mx-pv" + (m.uid === myId ? " me" : "")); if (m.uid !== myId) pv.append(el("b", "mx-n", nameOf(m.uid, rid)));
+  const tx = el("div", "mx-t", delLabel(m)); tx.dir = "rtl"; pv.append(tx);
+  { const d = new Date(m.ts); pv.append(el("small", "mx-m", (d.toDateString() === new Date().toDateString() ? "اليوم" : d.toLocaleDateString("ar-EG", { day: "numeric", month: "long" })) + " · " + d.toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit" }))); }
+  wrap.appendChild(pv);
+  const list = el("div", "mx-l"); wrap.appendChild(list);
+  const row = (cls, ico, label, fn) => { const b = el("button", "mx-r " + cls); b.type = "button"; const i = el("i"); i.innerHTML = ico; const sp = el("span", "", label); b.append(i, sp); b.onclick = () => fn(b, sp); list.appendChild(b); };
+  row("", MXI.eye, "إخفاء عندي", () => { hideLocal(m); close(); if (lastList.length) render(lastList); });
+  if (m.uid === myId || (cr0 && adminOf(cr0))) row("dg", MXI.del, "إزالة نهائياً من المحادثة", (b, sp) => {
+    if (b.dataset.ok) { close(); vcSnd("del"); msgCol(rid).doc(m.id).delete().catch(() => setStatus("ماقدرتش أزيل الرسالة.")); }
+    else { b.dataset.ok = "1"; b.classList.add("arm"); sp.textContent = "اضغط تاني لتأكيد الإزالة"; setTimeout(() => { if (b.isConnected && b.dataset.ok) { delete b.dataset.ok; b.classList.remove("arm"); sp.textContent = "إزالة نهائياً من المحادثة"; } }, 3500); }
+  });
+  $("msheet").hidden = false; wrap.scrollTop = 0;
+}
 function openMsg(m) {
+  if (m.del) { openDelMsg(m); return; }
   const c = $("mcard"); c.textContent = ""; const cr0 = curR(), fb = fwdBlocked(), rid = m.room || room, mine = m.uid === myId;
   const close = () => { $("msheet").hidden = true; };
   try { if (navigator.vibrate) navigator.vibrate(8); } catch (_) {}
@@ -471,7 +510,7 @@ function openMsg(m) {
   if (cr0 && adminOf(cr0)) row("", MXI.pin, "تثبيت في الغرفة", () => { close(); upd({ pinned: { id: m.id, name: nameOf(m.uid), text: mtext(m).slice(0, 120) } }); });
   if ((mine && (!cr0 || !cr0.noDelOwn || adminOf(cr0))) || (cr0 && adminOf(cr0))) {
     row("dg", MXI.del, "حذف الرسالة", (b, sp) => {
-      if (b.dataset.ok) { close(); vcSnd("del"); msgCol(rid).doc(m.id).delete().catch(() => setStatus("ماقدرتش أحذف الرسالة.")); }
+      if (b.dataset.ok) { close(); vcSnd("del"); delMsg(m, rid).catch(() => setStatus("ماقدرتش أحذف الرسالة.")); }
       else { b.dataset.ok = "1"; b.classList.add("arm"); sp.textContent = "اضغط تاني لتأكيد الحذف"; setTimeout(() => { if (b.isConnected && b.dataset.ok) { delete b.dataset.ok; b.classList.remove("arm"); sp.textContent = "حذف الرسالة"; } }, 3500); }
     });
   }
@@ -762,7 +801,7 @@ function openInvite() {
   $("msheet").hidden = false;
 }
 $("dInvite").onclick = () => { closeDrawer(); openInvite(); };
-$("selFwd").onclick = () => openForward(lastList.filter(x => sel.has(x.id)));
+$("selFwd").onclick = () => { const a = lastList.filter(x => sel.has(x.id) && !x.del); if (a.length) openForward(a); };
 
 let recent = [], firstRecent = true, replyTo = null; const T0 = Date.now();
 function errMsg(e) {
@@ -792,6 +831,7 @@ function updateTotal() {
   let n = 0; ["general", ...rooms.filter(canSee).map(r => r.id), ...Object.keys(dms).filter(k => !pendingIn(dms[k]))].forEach(id => { n += unreadOf(id); });
   const rc = reqCount(), bg = $("reqBdg"); bg.hidden = !rc; bg.textContent = rc > 99 ? "99+" : rc; renderReqs();
   $("menuBtn").classList.toggle("un", n > 0 || rc > 0); document.title = (n ? "(" + n + ") " : "") + "Very Chat";
+  try { const bn = n + rc; if (navigator.setAppBadge) (bn > 0 ? navigator.setAppBadge(bn) : navigator.clearAppBadge()).catch(() => {}); } catch (_) {}   // رقم الرسايل الجديدة على أيقونة التطبيق
 }
 async function pushLocal(title, body, tag) {
   try { const reg = await navigator.serviceWorker.getRegistration(); if (reg) { await reg.showNotification(title, { body, tag, icon: "icon-192.png" }); return; } } catch (e) {}
