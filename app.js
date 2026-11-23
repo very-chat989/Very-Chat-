@@ -91,7 +91,7 @@ const dmEstablished = d => !!d && (!!d.acc || (!!d.last && !d.req));
 function sendDoc(doc) { const p = sendDoc0(doc); p.then(() => pushMsg(doc), () => {}); return p; }
 async function sendDoc0(doc) {
   if (!isDM(doc.room)) return db.collection("msgs").add(doc);
-  { const g = dms[doc.room]; if (!dmEstablished(g) && !(g && g.req && g.req !== myId)) { const x = new Error("⏳ مينفعش تبعت رسايل لحد ما يوافق على طلب المحادثة"); x.custom = true; throw x; } }
+  { const g = dms[doc.room]; if (!dmEstablished(g) && !(g && g.req && g.req !== myId && !dmCancelled(g))) { const x = new Error("⏳ مينفعش تبعت رسايل لحد ما يوافق على طلب المحادثة"); x.custom = true; throw x; } }
   const rp = db.collection("dmsgs").add(doc), r = navigator.onLine === false ? rp : await rp, d0 = dms[doc.room], ex = !d0 && !dmFirst ? { req: myId } : d0 && d0.req && d0.req !== myId && !d0.acc ? { acc: true } : {};
   db.collection("dms").doc(doc.room).set({ members: doc.members, ...ex, last: { uid: myId, ts: doc.ts, text: mtext(doc).slice(0, 60) }, unread: { [dmPeerOf(doc.room)]: FV().increment(1) } }, { merge: true }).catch(() => {});
   return r;
@@ -109,7 +109,7 @@ async function openDM(u) {
   if (dmEstablished(d)) { openRoom(key); return; }
   if (dmFirst) { flash("استنى لحظة وجرّب تاني"); return; }
   if (pendingIn(d)) { openReqs(); return; }
-  if (d && d.req === myId && !d.acc && d.last && ((d.cleared || {})[u] || 0) < d.last.ts) { flash("⏳ طلبك لسه معلّق، استنى موافقته"); return; }
+  if (d && d.req === myId && !d.acc && d.last && ((d.cleared || {})[u] || 0) < d.last.ts && dmClearedAt(d) < d.last.ts) { flash("⏳ طلبك لسه معلّق، استنى موافقته"); return; }
   try {
     await db.collection("dms").doc(key).set({ members: [myId, u].sort(), req: myId, last: { uid: myId, ts: Date.now(), text: "👋 طلب محادثة" }, unread: { [u]: FV().increment(1) } }, { merge: true });
     pushTo(u, "dm_req", myName(), "");
@@ -179,7 +179,7 @@ function openDMMenu(d) {
 }
 function buildDMs(q) {
   const box = $("dmList"), sub = $("dmSub"), qn = nzq(q), qc = normFCode(q); box.textContent = "";
-  const list = Object.values(dms).filter(d => d.last && (q ? dmEstablished(d) : d.last.ts > dmClearedAt(d)) && !pendingIn(d) && !(d.req === myId && !d.acc)).sort((a, b) => b.last.ts - a.last.ts).filter(d => { if (!q) return true; const p = profiles[dmPeerOf(d.id)] || {}; return nzq(p.name).includes(qn) || (qc.length >= 2 && String(p.fcode || "").includes(qc)); });
+  const list = Object.values(dms).filter(d => d.last && (q ? dmEstablished(d) : d.last.ts > dmClearedAt(d)) && !pendingIn(d) && !dmCancelled(d) && !(d.req === myId && !d.acc)).sort((a, b) => b.last.ts - a.last.ts).filter(d => { if (!q) return true; const p = profiles[dmPeerOf(d.id)] || {}; return nzq(p.name).includes(qn) || (qc.length >= 2 && String(p.fcode || "").includes(qc)); });
   list.forEach(d => box.appendChild(dmRow(d)));
   const pu = qc.length === 8 ? Object.keys(profiles).find(u => u !== myId && profiles[u] && profiles[u].fcode === qc) : null;
   if (pu && !list.some(d => dmPeerOf(d.id) === pu)) {
@@ -894,7 +894,7 @@ window.addEventListener("online", () => { try { if (db) db.enableNetwork().catch
 setTimeout(netUI, 0);
 function unreadOf(rid) { if (isDM(rid)) return ((dms[rid] || {}).unread || {})[myId] || 0; return readsLoaded ? recent.filter(m => m.room === rid && m.uid !== myId && m.ts > (myReads[rid] || 0)).length : 0; }
 function updateTotal() {
-  let n = 0; ["general", ...rooms.filter(canSee).map(r => r.id), ...Object.keys(dms).filter(k => !pendingIn(dms[k]))].forEach(id => { n += unreadOf(id); });
+  let n = 0; ["general", ...rooms.filter(canSee).map(r => r.id), ...Object.keys(dms).filter(k => !pendingIn(dms[k]) && !dmCancelled(dms[k]))].forEach(id => { n += unreadOf(id); });
   const rc = reqCount(), bg = $("reqBdg"); bg.hidden = !rc; bg.textContent = rc > 99 ? "99+" : rc; renderReqs();
   $("menuBtn").classList.toggle("un", n > 0 || rc > 0); document.title = (n ? "(" + n + ") " : "") + "Very Chat";
   try { const bn = n + rc; if (navigator.setAppBadge) (bn > 0 ? navigator.setAppBadge(bn) : navigator.clearAppBadge()).catch(() => {}); } catch (_) {}   // رقم الرسايل الجديدة على أيقونة التطبيق
@@ -3166,7 +3166,7 @@ if (APPCHECK_KEY && firebase.appCheck) { try { firebase.appCheck().activate(APPC
   watchRooms();
   db.collection("dms").where("members", "array-contains", myId).onSnapshot(s => {
     const prevClr = dmClearedAt(dms[room]); dms = {}; s.docs.forEach(d => { dms[d.id] = { ...d.data(), id: d.id }; });
-    s.docChanges().forEach(ch => { const d = ch.doc.data(); if (!dmFirst && ch.type !== "removed" && d.last && d.last.uid !== myId && d.last.ts >= T0 - 2000 && d.last.ts > (dmDone[ch.doc.id] || 0) && !s.metadata.hasPendingWrites) { dmDone[ch.doc.id] = d.last.ts; pendingIn(d) ? reqToast(d, ch.doc.id) : notifyDM({ ...d, id: ch.doc.id }); } });
+    s.docChanges().forEach(ch => { const d = ch.doc.data(); if (!dmFirst && ch.type !== "removed" && d.last && d.last.uid !== myId && d.last.ts >= T0 - 2000 && d.last.ts > (dmDone[ch.doc.id] || 0) && !dmCancelled(d) && !s.metadata.hasPendingWrites) { dmDone[ch.doc.id] = d.last.ts; pendingIn(d) ? reqToast(d, ch.doc.id) : notifyDM({ ...d, id: ch.doc.id }); } });
     { const wasFirst = dmFirst, nc = isDM(room) ? dmClearedAt(dms[room]) : 0; dmFirst = false; buildChips(); updateTotal(); if (isDM(room)) { try { renderPin(); } catch (_) {} } if (isDM(room)) { refreshMe(); if (nc !== prevClr || (wasFirst && nc)) openRoom(room); } }
   }, () => {});
   buildChips(); openRoom(room); presenceStart();
@@ -3223,7 +3223,9 @@ function syncRecent() {
 }
 // ═══ 📥 صندوق الطلبات: انضمام الغرف + طلبات المحادثة الخاصة + طلباتي المعلّقة ═══
 const needApproval = () => true;
-const pendingIn = d => !!d && !!d.req && d.req !== myId && !d.acc && !(d.blockedBy || []).includes(myId) && !!d.last && d.last.ts > dmClearedAt(d);
+// الطلب اتلغى من اللي بعته: هو بيكتب cleared على اسمه هو (نفس آلية الرفض/المسح اللي شغالة بالفعل)
+const dmCancelled = d => !!d && !!d.req && !d.acc && !!d.last && ((d.cleared || {})[d.req] || 0) >= d.last.ts;
+const pendingIn = d => !!d && !!d.req && d.req !== myId && !d.acc && !(d.blockedBy || []).includes(myId) && !!d.last && d.last.ts > dmClearedAt(d) && !dmCancelled(d);
 const myName = () => (profiles[myId] || {}).name || gName() || "مجهول";
 const joinReqs = () => rooms.filter(adminOf).map(r => ({ r, us: (r.requests || []).filter(u => u !== myId && !(r.banned || []).includes(u) && !(r.members || []).includes(u)) })).filter(x => x.us.length);
 const dmReqs = () => Object.values(dms).filter(pendingIn).sort((a, b) => b.last.ts - a.last.ts);
@@ -3268,7 +3270,7 @@ function reqToast(d, id) {
 function openReqs() { closeDrawer(); closeInfo(); rqTab = reqCount() || !(myWaiting().length + sentInvites().length + sentDMs().length) ? "in" : "out"; $("reqView").hidden = false; renderReqs(); $("reqBody").scrollTop = 0; }
 let rqTab = "in";
 const sentInvites = () => rooms.filter(adminOf).flatMap(r => (r.invites || []).filter(u => !(r.members || []).includes(u)).map(u => ({ r, u })));
-const sentDMs = () => Object.values(dms).filter(d => d.req === myId && !d.acc && d.last && ((d.cleared || {})[dmPeerOf(d.id)] || 0) < d.last.ts).sort((a, b) => b.last.ts - a.last.ts);
+const sentDMs = () => Object.values(dms).filter(d => d.req === myId && !d.acc && d.last && ((d.cleared || {})[dmPeerOf(d.id)] || 0) < d.last.ts && dmClearedAt(d) < d.last.ts).sort((a, b) => b.last.ts - a.last.ts);
 function renderReqs() {
   if ($("reqView").hidden) return;
   const box = $("reqBody"), top = box.scrollTop, tabs = $("reqTabs"); box.textContent = ""; tabs.textContent = "";
@@ -3292,10 +3294,10 @@ function renderReqs() {
     if (D.length) { const c = sec("💬", "طلبات محادثة خاصة", D.length, "#8a4fe0", async () => { for (const d of D) await decideDM(d, true); }, async () => { for (const d of D) await decideDM(d, false); }); D.forEach(d => c.append(row(avatar(profiles[dmPeerOf(d.id)]), nameOf(dmPeerOf(d.id)), "طلب محادثة · " + ago(d.last.ts), yes(() => decideDM(d, true)), no(() => decideDM(d, false))))); }
   } else {
     if (!nOut) empty("📤", "مفيش طلبات صادرة", "طلبات الانضمام والدعوات اللي بعتّها هتظهر هنا لحد ما يتردّ عليها");
-    const upd1 = (r, patch) => async () => { try { await db.collection("rooms").doc(r.id).update(patch); } catch (e) { flash(errMsg(e)); } };
+    const upd1 = (r, patch) => async () => { try { await db.collection("rooms").doc(r.id).update(patch); } catch (e) { toast(errMsg(e), true); } };
     if (W.length) { const c = sec("⏳", "طلبات انضمام بعتّها", W.length, "#e08a2f"); W.forEach(r => c.append(row(rav(r), r.name, "بانتظار موافقة المالك", btn("rq-wait", "إلغاء", upd1(r, { requests: AR(myId) }))))); }
     if (SI.length) { const c = sec("📨", "دعوات بعتّها", SI.length, "#2f90d9"); SI.forEach(({ r, u }) => c.append(row(avatar(profileFor(u)), nameOf(u), "دعوة لغرفة «" + r.name + "» · بانتظار الرد", btn("rq-wait", "إلغاء", upd1(r, { invites: AR(u) }))))); }
-    if (SD.length) { const c = sec("💬", "طلبات محادثة بعتّها", SD.length, "#8a4fe0"); SD.forEach(d => { const u = dmPeerOf(d.id); c.append(row(avatar(profiles[u]), nameOf(u), "بانتظار القبول · " + ago(d.last.ts), btn("rq-wait", "إلغاء", async () => { try { await db.collection("dms").doc(d.id).update({ last: FV().delete(), req: FV().delete() }); flash("✓ اتلغى الطلب"); } catch (e) { flash(errMsg(e)); } }))); }); }
+    if (SD.length) { const c = sec("💬", "طلبات محادثة بعتّها", SD.length, "#8a4fe0"); SD.forEach(d => { const u = dmPeerOf(d.id); c.append(row(avatar(profiles[u]), nameOf(u), "بانتظار القبول · " + ago(d.last.ts), btn("rq-wait", "إلغاء", async () => { try { await db.collection("dms").doc(d.id).update({ ["cleared." + myId]: Math.max(Date.now(), d.last.ts + 1) }); toast("✓ اتلغى الطلب، واختفى عند الشخص التاني كمان", true); } catch (e) { toast(errMsg(e), true); } }))); }); }
   }
   box.scrollTop = top;
 }
