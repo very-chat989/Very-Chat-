@@ -13,6 +13,23 @@ const FIREBASE_CONFIG = {
   appId: "1:351423421163:web:f61b829b9b65deb38abcae"
 };
 const $ = id => document.getElementById(id);
+// ───── انتقال ناعم عند القفل/الرجوع: بدل ما الشاشة تختفي فجأة بتتحرّك وتتلاشى ثم تتقفل ─────
+(() => {
+  const HS = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "hidden"); if (!HS || !HS.set) return;
+  const mq = window.matchMedia ? matchMedia("(prefers-reduced-motion:reduce)") : { matches: false };
+  ["sheet", "msheet", "drawer", "rinfo", "reqView", "pview", "lb"].forEach(id => {
+    const el = document.getElementById(id); if (!el) return; let t = 0;
+    const fin = () => { t = 0; el.classList.remove("vc-out"); HS.set.call(el, true); };
+    Object.defineProperty(el, "hidden", {
+      configurable: true,
+      get() { return HS.get.call(el) || !!t; },
+      set(v) {
+        if (v) { if (HS.get.call(el) || t) return; if (mq.matches || !el.isConnected) { HS.set.call(el, true); return; } el.classList.add("vc-out"); t = setTimeout(fin, 230); }
+        else { clearTimeout(t); t = 0; el.classList.remove("vc-out"); HS.set.call(el, false); }
+      }
+    });
+  });
+})();
 // أرقام عربية — لازم تكون عامة: كانت معرّفة جوه محرر الوسائط بس، فالاستطلاع والمستندات والتثبيت المتعدد كانوا بيفشلوا في الرسم
 const arN = n => String(n).replace(/\d/g, d => "٠١٢٣٤٥٦٧٨٩"[d]);
 const okSrc = (u, k) => { u = String(u || ""); return u.startsWith("blob:") || u.startsWith("data:" + k + "/"); };

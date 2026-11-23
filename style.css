@@ -1228,3 +1228,24 @@ html[dir=rtl] .stu-send.go svg.pl{animation-name:stuFlyR}
 #pvSave:active{transform:scale(.9)}
 #pvSave:focus-visible{outline:3px solid #fff;outline-offset:2px}
 #pview #pvSave{inset-inline-start:auto;inset-inline-end:12px;width:42px;height:42px;background:rgba(255,255,255,.18);display:grid;place-items:center;font-size:0}
+
+/* ───── انتقالات القفل الناعمة ───── */
+@keyframes vcOutPage{to{opacity:0;transform:translateY(28px)}}
+@keyframes vcOutFade{to{opacity:0}}
+@keyframes vcOutSheet{to{transform:translateY(100%)}}
+@keyframes vcOutPanel{to{transform:translateX(100%)}}
+@keyframes vcOutPanelL{to{transform:translateX(-100%)}}
+@keyframes vcOutZoom{to{opacity:0;transform:scale(.94) translateY(10px)}}
+@keyframes vcIn{from{opacity:0}}
+.vc-out{pointer-events:none}
+#rinfo.vc-out,#reqView.vc-out{animation:vcOutPage .22s cubic-bezier(.4,0,1,1) both}
+#drawer.vc-out{animation:vcOutFade .23s ease both}
+#drawer.vc-out .dpanel{animation:vcOutPanel .23s cubic-bezier(.5,0,.8,.4) both}
+html:not([dir=rtl]) #drawer.vc-out .dpanel{animation-name:vcOutPanelL}
+#sheet.vc-out{animation:vcOutFade .24s ease both}
+#sheet.vc-out .card{animation:vcOutSheet .24s cubic-bezier(.5,0,.8,.4) both}
+#msheet.vc-out{animation:vcOutFade .2s ease both}
+#msheet.vc-out .card{animation:vcOutZoom .2s ease both}
+#pview:not([hidden]),#lb:not([hidden]){animation:vcIn .2s ease both}
+#pview.vc-out,#lb.vc-out{animation:vcOutFade .2s ease both}
+@media (prefers-reduced-motion:reduce){.vc-out,.vc-out *{animation:none!important}}
