@@ -151,7 +151,23 @@ const dmClearedAt = d => Math.max(((d && d.cleared) || {})[myId] || 0, dmWipeAt(
 let _nk = null, _nkFor = null;
 const nickMap = () => { if (_nkFor !== myId || !_nk) { _nkFor = myId; try { _nk = JSON.parse(localStorage.getItem("vc_nick_" + myId) || "{}") || {}; } catch (_) { _nk = {}; } } return _nk; };
 const nickOf = u => (u && u !== myId && nickMap()[u]) || "";
-const setNick = (u, v) => { const m = nickMap(); v = String(v || "").replace(/\s+/g, " ").trim().slice(0, 30); if (v && v !== ((profiles[u] || {}).name || "")) m[u] = v; else delete m[u]; try { localStorage.setItem("vc_nick_" + myId, JSON.stringify(m)); } catch (_) {} };
+// بنحفظ الأسماء في 3 أماكن: localStorage + IndexedDB + Firestore (مستند خاص بيك: nicks/{uid}) علشان ماترجعش تاني
+const saveNicks = () => {
+  const uid = myId; if (!uid) return; const m = nickMap(), str = JSON.stringify(m), ts = Date.now();
+  try { localStorage.setItem("vc_nick_" + uid, str); localStorage.setItem("vc_nickts_" + uid, String(ts)); } catch (_) {}
+  try { idbTx("readwrite", st => st.put({ s: str, ts }, "nick:" + uid)).catch(() => {}); } catch (_) {}
+  try { if (db) db.collection("nicks").doc(uid).set({ m, ts }).catch(e => console.warn("nicks sync:", e && e.code)); } catch (_) {}
+};
+const setNick = (u, v) => { const m = nickMap(); v = String(v || "").replace(/\s+/g, " ").trim().slice(0, 30); if (v && v !== ((profiles[u] || {}).name || "")) m[u] = v; else delete m[u]; saveNicks(); };
+// بيتنادى بعد تسجيل الدخول: بيرجّع الأسماء من IndexedDB / Firestore لو localStorage اتمسح
+async function syncNicks() {
+  const uid = myId; if (!uid) return;
+  let lts = 0; try { lts = +localStorage.getItem("vc_nickts_" + uid) || 0; } catch (_) {}
+  let best = null, bts = lts;
+  try { const r = await idbGet("nick:" + uid); if (r && r.s && r.ts > bts) { best = JSON.parse(r.s); bts = r.ts; } } catch (_) {}
+  try { const d = await db.collection("nicks").doc(uid).get(); const x = d.exists ? d.data() : null; if (x && x.m && x.ts > bts) { best = x.m; bts = x.ts; } else if (!x && Object.keys(nickMap()).length) saveNicks(); } catch (_) {}
+  if (best && myId === uid) { _nk = best; _nkFor = uid; try { localStorage.setItem("vc_nick_" + uid, JSON.stringify(best)); localStorage.setItem("vc_nickts_" + uid, String(bts)); } catch (_) {} repaintNames(); }
+}
 const pname = u => nickOf(u) || (profiles[u] || {}).name || "مجهول";
 const repaintNames = () => { try { buildChips(); } catch (_) {} try { refreshMe(); } catch (_) {} try { if (lastList.length) render(lastList); } catch (_) {} };
 function openNickEdit(d) {
@@ -200,10 +216,6 @@ function openDMMenu(d) {
   const act = (ico, label, grad, fn) => { const b = el("button", "act"); b.type = "button"; const i = el("i", "", ico); i.style.background = grad; const sp = el("span", "", label); b.append(i, sp); b.onclick = () => fn(b, sp); acts.append(b); };
   const sure = (b, sp) => { if (!b.dataset.ok) { b.dataset.ok = "1"; sp.textContent = "تأكيد؟"; return false; } return true; };
   act("✏️", "تعديل الاسم", "linear-gradient(135deg,#5aa9ff,#2f6fed)", () => openNickEdit(d));
-  act("🧹", "مسح من عندي", "linear-gradient(135deg,#6bd0c0,#2a9d8f)", async (b, sp) => {
-    if (!sure(b, sp)) return; close();
-    try { await db.collection("dms").doc(d.id).update({ ["cleared." + myId]: Math.max(Date.now(), ((d.last || {}).ts || 0) + 1), ["unread." + myId]: 0 }); flash("🧹 اتمسحت من القايمة · لسه صديقك وتلاقيه بالبحث"); } catch (e) { flash(errMsg(e)); }
-  });
   act("🗑", "حذف المحادثة", "linear-gradient(135deg,#ff7a7a,#d64545)", async (b, sp) => {
     if (!sure(b, sp)) return; close();
     try {
@@ -2157,7 +2169,7 @@ const idbTx = async (mode, fn) => { const d = await idbOpen(); if (!d) return nu
 const idbGet = k => idbTx("readonly", st => st.get(k));
 const idbPut = async (k, v) => { const ok = await idbTx("readwrite", st => st.put(v, k)); if (ok) { DLD.add(k); dlSave(); } return !!ok; };
 async function idbStats() { const d = await idbOpen(); if (!d) return { n: 0, bytes: 0 }; return new Promise(res => { let n = 0, bytes = 0; try { const q = d.transaction("m").objectStore("m").openCursor(); q.onsuccess = () => { const c = q.result; if (c) { n++; const v = c.value; bytes += v && v.size != null ? v.size : String(v || "").length; c.continue(); } else res({ n, bytes }); }; q.onerror = () => res({ n, bytes }); } catch (e) { res({ n, bytes }); } }); }
-const idbClear = async () => { await idbTx("readwrite", st => st.clear()); };
+const idbClear = async () => { await idbTx("readwrite", st => { const q = st.openCursor(); q.onsuccess = () => { const c = q.result; if (c) { if (!String(c.key).startsWith("nick:")) c.delete(); c.continue(); } }; return q; }); };   // مابنمسحش الأسماء المعدّلة
 try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (_) {}
 // الفيديو الكبير بيتقسّم لقطع (كل قطعة document في media). أول قطعة header: data:video/..;vcn=N;base64,
 const VCN = /^data:((?:video|application)\/[a-z0-9.+-]+);vcn=(\d+);base64,/i, MEDIA_CB = new Map(), sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -2232,7 +2244,11 @@ function mediaBox(m) {
     box.querySelectorAll(".mretry").forEach(x => x.remove());
     if (!data) { const r = el("button", "mretry", "تعذّر التحميل · اضغط للإعادة"); r.type = "button"; r.onclick = e => { e.stopPropagation(); r.remove(); box.append(el("div", "msp")); box._load(); }; box.querySelectorAll(".msp").forEach(x => x.remove()); box.append(r); return; }
     let node;
-    if (vid) { node = el("video", "mvid"); node.src = data; node.controls = true; node.playsInline = true; node.preload = "metadata"; if (okSrc(m.thumb, "image")) node.poster = m.thumb; node.controls = false; node.onclick = e => { e.stopPropagation(); if (!selMode) openVideo(data, okSrc(m.thumb, "image") ? m.thumb : ""); }; node.onloadeddata = () => box.classList.add("ok"); const pl = el("div", "mplay"); pl.innerHTML = '<svg viewBox="0 0 24 24"><path d="M8 5.5v13l11-6.5z" fill="currentColor"/></svg>'; pl.onclick = e => { e.stopPropagation(); if (!selMode) openVideo(data, okSrc(m.thumb, "image") ? m.thumb : ""); }; box.append(pl); }
+    if (vid) { node = el("video", "mvid"); node.src = data; node.controls = true; node.playsInline = true; node.preload = "metadata"; if (okSrc(m.thumb, "image")) node.poster = m.thumb; node.controls = false; node.onclick = e => { e.stopPropagation(); if (!selMode) openVideo(data, okSrc(m.thumb, "image") ? m.thumb : ""); }; { let sought = false, fin = false; const finish = u => { if (fin) return; fin = true; if (u) { ph.style.backgroundImage = 'url("' + u + '")'; ph.style.filter = "none"; ph.style.transform = "none"; } box.classList.add("vok"); };
+      const cap = () => { try { const k = Math.min(1, 360 / Math.max(node.videoWidth, node.videoHeight, 1)), c = document.createElement("canvas"); c.width = Math.max(1, Math.round(node.videoWidth * k)); c.height = Math.max(1, Math.round(node.videoHeight * k)); const g = c.getContext("2d"); g.drawImage(node, 0, 0, c.width, c.height); const d = g.getImageData(0, 0, c.width, c.height).data; let t = 0, n = 0; for (let i = 0; i < d.length; i += 64) { t += d[i] + d[i + 1] + d[i + 2]; n++; } return n && t / n / 3 < 6 ? "" : c.toDataURL("image/jpeg", .8); } catch (_) { return ""; } };   // لو الفريم أسود أو مش متاح بنفضل على الصورة المصغّرة بدل الشاشة السودا
+      const go = () => { if (sought) return; sought = true; try { const d = node.duration; node.currentTime = isFinite(d) && d > 0 ? Math.min(0.3, d / 2) : 0.1; } catch (_) { finish(cap()); } };
+      node.onloadedmetadata = go; node.onloadeddata = go; node.onseeked = () => finish(cap()); node.onerror = () => finish(""); setTimeout(() => finish(""), 5000); }
+      const pl = el("div", "mplay"); pl.innerHTML = '<svg viewBox="0 0 24 24"><path d="M8 5.5v13l11-6.5z" fill="currentColor"/></svg>'; pl.onclick = e => { e.stopPropagation(); if (!selMode) openVideo(data, okSrc(m.thumb, "image") ? m.thumb : ""); }; box.append(pl); }
     else { node = el("img", "mimg"); node.alt = "صورة"; node.decoding = "async"; node.onload = () => box.classList.add("ok"); node.onclick = e => { e.stopPropagation(); if (!selMode) { $("pvImg").src = data; $("pview").hidden = false; } }; node.src = data; }
     box.querySelectorAll(".mpct").forEach(x => x.remove()); box.append(node); if (key && !DLD.has(key) && !String(data).startsWith("blob:")) { DLD.add(key); dlSave(); }
   };
@@ -3330,7 +3346,7 @@ if (APPCHECK_KEY && firebase.appCheck) { try { firebase.appCheck().activate(APPC
     if (!user) user = await askLogin();
     myId = user.uid; db = firebase.firestore(); try { await db.enablePersistence({ synchronizeTabs: true }); } catch (e) {}
   } catch (e) { setStatus(e.code === "auth/operation-not-allowed" || e.code === "auth/admin-restricted-operation" ? "فعّل تسجيل الدخول Anonymous من Firebase ← Authentication ← Sign-in method." : "ماقدرتش أتصل بـ Firebase: " + (e.code || e.message)); $("sendBtn").disabled = true; starting = false; setTimeout(() => { if (!started) start(); }, 6000); return; }
-  started = true; starting = false; $("sendBtn").disabled = false;
+  started = true; starting = false; $("sendBtn").disabled = false; syncNicks();
   db.collection("profiles").onSnapshot(s => {
     profiles = {}; s.docs.forEach(d => profiles[d.id] = d.data());
     refreshMe(); ensureMyCode(); paintMyCode();

@@ -273,7 +273,7 @@ button.ri-chip{cursor:pointer}
 .mwrap{position:relative;overflow:hidden;border-radius:12px;background:var(--line);max-width:100%}
 .mwrap .mph{position:absolute;inset:0;background-size:cover;background-position:center;filter:blur(10px);transform:scale(1.15)}
 .mwrap .mimg,.mwrap .mvid{position:absolute;inset:0;width:100%;height:100%;max-height:none;border-radius:0;opacity:0;transition:opacity .25s}
-.mwrap.ok .mimg,.mwrap.ok .mvid{opacity:1}.mwrap.ok .mph,.mwrap.ok .msp{display:none}
+.mwrap.ok .mimg,.mwrap.ok .mvid{opacity:1}.mwrap.ok .mph,.mwrap.ok .msp{display:none}.mwrap.vok .msp,.mwrap.vok .mpct{display:none}
 .mwrap .msp{position:absolute;top:50%;left:50%;width:34px;height:34px;margin:-17px 0 0 -17px;border-radius:50%;border:3px solid rgba(255,255,255,.35);border-top-color:#fff;animation:mspin .8s linear infinite}
 @keyframes mspin{to{transform:rotate(360deg)}}
 .mwrap .mretry{position:absolute;inset:0;border:0;background:rgba(0,0,0,.45);color:#fff;font-size:13px;cursor:pointer}
@@ -804,7 +804,7 @@ html[dir=rtl] #sendBtn svg{transform:scaleX(-1)}
 #vvX{position:absolute;top:calc(env(safe-area-inset-top,0px) + 12px);right:14px;width:42px;height:42px;border-radius:50%;border:0;background:rgba(0,0,0,.55);color:#fff;font-size:18px;z-index:2;cursor:pointer}
 .mwrap .mplay{position:absolute;top:50%;left:50%;width:54px;height:54px;margin:-27px 0 0 -27px;border-radius:50%;background:rgba(0,0,0,.55);border:1.5px solid rgba(255,255,255,.75);color:#fff;display:flex;align-items:center;justify-content:center;pointer-events:auto;cursor:pointer}
 .mwrap .mplay svg{width:26px;height:26px;margin-left:3px}
-.mwrap:not(.ok) .mplay{display:none}
+.mwrap:not(.ok):not(.vok) .mplay{display:none}
 
 /* ───── شاشة التحويل (على طريقة واتساب/تلجرام) ───── */
 #msheet:has(.fw){align-items:flex-end;padding:0;background:rgba(0,0,0,.5)}
