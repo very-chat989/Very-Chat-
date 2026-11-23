@@ -393,14 +393,14 @@ function render(list) {
     row.dataset.uid = m.uid; row.dataset.ts = m.ts; row.dataset.mid = m.id;
     if (box._unr && m.ts >= box._unr && !(prev && prev.ts >= box._unr)) { const u = document.createElement("div"); u.className = "unr"; u.id = "unrDiv"; const cnt = list.filter(x => x.uid !== myId && !x.del && x.ts >= box._unr).length; u.textContent = "⬇ " + cnt + " رسالة غير مقروءة"; nodes.push(u); } if (first) row.appendChild(avatar(p)); else { const s = document.createElement("div"); s.className = "sp"; row.appendChild(s); }
     const p2 = m.ucard ? (profiles[m.ucard.uid] || {}) : null;
-    const sig = [sgs(m), mine ? 1 : 0, first ? 1 : 0, sel.has(m.id) ? 1 : 0, selMode ? 1 : 0, first ? sgs(p) : "", mine && seenOK() ? seenBy(m).length : -1, p2 ? (p2.name || "") + (p2.fcode || "") + (m.ucard.name || "") + (nickOf(m.ucard.uid) || "") : "", m.share ? rooms.length : ""].join("¦");
+    const sig = [sgs(m), mine ? 1 : 0, first ? 1 : 0, sel.has(m.id) ? 1 : 0, selMode ? 1 : 0, first ? sgs(p) : "", first && !mine ? nickOf(m.uid) : "", m.reply && m.reply.uid ? nickOf(m.reply.uid) : "", mine && seenOK() ? seenBy(m).length : -1, p2 ? (p2.name || "") + (p2.fcode || "") + (m.ucard.name || "") + (nickOf(m.ucard.uid) || "") : "", m.share ? rooms.length : ""].join("¦");
     const hit = RC.get(m.id); if (hit && hit.sig === sig) { keep.add(m.id); nodes.push(hit.row); return; }
     const b = document.createElement("div"); b.className = "b";
-    if (first && !mine) { const n = document.createElement("div"); n.className = "n"; n.dir = "rtl"; n.textContent = (p && p.name) || "مجهول"; n.style.cursor = "pointer"; n.onclick = e => { e.stopPropagation(); if (Date.now() - (b._f || 0) > 800) peerTap(m.uid, m.room || room); }; b.appendChild(n); }
+    if (first && !mine) { const n = document.createElement("div"); n.className = "n"; n.dir = "rtl"; n.textContent = nameOf(m.uid); n.style.cursor = "pointer"; n.onclick = e => { e.stopPropagation(); if (Date.now() - (b._f || 0) > 800) peerTap(m.uid, m.room || room); }; b.appendChild(n); }
     const dl = !!m.del;
     if (dl) { const x = el("div", "dl", delLabel(m)); x.dir = "rtl"; b.appendChild(x); b.classList.add("deld"); if (hit && !hit.dl) b.classList.add("poof"); row.dataset.dl = "1"; row._l0 = delLabel(m); }
     if (!dl && m.fwd) b.appendChild(el("div", "fw", "↪️ محوّلة من " + m.fwd));
-    if (!dl && m.reply) { const q = el("div", "qt"); q.dir = "rtl"; q.append(el("b", "", m.reply.name || "مجهول"), document.createTextNode(m.reply.text || "")); if (m.reply.id) { q.classList.add("go"); q.onclick = e => { e.stopPropagation(); const t = $("msgs").querySelector('[data-mid="' + m.reply.id + '"]'); if (!t) { flash("الرسالة الأصلية مش موجودة"); return; } t.scrollIntoView({ block: "center", behavior: "smooth" }); t.classList.remove("hl"); void t.offsetWidth; t.classList.add("hl"); setTimeout(() => t.classList.remove("hl"), 1800); }; } b.appendChild(q); }
+    if (!dl && m.reply) { const q = el("div", "qt"); q.dir = "rtl"; q.append(el("b", "", (m.reply.uid ? nameOf(m.reply.uid) : m.reply.name) || "مجهول"), document.createTextNode(m.reply.text || "")); if (m.reply.id) { q.classList.add("go"); q.onclick = e => { e.stopPropagation(); const t = $("msgs").querySelector('[data-mid="' + m.reply.id + '"]'); if (!t) { flash("الرسالة الأصلية مش موجودة"); return; } t.scrollIntoView({ block: "center", behavior: "smooth" }); t.classList.remove("hl"); void t.offsetWidth; t.classList.add("hl"); setTimeout(() => t.classList.remove("hl"), 1800); }; } b.appendChild(q); }
     const tx = document.createElement("div"); tx.className = "tx"; tx.dir = "auto";
     if (dl) {}
     else if (m.audio) b.appendChild(audioPlayer(m));
@@ -1043,7 +1043,7 @@ function linkify(node, text) {
   });
 }
 function startReply(m) {
-  cancelEdit(); replyTo = { name: nameOf(m.uid), text: mtext(m).slice(0, 80), id: m.id };
+  cancelEdit(); replyTo = { name: nameOf(m.uid), uid: m.uid, text: mtext(m).slice(0, 80), id: m.id };
   $("replyTxt").textContent = "↩️ رد على " + replyTo.name + ": " + replyTo.text; $("replyBar").hidden = false; $("inp").focus();
 }
 function clearReply() { replyTo = null; $("replyBar").hidden = true; }

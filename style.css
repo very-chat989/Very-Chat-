@@ -1310,3 +1310,18 @@ html:not([dir=rtl]) #drawer.vc-out .dpanel{animation-name:vcOutPanelL}
 #dmList,#dlist{animation:dtin .22s ease}
 @keyframes dtin{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 @media (prefers-reduced-motion:reduce){#dmList,#dlist,.dtab .ubd{animation:none}}
+
+/* ───── شكل الشات زي واتساب: رسايلك على الشمال ورسايل الشخص التاني على اليمين ───── */
+#msgs .row{align-self:flex-end;flex-direction:row-reverse}
+#msgs .row.me{align-self:flex-start;flex-direction:row}
+/* الفقاعة: زوايا أنضف وديل صغير ناحية الصورة */
+#msgs .row .b{border-radius:14px;padding:6px 10px 5px;min-width:64px;box-shadow:0 1px 1.5px rgba(0,0,0,.18)}
+#msgs .row.first:not(.me) .b{border-bottom-left-radius:14px;border-bottom-right-radius:4px}
+#msgs .row.first.me .b{border-bottom-right-radius:14px;border-bottom-left-radius:4px}
+/* الكتابة نفسها ناحية الشمال أقصى الفقاعة */
+#msgs .b .tx,#msgs .b .n,#msgs .b .fw,#msgs .b .qt,#msgs .b .dl{text-align:left}
+#msgs .b .qt{border-inline-start:0;border-left:3px solid #4fc3f7;border-radius:4px 8px 8px 4px}
+#msgs .b .t{margin-top:1px;justify-content:flex-end}
+/* التفاعلات تحت الفقاعة من ناحية الذيل */
+#msgs .row .rxs{left:auto;right:10px}
+#msgs .row.me .rxs{right:auto;left:10px}
