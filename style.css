@@ -1282,3 +1282,7 @@ html:not([dir=rtl]) #drawer.vc-out .dpanel{animation-name:vcOutPanelL}
 .row.hl .b{animation:hl 1.8s ease}
 @keyframes hl{0%,60%{box-shadow:0 0 0 3px var(--pri),0 0 24px var(--pri);transform:scale(1.03)}100%{box-shadow:none;transform:none}}
 @media (prefers-reduced-motion:reduce){.row.hl .b{animation:none;outline:2px solid var(--pri)}}
+
+/* قايمة خيارات المحادثة (حظر/حذف/تعديل الاسم): الأيقونات في النص بالتساوي بدل ما تتكوّم على جنب، واللوحة على قد محتواها */
+.acts:not(.att):not(.lst){display:flex;flex-wrap:wrap;justify-content:center;gap:12px 14px;width:fit-content;min-width:min(300px,92%);max-width:92%;margin-inline:auto;align-self:center}
+.acts:not(.att):not(.lst) .act{flex:0 0 80px;text-align:center;line-height:1.3}
