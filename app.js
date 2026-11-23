@@ -85,7 +85,7 @@ const dmMembers = id => id.slice(3).split("_");
 const dmPeerOf = id => dmMembers(id).find(u => u !== myId) || null;
 const msgCol = rid => db.collection(isDM(rid) ? "dmsgs" : "msgs");
 const mBase = rid => isDM(rid) ? { room: rid, members: dmMembers(rid) } : { room: rid };
-const dmRoom = id => { const p = profiles[dmPeerOf(id)] || {}; return { id, dm: true, name: p.name || "مجهول", emoji: p.emoji, color: p.color, photo: p.photo, blocked: (dms[id] || {}).blockedBy || [], pinned: (dms[id] || {}).pinned, pins: (dms[id] || {}).pins }; };
+const dmRoom = id => { const p = profiles[dmPeerOf(id)] || {}; return { id, dm: true, name: pname(dmPeerOf(id)), emoji: p.emoji, color: p.color, photo: p.photo, blocked: (dms[id] || {}).blockedBy || [], pinned: (dms[id] || {}).pinned, pins: (dms[id] || {}).pins }; };
 function flash(t) { flashSnd(t); setStatus(t); setTimeout(() => { if ($("status").textContent === t) setStatus(""); }, 3500); }
 const dmEstablished = d => !!d && (!!d.acc || (!!d.last && !d.req));
 function sendDoc(doc) { const p = sendDoc0(doc); p.then(() => pushMsg(doc), () => {}); return p; }
@@ -121,7 +121,7 @@ function openPeer(u) {
   const p = profiles[u] || {}, key = dmKey(myId, u), blocked = ((dms[key] || {}).blockedBy || []).includes(myId), c = $("mcard"); c.textContent = "";
   const head = el("div", "mprev"); head.style.cssText += ";display:flex;align-items:center;gap:12px";
   const a = avatar(p); a.style.cssText += ";width:56px;height:56px;font-size:28px";
-  const t = el("div"), nm = el("b", "", p.name || "مجهول"); nm.style.display = "block"; t.append(nm); head.append(a, t); c.append(head);
+  const t = el("div"), nm = el("b", "", pname(u)); nm.style.display = "block"; t.append(nm); head.append(a, t); c.append(head);
   const go = el("button", "send", "💬 دردشة خاصة"); go.type = "button"; go.style.padding = "13px"; go.onclick = () => openDM(u);
   const bl = el("button", "ghost", blocked ? "✅ إلغاء الحظر" : "🚫 حظر (مايقدرش يكلمك خاص)"); bl.type = "button";
   bl.onclick = async () => {
@@ -135,7 +135,7 @@ function dmRow(d) {
   const tx = el("div", "rt"), sb = el("small"); sb.dir = "rtl";
   const hid = !!d.last && d.last.ts <= dmClearedAt(d); if (hid) row.classList.add("hid");
   sb.textContent = hid ? "🧹 مخفية من القائمة · اضغط للمراسلة" : ((d.blockedBy || []).length ? "🚫 " : "") + (d.req === myId && !d.acc ? "⏳ " : "") + (d.last ? (d.last.uid === myId ? "أنت: " : "") + d.last.text : "");
-  tx.append(el("b", "", p.name || "مجهول"), sb); row.append(avatar(p), tx);
+  tx.append(el("b", "", pname(u)), sb); row.append(avatar(p), tx);
   const un = unreadOf(d.id); if (un) row.append(el("span", "bdg", un > 99 ? "99+" : String(un)));
   let tm, fired = false;
   row.onclick = () => { if (fired) { fired = false; return; } openDM(u); };
@@ -145,7 +145,45 @@ function dmRow(d) {
   row.addEventListener("contextmenu", e => { e.preventDefault(); stop(); fired = true; openDMMenu(d); });
   return row;
 }
-const dmClearedAt = d => ((d && d.cleared) || {})[myId] || 0;
+const dmWipeAt = d => (d && d.wipeTs) || 0;   // وقت «حذف المحادثة للطرفين»: أي رسالة قبله مخفية عند الاتنين
+const dmClearedAt = d => Math.max(((d && d.cleared) || {})[myId] || 0, dmWipeAt(d));
+// ───── ✏️ تعديل الاسم: اسم خاص بيك انت بس (زي واتساب وتليجرام)، متخزن على جهازك ومبيوصلش لصاحبك ─────
+let _nk = null, _nkFor = null;
+const nickMap = () => { if (_nkFor !== myId || !_nk) { _nkFor = myId; try { _nk = JSON.parse(localStorage.getItem("vc_nick_" + myId) || "{}") || {}; } catch (_) { _nk = {}; } } return _nk; };
+const nickOf = u => (u && u !== myId && nickMap()[u]) || "";
+const setNick = (u, v) => { const m = nickMap(); v = String(v || "").replace(/\s+/g, " ").trim().slice(0, 30); if (v && v !== ((profiles[u] || {}).name || "")) m[u] = v; else delete m[u]; try { localStorage.setItem("vc_nick_" + myId, JSON.stringify(m)); } catch (_) {} };
+const pname = u => nickOf(u) || (profiles[u] || {}).name || "مجهول";
+const repaintNames = () => { try { buildChips(); } catch (_) {} try { refreshMe(); } catch (_) {} try { if (lastList.length) render(lastList); } catch (_) {} };
+function openNickEdit(d) {
+  const u = dmPeerOf(d.id), p = profiles[u] || {}, c = $("mcard"); c.textContent = ""; const close = () => { $("msheet").hidden = true; };
+  const head = el("div", "mprev"); head.style.cssText += ";display:flex;align-items:center;gap:10px";
+  const ic = avatar(p); ic.style.cssText += ";width:42px;height:42px;font-size:22px";
+  const t = el("span", "", "✏️ تعديل الاسم"); t.style.fontWeight = "700"; head.append(ic, t); c.append(head);
+  const box = el("div", "acts"); box.style.cssText += ";display:flex;flex-direction:column;gap:10px;align-items:stretch";
+  const orig = el("small", "", "الاسم الأصلي: " + (p.name || "مجهول")); orig.dir = "rtl"; orig.style.cssText = "opacity:.75;text-align:center";
+  const inp = el("input"); inp.type = "text"; inp.maxLength = 30; inp.value = nickOf(u); inp.placeholder = p.name || "اكتب الاسم"; inp.autocomplete = "off"; inp.enterKeyHint = "done"; inp.dir = "auto";
+  inp.style.cssText = "width:100%;box-sizing:border-box;padding:13px 14px;border-radius:14px;border:1px solid var(--line);background:var(--bg);text-align:center;font-size:16px";
+  const note = el("small", "", "الاسم ده بيظهر ليك انت بس، صاحبك مش هيشوفه."); note.dir = "rtl"; note.style.cssText = "opacity:.65;text-align:center";
+  const save = el("button", "send", "حفظ"); save.type = "button"; save.style.padding = "13px";
+  const done = v => { setNick(u, v); close(); repaintNames(); flash(nickOf(u) ? "✓ اتغيّر الاسم" : "✓ رجع الاسم الأصلي"); };
+  save.onclick = () => done(inp.value); inp.onkeydown = e => { if (e.key === "Enter") { e.preventDefault(); done(inp.value); } };
+  box.append(orig, inp, note, save);
+  if (nickOf(u)) { const rs = el("button", "ghost", "↩ رجّع الاسم الأصلي"); rs.type = "button"; rs.onclick = () => done(""); box.append(rs); }
+  c.append(box); $("msheet").hidden = false; setTimeout(() => { try { inp.focus(); inp.select(); } catch (_) {} }, 120);
+}
+// ───── 🗑 حذف المحادثة: بيمسح كل حاجة، رسايلك ورسايل صاحبك، عند الاتنين (زي «حذف للطرفين» في تليجرام) ─────
+async function deleteDmChat(id) {
+  const peer = dmPeerOf(id), s = await db.collection("dmsgs").where("room", "==", id).where("members", "array-contains", myId).get();
+  const docs = s.docs, mine = docs.filter(x => x.data().uid === myId), others = docs.filter(x => x.data().uid !== myId);
+  const wipeTs = Math.max(Date.now(), ...docs.map(x => (x.data().ts || 0) + 1), (((dms[id] || {}).last || {}).ts || 0) + 1);
+  let hidden = true;   // الإخفاء عند الطرفين بيتم بعلامة على المحادثة نفسها، فبيشتغل حتى لو قواعد Firebase منعت مسح رسايل صاحبك
+  try { await db.collection("dms").doc(id).update({ wipeTs, last: FV().delete(), pinned: FV().delete(), pins: FV().delete(), ["unread." + myId]: 0, ["unread." + peer]: 0 }); }
+  catch (e) { try { await db.collection("dms").doc(id).update({ wipeTs }); } catch (e2) { hidden = false; } }
+  for (let i = 0; i < mine.length; i += 400) { const b = db.batch(); mine.slice(i, i + 400).forEach(x => b.delete(x.ref)); await b.commit(); }
+  let gone = 0, left = 0;
+  for (let i = 0; i < others.length; i += 25) { const r = await Promise.allSettled(others.slice(i, i + 25).map(x => x.ref.delete())); r.forEach(x => x.status === "fulfilled" ? gone++ : left++); }
+  return { mine: mine.length, gone, left, hidden };
+}
 async function wipeMyDm(id) {
   const s = await db.collection("dmsgs").where("room", "==", id).where("members", "array-contains", myId).get();
   const mine = s.docs.filter(x => x.data().uid === myId), rest = s.docs.filter(x => x.data().uid !== myId).map(x => x.data()).sort((a, b) => b.ts - a.ts);
@@ -157,19 +195,22 @@ function openDMMenu(d) {
   const u = dmPeerOf(d.id), p = profiles[u] || {}, c = $("mcard"); c.textContent = ""; const close = () => { $("msheet").hidden = true; };
   const head = el("div", "mprev"); head.style.cssText += ";display:flex;align-items:center;gap:10px";
   const ic = avatar(p); ic.style.cssText += ";width:42px;height:42px;font-size:22px";
-  const nm = el("span", "", p.name || "مجهول"); nm.style.fontWeight = "700"; head.append(ic, nm); c.append(head);
+  const nm = el("span", "", pname(u)); nm.style.fontWeight = "700"; head.append(ic, nm); c.append(head);
   const acts = el("div", "acts"), blocked = (d.blockedBy || []).includes(myId);
   const act = (ico, label, grad, fn) => { const b = el("button", "act"); b.type = "button"; const i = el("i", "", ico); i.style.background = grad; const sp = el("span", "", label); b.append(i, sp); b.onclick = () => fn(b, sp); acts.append(b); };
   const sure = (b, sp) => { if (!b.dataset.ok) { b.dataset.ok = "1"; sp.textContent = "تأكيد؟"; return false; } return true; };
-  act("💬", "فتح", "linear-gradient(135deg,#5aa9ff,#2f6fed)", () => { close(); closeDrawer(); openDM(u); });
+  act("✏️", "تعديل الاسم", "linear-gradient(135deg,#5aa9ff,#2f6fed)", () => openNickEdit(d));
   act("🧹", "مسح من عندي", "linear-gradient(135deg,#6bd0c0,#2a9d8f)", async (b, sp) => {
     if (!sure(b, sp)) return; close();
     try { await db.collection("dms").doc(d.id).update({ ["cleared." + myId]: Math.max(Date.now(), ((d.last || {}).ts || 0) + 1), ["unread." + myId]: 0 }); flash("🧹 اتمسحت من القايمة · لسه صديقك وتلاقيه بالبحث"); } catch (e) { flash(errMsg(e)); }
   });
-  act("🗑", "حذف رسايلي للطرفين", "linear-gradient(135deg,#ff7a7a,#d64545)", async (b, sp) => {
+  act("🗑", "حذف المحادثة", "linear-gradient(135deg,#ff7a7a,#d64545)", async (b, sp) => {
     if (!sure(b, sp)) return; close();
-    try { const n = await wipeMyDm(d.id); flash("🗑 اتحذفت " + n + " رسالة"); } catch (e) { flash(errMsg(e)); }
-  });
+    try {
+      const r = await deleteDmChat(d.id); if (room === d.id) openRoom("general");
+      flash(r.hidden || !r.left ? "🗑 اتحذفت المحادثة بالكامل عند الطرفين" : "⚠️ اتحذفت رسايلك بس، رسايل صاحبك مش بتتمسح (قواعد Firebase)");
+    } catch (e) { flash(errMsg(e)); }
+  });;
   act(blocked ? "✅" : "🚫", blocked ? "إلغاء الحظر" : "حظر", "linear-gradient(135deg,#a07cff,#6b46e0)", async () => {
     close();
     try { await db.collection("dms").doc(d.id).set({ members: [myId, u].sort(), blockedBy: blocked ? AR(myId) : AU(myId) }, { merge: true }); flash(blocked ? "✓ اتلغى الحظر" : "🚫 اتحظر"); } catch (e) { flash(errMsg(e)); }
@@ -178,7 +219,7 @@ function openDMMenu(d) {
 }
 function buildDMs(q) {
   const box = $("dmList"), sub = $("dmSub"), qn = nzq(q), qc = normFCode(q); box.textContent = "";
-  const list = Object.values(dms).filter(d => d.last && (q ? dmEstablished(d) : d.last.ts > dmClearedAt(d)) && !pendingIn(d) && !dmCancelled(d) && !(d.req === myId && !d.acc)).sort((a, b) => b.last.ts - a.last.ts).filter(d => { if (!q) return true; const p = profiles[dmPeerOf(d.id)] || {}; return nzq(p.name).includes(qn) || (qc.length >= 2 && String(p.fcode || "").includes(qc)); });
+  const list = Object.values(dms).filter(d => d.last && (q ? dmEstablished(d) : d.last.ts > dmClearedAt(d)) && !pendingIn(d) && !dmCancelled(d) && !(d.req === myId && !d.acc)).sort((a, b) => b.last.ts - a.last.ts).filter(d => { if (!q) return true; const p = profiles[dmPeerOf(d.id)] || {}; return nzq(p.name).includes(qn) || nzq(nickOf(dmPeerOf(d.id))).includes(qn) || (qc.length >= 2 && String(p.fcode || "").includes(qc)); });
   list.forEach(d => box.appendChild(dmRow(d)));
   const pu = qc.length === 8 ? Object.keys(profiles).find(u => u !== myId && profiles[u] && profiles[u].fcode === qc) : null;
   if (pu && !list.some(d => dmPeerOf(d.id) === pu)) {
@@ -191,7 +232,7 @@ function buildDMs(q) {
 function notifyDM(d) {
   vcSnd(d.id === room ? "in" : "ping");
   if (!document.hidden || !("Notification" in window) || Notification.permission !== "granted") return;
-  pushLocal("💬 " + ((profiles[dmPeerOf(d.id)] || {}).name || "رسالة خاصة"), d.last.text, d.id);
+  pushLocal("💬 " + (nickOf(dmPeerOf(d.id)) || (profiles[dmPeerOf(d.id)] || {}).name || "رسالة خاصة"), d.last.text, d.id);
 }
 
 /* Very Chat — الحالة والأفاتار وقائمة الغرف */
@@ -323,7 +364,7 @@ function render(list) {
     row.dataset.uid = m.uid; row.dataset.ts = m.ts; row.dataset.mid = m.id;
     if (box._unr && m.ts >= box._unr && !(prev && prev.ts >= box._unr)) { const u = document.createElement("div"); u.className = "unr"; u.id = "unrDiv"; const cnt = list.filter(x => x.uid !== myId && !x.del && x.ts >= box._unr).length; u.textContent = "⬇ " + cnt + " رسالة غير مقروءة"; nodes.push(u); } if (first) row.appendChild(avatar(p)); else { const s = document.createElement("div"); s.className = "sp"; row.appendChild(s); }
     const p2 = m.ucard ? (profiles[m.ucard.uid] || {}) : null;
-    const sig = [sgs(m), mine ? 1 : 0, first ? 1 : 0, sel.has(m.id) ? 1 : 0, selMode ? 1 : 0, first ? sgs(p) : "", mine && seenOK() ? seenBy(m).length : -1, p2 ? (p2.name || "") + (p2.fcode || "") : "", m.share ? rooms.length : ""].join("¦");
+    const sig = [sgs(m), mine ? 1 : 0, first ? 1 : 0, sel.has(m.id) ? 1 : 0, selMode ? 1 : 0, first ? sgs(p) : "", mine && seenOK() ? seenBy(m).length : -1, p2 ? (p2.name || "") + (p2.fcode || "") + (m.ucard.name || "") + (nickOf(m.ucard.uid) || "") : "", m.share ? rooms.length : ""].join("¦");
     const hit = RC.get(m.id); if (hit && hit.sig === sig) { keep.add(m.id); nodes.push(hit.row); return; }
     const b = document.createElement("div"); b.className = "b";
     if (first && !mine) { const n = document.createElement("div"); n.className = "n"; n.dir = "rtl"; n.textContent = (p && p.name) || "مجهول"; n.style.cursor = "pointer"; n.onclick = e => { e.stopPropagation(); if (Date.now() - (b._f || 0) > 800) peerTap(m.uid, m.room || room); }; b.appendChild(n); }
@@ -408,7 +449,7 @@ function syncDmMeta(rid) { if (!isDM(rid) || !db) return; clearTimeout(_sdm[rid]
 async function syncDmMeta0(rid) {
   try {
     const s = await db.collection("dmsgs").where("room", "==", rid).where("members", "array-contains", myId).get({ source: "server" });
-    const all = s.docs.map(x => ({ ...x.data(), id: x.id })).filter(m => !m._p).sort((x, y) => x.ts - y.ts), lt = all[all.length - 1];
+    const all = s.docs.map(x => ({ ...x.data(), id: x.id })).filter(m => !m._p && m.ts > dmWipeAt(dms[rid])).sort((x, y) => x.ts - y.ts), lt = all[all.length - 1];
     const peer = dmPeerOf(rid), rd = (((dms[rid] || {}).read || {})[peer]) || 0;
     const un = all.filter(m => m.uid === myId && !m.del && m.ts > rd).length;
     await db.collection("dms").doc(rid).update({ last: lt ? { uid: lt.uid, ts: lt.ts, text: mtext(lt).slice(0, 60) } : FV().delete(), ["unread." + peer]: un });
@@ -421,7 +462,7 @@ async function verifyDm(d) {
   const sig = d.id + "|" + ((d.unread || {})[myId] || 0) + "|" + ((d.last || {}).ts || 0) + "|" + ((d.last || {}).text || ""); if (_vdm.get(d.id) === sig) return; _vdm.set(d.id, sig);
   try {
     const s = await db.collection("dmsgs").where("room", "==", d.id).where("members", "array-contains", myId).get({ source: "server" });
-    const all = s.docs.map(x => ({ ...x.data(), id: x.id })).filter(m => !m._p).sort((x, y) => x.ts - y.ts), lt = all[all.length - 1], rd = ((d.read || {})[myId]) || 0;
+    const all = s.docs.map(x => ({ ...x.data(), id: x.id })).filter(m => !m._p && m.ts > dmWipeAt(d)).sort((x, y) => x.ts - y.ts), lt = all[all.length - 1], rd = ((d.read || {})[myId]) || 0;
     const real = all.filter(m => m.uid !== myId && !m.del && m.ts > rd).length, cur = (d.unread || {})[myId] || 0, patch = {};
     if (real < cur) patch["unread." + myId] = real;
     if (lt && (!d.last || d.last.ts !== lt.ts || d.last.text !== mtext(lt).slice(0, 60))) patch.last = { uid: lt.uid, ts: lt.ts, text: mtext(lt).slice(0, 60) };
@@ -675,7 +716,7 @@ const PAGE_URL = location.href.split(/[?#]/)[0];
 const el = (t, c, x) => { const e = document.createElement(t); if (c) e.className = c; if (x !== undefined) e.textContent = x; return e; };
 const canSee = r => !(r.banned || []).includes(myId) && (r.by === myId || (r.members || []).includes(myId) || (!r.private && !r.members));
 const isOwner = r => !r.by || r.by === myId;
-const nameOf = (u, rid) => (profileFor(u, rid) || {}).name || "مجهول";
+const nameOf = (u, rid) => { const p = profileFor(u, rid) || {}; return (p === profiles[u] && nickOf(u)) || p.name || "مجهول"; };   // الاسم المستعار مبيتطبقش على الشخصيات المستعارة في الغرف
 const newCode = () => { const A = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789", b = new Uint8Array(10); try { crypto.getRandomValues(b); } catch (_) { for (let i = 0; i < 10; i++) b[i] = Math.floor(Math.random() * 256); } return Array.from(b, x => A[x % 32]).join(""); };
 let joinId = (location.hash.match(/^#r-([A-Za-z0-9-]+)$/) || [])[1] || null;
 const FV = () => firebase.firestore.FieldValue;
@@ -1260,7 +1301,7 @@ function openFriends() {
   const seenU = new Set(), fr = [];
   Object.values(dms).filter(d => dmEstablished(d) && !pendingIn(d) && !(d.blockedBy || []).length).forEach(d => {
     const u = dmPeerOf(d.id); if (!u || u === myId || seenU.has(u)) return; seenU.add(u);
-    const p = profiles[u] || {}, nm = p.name || "مجهول", ch = nzq(nm).charAt(0).toUpperCase();
+    const p = profiles[u] || {}, nm = nickOf(u) || p.name || "مجهول", ch = nzq(nm).charAt(0).toUpperCase();
     fr.push({ u, p, name: nm, fcode: p.fcode || "", keys: normFCode(p.fcode), hid: !!d.last && d.last.ts <= dmClearedAt(d), ch: /[\u0621-\u064Aa-zA-Z]/.test(ch) ? ch : "#" });
   });
   const grp = ch => /[\u0621-\u064A]/.test(ch) ? 0 : ch === "#" ? 2 : 1;
@@ -2795,7 +2836,9 @@ function roomCard(sh) {
 // الكارت بيشاور على الـ uid بس، والاسم والكود بيتقروا من البروفايل الحقيقي (علشان محدش يزوّر كارت)
 function userCard(u) {
   const p = profiles[u && u.uid] || {}, c = el("div", "rcard"); c.append(avatar(p));
-  const t = el("div", "rt"); t.append(el("b", "", p.name || "مجهول"), el("small", "", "كارت تعريف")); c.append(t);
+  // الاسم على الكارت: اسمي الخاص لو أنا مسجّله، وإلا الاسم اللي المُرسِل سجّله، وإلا الاسم الأصلي. (وأول ما تدوس «مراسلة» بيظهر الاسم الأصلي)
+  const shown = u && u.uid !== myId ? (nickOf(u.uid) || String(u.name || "").replace(/\s+/g, " ").trim().slice(0, 30)) : "";
+  const t = el("div", "rt"), nb = el("b", "", shown || p.name || "مجهول"); nb.dir = "auto"; t.append(nb, el("small", "", "كارت تعريف")); c.append(t);
   if (u && u.uid !== myId) { const b = el("button", "", "مراسلة"); b.type = "button"; b.onclick = e => { e.stopPropagation(); if (!selMode) openPeer(u.uid); }; c.append(b); }
   return c;
 }
@@ -2804,6 +2847,39 @@ async function sendMyCard() {
   if (!canDMFrom(myId, room)) { flash("🎭 إنت بشخصية مستعارة هنا، مينفعش تبعت كودك الحقيقي"); return; }
   if (!(profiles[myId] || {}).fcode) { flash("كودك لسه بيتجهز، جرّب كمان ثانية"); return; }
   try { await postMedia({ ucard: { uid: myId } }); } catch (e) { flash("ماقدرتش أبعت الكارت."); }
+}
+// ───── 🆔 مشاركة الكود: كودي أو كود أي صديق (زي مشاركة جهة اتصال). الصديق بيتبعت بالاسم اللي مسجّله بيه عندك ─────
+function openCodeShare() {
+  const c = $("mcard"); c.textContent = ""; c.append(el("div", "mprev", "🆔 مشاركة الكود"));
+  const acts = el("div", "acts lst");
+  const row = (ico, grad, label, sub, fn) => { const b = el("button", "act"); b.type = "button"; const i = el("i", "", ico); i.style.background = grad; const sp = el("span", "", label); if (sub) { const sm = el("small", "", sub); sm.dir = "ltr"; sm.style.cssText = "display:block;opacity:.6;font-weight:500;font-size:12px"; sp.append(sm); } b.append(i, sp); b.onclick = fn; acts.append(b); };
+  const mc = fmtFCode((profiles[myId] || {}).fcode);
+  row("🆔", "linear-gradient(135deg,#2f8cff,#1f5fd1)", "كودي", mc, () => { $("msheet").hidden = true; sendMyCard(); });
+  row("👥", "linear-gradient(135deg,#22b573,#0f8f7a)", "أكواد الأصدقاء", "", openFriendCodes);
+  c.append(acts); $("msheet").hidden = false;
+}
+function openFriendCodes() {
+  const c = $("mcard"); c.textContent = ""; c.append(el("div", "mprev", "👥 اختار صديق تبعت كوده"));
+  const seen = new Set(), fr = [];
+  Object.values(dms).filter(d => dmEstablished(d) && !pendingIn(d) && !(d.blockedBy || []).length).forEach(d => { const u = dmPeerOf(d.id); if (!u || u === myId || seen.has(u) || !profiles[u]) return; seen.add(u); fr.push(u); });
+  fr.sort((x, y) => pname(x).localeCompare(pname(y), "ar"));
+  const q = el("input", "dsearch"); q.type = "search"; q.placeholder = "🔎 ابحث بالاسم أو بالكود…"; q.autocomplete = "off"; q.autocapitalize = "off"; q.spellcheck = false; q.enterKeyHint = "search"; q.setAttribute("aria-label", "بحث عن صديق");
+  const list = el("div", "acts"); list.style.cssText = "display:flex;flex-direction:column;gap:6px;max-height:52vh;overflow-y:auto";
+  const draw = () => {
+    list.textContent = ""; const qn = nzq(q.value), qc = normFCode(q.value);
+    const hits = fr.filter(u => { if (!qn) return true; const p = profiles[u]; return nzq(pname(u)).includes(qn) || nzq(p.name).includes(qn) || (qc.length >= 2 && String(p.fcode || "").includes(qc)); });
+    if (!hits.length) { const n = el("div", "note", fr.length ? "مفيش صديق بالاسم أو الكود ده" : "لسه مفيش أصدقاء"); n.style.cssText = "text-align:center;padding:18px 8px;opacity:.7"; list.append(n); return; }
+    hits.forEach(u => {
+      const p = profiles[u], b = el("button", "rrow"); b.type = "button"; const nb = el("b", "", pname(u)); nb.dir = "auto"; b.append(avatar(p), nb);
+      if (p.fcode) { const k = el("small", "", fmtFCode(p.fcode)); k.dir = "ltr"; k.style.cssText = "margin-inline-start:auto;opacity:.55;font-variant-numeric:tabular-nums"; b.append(k); }
+      b.onclick = async () => {
+        $("msheet").hidden = true; if (!mediaGuard()) return;
+        try { const nk = nickOf(u); await postMedia({ ucard: { uid: u, ...(nk ? { name: nk } : {}) } }); flash("✓ اتبعت كود " + pname(u)); } catch (e) { flash("ماقدرتش أبعت الكارت."); }
+      };
+      list.append(b);
+    });
+  };
+  q.addEventListener("input", draw); draw(); c.append(q, list); $("msheet").hidden = false;
 }
 function openSharePicker() {
   const c = $("mcard"); c.textContent = "";
@@ -2848,7 +2924,7 @@ $("plusBtn").onclick = () => {
   sec("تفاعل ومشاركة", [
     ["#22b573", P('<path d="M5 20V10M12 20V4M19 20v-7"/>'), "استطلاع", openPollMaker],
     ["#f08c2e", P('<path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>'), "غرفة", openSharePicker],
-    ["#2f8cff", P('<rect x="3" y="5" width="18" height="14" rx="3"/><circle cx="9" cy="11" r="2.2"/><path d="M5.8 16c.6-1.4 1.8-2 3.2-2s2.6.6 3.2 2M14.5 10h4M14.5 13.5h3"/>'), "كودي", sendMyCard]
+    ["#2f8cff", P('<rect x="3" y="5" width="18" height="14" rx="3"/><circle cx="9" cy="11" r="2.2"/><path d="M5.8 16c.6-1.4 1.8-2 3.2-2s2.6.6 3.2 2M14.5 10h4M14.5 13.5h3"/>'), "مشاركة الكود", openCodeShare]
   ], 3);
   c.append(wrap); $("msheet").hidden = false;
 };
@@ -3574,5 +3650,5 @@ $("f").addEventListener("submit", () => { if ($("inp").value.trim() && !$("inp")
 netUI(); buildChips(); registerSW();
 start();
 // ───── جديد في التحديث ─────
-(() => { const V = "v11"; let seen; try { seen = localStorage.getItem("vc_ver"); } catch (_) {} if (seen === V) return;
-  setTimeout(() => { const o = el("div"); o.id = "wn"; o.innerHTML = '<div class="vcard"><div class="grab"></div><div class="wnh">✨</div><h2>تحديث جديد في Very Chat</h2><ul><li><b>🎧 تأثيرات الصوت</b><small>وانت بتسجل دوس 🎛 واختار: تخين، سنجاب، روبوت، صدى، تليفون</small></li><li><b>⚡ سرعة الفويس</b><small>اضغط على 1× لتغيير السرعة (0.75 / 1.5 / 2)</small></li><li><b>🌊 موجة صوتية</b><small>اضغط على الموجة للتقديم والتأخير</small></li><li><b>🔊 أصوات تفاعلية</b><small>تسجيل وإرسال الفويس، الحذف، القبول والرفض والطلبات</small></li><li><b>😀 لوحة إيموجي جديدة</b><small>أقسام، المستخدمة مؤخراً، وزرار مسح</small></li><li><b>🎨 تصميم جديد</b><small>خطوط وألوان وفقاعات أحلى</small></li></ul><button class="send" type="button">يلا نبدأ</button></div>'; o.onclick = e => { if (e.target === o || e.target.tagName === "BUTTON") { o.remove(); try { localStorage.setItem("vc_ver", V); } catch (_) {} } }; document.body.append(o); }, 2600); })();
+(() => { const V = "v12"; let seen; try { seen = localStorage.getItem("vc_ver"); } catch (_) {} if (seen === V) return;
+  setTimeout(() => { const o = el("div"); o.id = "wn"; o.innerHTML = '<div class="vcard"><div class="grab"></div><div class="wnh">✨</div><h2>تحديث جديد في Very Chat</h2><ul><li><b>✏️ تعديل الاسم</b><small>اضغط مطوّلاً على أي محادثة خاصة ← تعديل الاسم، وغيّر الاسم براحتك (بيظهر ليك انت بس)</small></li><li><b>🗑 حذف المحادثة</b><small>بتمسح كل الرسايل، بتاعتك وبتاعة صاحبك، عند الاتنين</small></li></ul><button class="send" type="button">يلا نبدأ</button></div>'; o.onclick = e => { if (e.target === o || e.target.tagName === "BUTTON") { o.remove(); try { localStorage.setItem("vc_ver", V); } catch (_) {} } }; document.body.append(o); }, 2600); })();
