@@ -3,7 +3,7 @@
  * ومكتبات Firebase (نسخة ثابتة) بتتخزّن مرة واحدة وتتقدّم من الكاش.
  * لما تعدّل أي ملف: غيّر رقم BUILD هنا وفي index.html (meta vc-build و ?v= و التعليق الأخير). */
 "use strict";
-const BUILD = "20261123-25";
+const BUILD = "20261123-27";
 const PREFIX = "verychat-";
 const CACHE = PREFIX + BUILD;
 const V = "?v=" + BUILD;
@@ -93,7 +93,7 @@ self.addEventListener("push", e => {
 });
 
 self.addEventListener("notificationclick", e => {
-  const tag = e.notification.tag; e.notification.close();
+  const tag = e.notification.tag; e.notification.close(); if (tag === "vc-up") { e.waitUntil(self.clients.matchAll({ type: "window", includeUncontrolled: true }).then(cs => cs.length ? (cs.find(x => x.visibilityState === "visible") || cs[0]).focus() : self.clients.openWindow("./"))); return; }
   e.waitUntil(self.clients.matchAll({ type: "window", includeUncontrolled: true }).then(cs => {
     if (!cs.length) return self.clients.openWindow("./?open=" + encodeURIComponent(tag || ""));
     const c = cs.find(x => x.visibilityState === "visible") || cs[0];

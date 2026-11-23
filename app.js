@@ -332,7 +332,7 @@ function render(list) {
     if (selMode) { const ck = document.createElement("span"); ck.className = "ck"; ck.textContent = sel.has(m.id) ? "✓" : ""; row.appendChild(ck); }
     row.onclick = () => { if (selMode) toggleSel(m.id); }; frag.appendChild(row);
   } catch (err) { console.warn("رسالة تالفة اتخطّت", err); } });
-  box.replaceChildren(frag); box._ids = new Set(list.map(x => x.id));
+  box.replaceChildren(frag); box._ids = new Set(list.map(x => x.id)); try { UPL.mount(list, box); } catch (_) {}
   const lm = list[list.length - 1], mineNew = lm && lm.uid === myId && Date.now() - lm.ts < 5000;
   if (fresh) { box.scrollTop = box.scrollHeight; box._pin = 1; requestAnimationFrame(() => { if (box._pin) box.scrollTop = box.scrollHeight; setTimeout(() => { if (box._pin) box.scrollTop = box.scrollHeight; box._pin = 0; }, 400); }); }
   else if (near || mineNew || list.length < 4) box.scrollTop = box.scrollHeight;
@@ -1923,7 +1923,7 @@ function mediaGuard(rid) {
 async function postMedia(extra, rid) {
   rid = rid || room;
   const doc = { ...mBase(rid), text: "", uid: myId, ts: Date.now(), ...extra };
-  if (replyTo && rid === room) { doc.reply = replyTo; clearReply(); }
+  if (!doc.reply && replyTo && rid === room) { doc.reply = replyTo; clearReply(); }
   lastSent[rid] = Date.now(); vcSnd("send");
   await sendDoc(doc);
 }
@@ -1937,7 +1937,7 @@ function videoMeta(file) {
     let done = false; const fin = r => { if (done) return; done = true; URL.revokeObjectURL(u); res(r); };
     const info = t => ({ w: v.videoWidth || 0, h: v.videoHeight || 0, d: isFinite(v.duration) ? v.duration : 0, thumb: t || "" });
     v.onloadeddata = () => { try { v.currentTime = Math.min(0.2, (v.duration || 1) / 2); } catch (e) { fin(info()); } };
-    v.onseeked = () => fin(info(mkThumb(v, v.videoWidth, v.videoHeight)));
+    v.onseeked = () => { const inf = info(mkThumb(v, v.videoWidth, v.videoHeight)); try { const k = Math.min(1, 360 / Math.max(v.videoWidth, v.videoHeight, 1)), c = document.createElement("canvas"); c.width = Math.max(1, Math.round(v.videoWidth * k)); c.height = Math.max(1, Math.round(v.videoHeight * k)); c.getContext("2d").drawImage(v, 0, 0, c.width, c.height); inf.poster = c.toDataURL("image/jpeg", .72); } catch (_) {} fin(inf); };
     v.onerror = () => fin(info()); v.src = u; setTimeout(() => fin(info()), 6000);
   });
 }
@@ -2067,93 +2067,469 @@ function upChip(rid, kind) {
 }
 const b64Slice = (blob, a, b) => new Promise(res => { const fr = new FileReader(); fr.onload = () => { const r = String(fr.result || ""); res(r.slice(r.indexOf(",") + 1)); }; fr.onerror = () => res(null); fr.readAsDataURL(blob.slice(a, b)); });
 const withTO = (p, ms) => Promise.race([p, new Promise((_, no) => setTimeout(() => no(new Error("timeout")), ms))]);
-async function uploadChunks(blob, mime, ui, label) {
-  const n = Math.max(1, Math.ceil(blob.size / RAW_CH)), id = db.collection("media").doc().id, ref = i => db.collection("media").doc(i ? id + "_" + i : id);
-  let done = 0, next = 0, fail = null; const written = [];
+async function uploadChunks(blob, mime, ui, label, o) {
+  o = o || {};
+  const n = Math.max(1, Math.ceil(blob.size / RAW_CH)), id = o.id || db.collection("media").doc().id, ref = i => db.collection("media").doc(i ? id + "_" + i : id), skip = o.skip || new Set();
+  let done = skip.size, next = 0, fail = null;
   const put = async i => {
     const b = await b64Slice(blob, i * RAW_CH, (i + 1) * RAW_CH); if (b === null) throw new Error("read");
     const data = (i === 0 ? "data:" + mime + ";vcn=" + n + ";base64," : "") + b;
-    await withTO(ref(i).set({ data, kind: "vid", uid: myId, ts: Date.now() }), 120000); written.push(i);
+    for (let t = 0; ; t++) {
+      try { await withTO(ref(i).set({ data, kind: "vid", uid: myId, ts: Date.now() }), 120000); break; }
+      catch (e) { if (ui.cancel || (e && e.code === "permission-denied") || t >= 3) throw e; await sleep(1500 * (t + 1)); }
+    }
+    if (o.onChunk) o.onChunk(i);
   };
   // القطعة الأولى (الـ header) آخر حاجة، علشان محدش يلاقي فيديو ناقص
-  const order = []; for (let i = 1; i < n; i++) order.push(i); order.push(0);
-  await Promise.all(Array.from({ length: Math.min(3, n) }, async () => {
+  const order = []; for (let i = 1; i < n; i++) if (!skip.has(i)) order.push(i); if (!skip.has(0)) order.push(0);
+  if (done) ui.set("⏫ " + label + " · " + Math.round(done / n * 100) + "%", done / n * 100);
+  await Promise.all(Array.from({ length: Math.min(3, order.length) }, async () => {
     while (!fail && !ui.cancel && next < order.length) {
       const i = order[next++]; if (i === 0 && done < n - 1) { await sleep(100); next--; if (next < order.length) continue; }
-      try { await put(i); done++; ui.set("⏫ " + label + " لـ " + ui.name + " · " + Math.round(done / n * 100) + "%", done / n * 100); } catch (e) { fail = e; }
+      try { await put(i); done++; ui.set("⏫ " + label + " · " + Math.round(done / n * 100) + "%", done / n * 100); } catch (e) { fail = e; }
     }
   }));
-  if (fail || ui.cancel) { written.forEach(i => ref(i).delete().catch(() => {})); throw fail || new Error("cancel"); }
+  if (ui.cancel) { for (let i = 0; i < n; i++) ref(i).delete().catch(() => {}); throw new Error("cancel"); }
+  if (fail) throw fail;
   return id;
 }
 // ضغط بجودة عالية وبنفس الطول (بيشتغل بالزمن الحقيقي، فسيب التطبيق مفتوح). بيتستخدم بس لو الملف أكبر من الحد.
-async function shrinkVideo(file, ui) {
+async function shrinkVideo(file, ui, opt) {
+  opt = opt || {};
   const src = URL.createObjectURL(file), v = document.createElement("video");
   v.muted = true; v.playsInline = true; v.preload = "auto"; v.src = src;
   try {
     await new Promise((ok, no) => { v.onloadedmetadata = ok; v.onerror = no; });
     const cvT = document.createElement("canvas"); if (!window.MediaRecorder || !cvT.captureStream) return null;
-    const dur = v.duration; if (!isFinite(dur) || dur <= 0) return null;
+    const full = v.duration; if (!isFinite(full) || full <= 0) return null;
+    const t0 = Math.max(0, Math.min(opt.start || 0, full)), t1 = Math.min(full, opt.end || full), dur = t1 - t0; if (dur < 0.3) return null;
     if (dur > VID_MAX_SEC) return { tooLong: true };
-    const k = Math.min(1, 720 / Math.min(v.videoWidth, v.videoHeight || 720)), cv = cvT;
+    const k = Math.min(1, (opt.hq ? 1080 : 720) / Math.min(v.videoWidth, v.videoHeight || 720)), cv = cvT;
     cv.width = Math.round(v.videoWidth * k / 2) * 2 || 640; cv.height = Math.round(v.videoHeight * k / 2) * 2 || 360;
     const g = cv.getContext("2d"), out = cv.captureStream(30), abps = 96000;
-    try { v.muted = false; v.volume = 1; const ac = new (window.AudioContext || window.webkitAudioContext)(), sc = ac.createMediaElementSource(v), dst = ac.createMediaStreamDestination(); sc.connect(dst); out.addTrack(dst.stream.getAudioTracks()[0]); await ac.resume(); } catch (e) { v.muted = true; }
+    if (!opt.mute) try { v.muted = false; v.volume = 1; const ac = new (window.AudioContext || window.webkitAudioContext)(), sc = ac.createMediaElementSource(v), dst = ac.createMediaStreamDestination(); sc.connect(dst); out.addTrack(dst.stream.getAudioTracks()[0]); await ac.resume(); } catch (e) { v.muted = true; }
     const mt = ["video/mp4;codecs=avc1,mp4a.40.2", "video/webm;codecs=vp9,opus", "video/webm;codecs=vp8,opus", "video/webm"].find(t => MediaRecorder.isTypeSupported(t)); if (!mt) return null;
     const vbps = Math.max(700000, Math.min(8000000, Math.floor((VID_MAX * 0.85 * 8) / dur - abps)));
     const mr = new MediaRecorder(out, { mimeType: mt, videoBitsPerSecond: vbps, audioBitsPerSecond: abps }), parts = [];
     mr.ondataavailable = e => { if (e.data && e.data.size) parts.push(e.data); };
     const done = new Promise(r => { mr.onstop = r; });
     let raf; const draw = () => { g.drawImage(v, 0, 0, cv.width, cv.height); raf = requestAnimationFrame(draw); };
+    if (t0 > 0.05) { await new Promise(r => { v.onseeked = r; v.currentTime = t0; setTimeout(r, 3000); }); }
     mr.start(1000);
     try { await v.play(); } catch (e) { v.muted = true; await v.play(); }
     draw();
-    await new Promise(r => { const t = setInterval(() => { ui.set("🎞 بجهّز الفيديو (سيب التطبيق مفتوح) · " + Math.min(99, Math.round(v.currentTime / dur * 100)) + "%", v.currentTime / dur * 100); if (v.ended || ui.cancel) { clearInterval(t); r(); } }, 250); });
+    await new Promise(r => { const t = setInterval(() => { ui.set("🎞 بجهّز الفيديو (سيب التطبيق مفتوح) · " + Math.min(99, Math.round((v.currentTime - t0) / dur * 100)) + "%", (v.currentTime - t0) / dur * 100); if (v.ended || v.currentTime >= t1 - 0.05 || ui.cancel) { clearInterval(t); r(); } }, 250); });
     cancelAnimationFrame(raf); v.pause(); if (mr.state !== "inactive") mr.stop(); await done;
     if (ui.cancel) return null;
     return new Blob(parts, { type: mt.split(";")[0] });
   } catch (e) { return null; }
   finally { URL.revokeObjectURL(src); }
 }
-async function sendVideo(file, rid) {
-  rid = rid || room;
-  if (!mediaGuard(rid)) return;
-  const cap = $("inp").value.trim(); if (cap && rid === room) { $("inp").value = ""; try { localStorage.removeItem(draftKey(rid)); } catch (_) {} }
-  const ui = upChip(rid, "فيديو"); ui.name = roomLabel(rid);
-  try {
-    const meta = await videoMeta(file);
-    if (file.size < 650000) {   // صغير جدًا: رسالة واحدة زي الأول
-      const url = await readURL(file); if (!url) throw new Error("read");
-      await postMedia({ ...(await saveMedia("vid", url, meta)), ...(cap ? { text: cap.slice(0, 300) } : {}) }, rid);
-    } else {
-      let blob = file, mime = (file.type || "video/mp4").split(";")[0]; if (!/^video\//i.test(mime)) mime = "video/mp4";
-      if (file.size > VID_MAX) {
-        const r = await shrinkVideo(file, ui);
-        if (ui.cancel) throw new Error("cancel");
-        if (r && r.tooLong) { flash("🎥 الفيديو أطول من " + Math.round(VID_MAX_SEC / 60) + " دقايق، قصّره وجرّب تاني"); return; }
-        if (!r) { flash("ماقدرتش أجهّز الفيديو الكبير ده على المتصفح. جرّب مقطع أصغر."); return; }
-        blob = r; mime = (r.type || "video/webm").split(";")[0];
-        if (blob.size > VID_MAX * 1.08) { flash("الفيديو لسه كبير بعد الضغط. قصّره شوية."); return; }
+// ───── مدير الرفع: الفيديو بيظهر في الشات فورًا بدايرة تقدّم، ويكمّل في الخلفية، وبيرجع يكمّل لو التطبيق اتقفل ─────
+const UPL = (() => {
+  const jobs = new Map(), jk = id => "job:" + id, pk = id => "jobp:" + id;
+  const MB = n => String(Math.max(0.1, n / 1048576).toFixed(1)).replace(/\d/g, d => "٠١٢٣٤٥٦٧٨٩"[d]);
+  const PC = n => String(Math.round(n)).replace(/\d/g, d => "٠١٢٣٤٥٦٧٨٩"[d]) + "٪";
+  const R = 20, CIRC = 2 * Math.PI * R;
+  let rel = null, noteAt = 0, noteLast = -1;
+  const keep = on => { if (on && !rel && navigator.locks) { let r; const p = new Promise(x => { r = x; }); rel = r; navigator.locks.request("vc-upload", () => p).catch(() => {}); } else if (!on && rel) { rel(); rel = null; } };
+  const act = () => keep([...jobs.values()].some(j => j.state !== "err"));
+  const note = (job, done) => {
+    try {
+      if (!document.hidden && !done) return; if (!("Notification" in window) || Notification.permission !== "granted" || !navigator.serviceWorker) return;
+      const pct = Math.round(job.pct || 0); if (!done && (Date.now() - noteAt < 2500 || Math.abs(pct - noteLast) < 4)) return; noteAt = Date.now(); noteLast = pct;
+      navigator.serviceWorker.ready.then(r => {
+        const o = { tag: "vc-up", renotify: false, silent: true, icon: "icon-192.png", badge: "icon-192.png", dir: "auto", lang: "ar", data: { up: 1 } };
+        if (done) { o.silent = false; r.showNotification("✓ اتبعت الفيديو", { ...o, body: "لـ " + roomLabel(job.rid) }); setTimeout(() => r.getNotifications({ tag: "vc-up" }).then(a => a.forEach(n => n.close())).catch(() => {}), 6000); }
+        else r.showNotification("⏫ جاري رفع الفيديو… " + PC(pct), { ...o, body: "لـ " + roomLabel(job.rid) });
+      }).catch(() => {});
+    } catch (_) {}
+  };
+  function size(job) { const w0 = +(job.meta && job.meta.w) || 4, h0 = +(job.meta && job.meta.h) || 3; let W = 240, H = W * h0 / w0; if (H > 320) { H = 320; W = H * w0 / h0; } if (W < 140) W = 140; return [Math.round(W), Math.round(H)]; }
+  function build(job) {
+    const row = el("div", "row me"), b = el("div", "b upb2"), box = el("div", "mwrap upw");
+    const ph = el("div", "mph sharp"); box.append(ph);
+    const ctr = el("div", "upc2"), ring = document.createElementNS("http://www.w3.org/2000/svg", "svg"); ring.setAttribute("viewBox", "0 0 48 48"); ring.setAttribute("class", "upr");
+    ring.innerHTML = '<circle class="bg" cx="24" cy="24" r="' + R + '"/><circle class="fg" cx="24" cy="24" r="' + R + '" stroke-dasharray="' + CIRC.toFixed(2) + '" stroke-dashoffset="' + CIRC.toFixed(2) + '"/>';
+    const x = el("button", "upx2", "✕"); x.type = "button"; x.setAttribute("aria-label", "إلغاء");
+    x.onclick = e => { e.stopPropagation(); if (job.state === "err") { job.err = ""; run(job); } else if (job.state !== "post") cancel(job); };
+    ctr.append(ring, x); const lb = el("div", "upl"); box.append(ctr, lb); b.append(box);
+    const t = el("div", "t"), sc = el("span", "pend"); sc.innerHTML = typeof SVG_CLOCK !== "undefined" ? SVG_CLOCK : "⏱"; t.append(sc, el("span", "", new Date(job.t0).toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit" })));
+    const tx = el("div", "tx mcap"); tx.dir = "auto"; tx.hidden = true; b.append(tx, t); row.append(b);
+    job.row = row; job.el = { box, ph, ring, fg: ring.querySelector(".fg"), x, lb, tx }; paint(job); return row;
+  }
+  function paint(job) {
+    const e = job.el; if (!e) return; const [W, H] = size(job); e.box.style.width = W + "px"; e.box.style.height = H + "px";
+    if (job.poster && e.ph._p !== job.poster) { e.ph._p = job.poster; e.ph.style.backgroundImage = "url(" + job.poster + ")"; }
+    e.tx.hidden = !job.cap; e.tx.textContent = job.cap || "";
+    const st = job.state, pct = Math.max(0, Math.min(100, job.pct || 0)), ind = st === "post" || (st === "prep" && !pct) || (st === "up" && !pct && !job.n);
+    e.ring.classList.toggle("spin", ind); e.fg.style.strokeDashoffset = (CIRC * (1 - (ind ? .28 : pct / 100))).toFixed(2);
+    e.box.classList.toggle("err", st === "err"); e.x.textContent = st === "err" ? "↻" : "✕"; e.x.hidden = st === "post";
+    const sz = job.blob ? " · " + MB(job.blob.size) + " م.ب" : "";
+    e.lb.textContent = st === "err" ? (job.err || "اتقطع الرفع") + " · اضغط ↻" : st === "post" ? "بيتبعت…" : st === "prep" ? "بجهّز الفيديو… " + (pct ? PC(pct) : "") + " · سيب التطبيق مفتوح" : "بيترفع… " + (pct ? PC(pct) : "") + sz;
+  }
+  const mount = (job, box) => { if (!job.row) build(job); box.append(job.row); };
+  function show(job) { if (job.rid !== room) return; const box = $("msgs"); mount(job, box); box.scrollTop = box.scrollHeight; }
+  function drop(job) { jobs.delete(job.id); if (job.row) job.row.remove(); act(); }
+  const wipe = job => { if (job.mid) { idbTx("readwrite", st => { st.delete(jk(job.mid)); st.delete(pk(job.mid)); }); } };
+  async function cancel(job) {
+    job.cancel = true; drop(job); wipe(job); flash("اتلغى رفع الفيديو");
+    if (job.mid && job.n && db) for (let i = 0; i < job.n; i++) db.collection("media").doc(i ? job.mid + "_" + i : job.mid).delete().catch(() => {});
+  }
+  async function posted(job) {
+    if (!job.resumed || !db) return false;
+    try { let q = db.collection(isDM(job.rid) ? "dmsgs" : "msgs").where("room", "==", job.rid).where("mid", "==", job.mid); if (isDM(job.rid)) q = q.where("members", "array-contains", myId); return !(await q.limit(1).get()).empty; } catch (_) { return false; }
+  }
+  async function run(job) {
+    if (job.running) return; job.running = true; job.cancel = false; job.state = "up"; paint(job); act();
+    try {
+      if (job.small) { const url = await readURL(job.file); if (!url) throw new Error("read"); job.state = "post"; paint(job); await postMedia({ ...(await saveMedia("vid", url, job.meta)), ...(job.cap ? { text: job.cap } : {}), ...(job.reply ? { reply: job.reply } : {}) }, job.rid); }
+      else {
+        await uploadChunks(job.blob, job.mime, job.ui, "فيديو", { id: job.mid, skip: job.done, onChunk: i => { job.done.add(i); idbTx("readwrite", st => st.put([...job.done], pk(job.mid))); } });
+        if (job.cancel) throw new Error("cancel");
+        job.state = "post"; job.pct = 100; paint(job); note(job);
+        try { MEDIA.set(job.mid, URL.createObjectURL(job.blob)); idbPut(job.mid, job.blob); } catch (_) {}
+        if (!(await posted(job))) await postMedia({ mid: job.mid, mk: "vid", thumb: job.meta.thumb || "", w: job.meta.w || 0, h: job.meta.h || 0, ...(job.cap ? { text: job.cap } : {}), ...(job.reply ? { reply: job.reply } : {}) }, job.rid);
       }
-      const id = await uploadChunks(blob, mime, ui, "فيديو");
-      MEDIA.set(id, URL.createObjectURL(blob)); idbPut(id, blob);
-      await postMedia({ mid: id, mk: "vid", thumb: meta.thumb || "", w: meta.w || 0, h: meta.h || 0, ...(cap ? { text: cap.slice(0, 300) } : {}) }, rid);
+      wipe(job); note(job, true); setTimeout(() => drop(job), 700);
+    } catch (e) {
+      if (job.cancel || (e && e.message === "cancel")) { if (jobs.has(job.id)) cancel(job); }
+      else if (e && e.code === "permission-denied") { flash("⚠️ قواعد Firebase مش مسمحة بحفظ الفيديو الكبير (collection media). راجع القواعد."); drop(job); wipe(job); }
+      else { job.state = "err"; job.err = navigator.onLine === false ? "مفيش نت" : "اتقطع الرفع"; paint(job); }
+    } finally { job.running = false; act(); }
+  }
+  const make = o => { const job = { id: "u" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), state: "prep", pct: 0, t0: Date.now(), done: new Set(), meta: {}, ...o }; job.ui = { get cancel() { return job.cancel; }, set(_t, p) { if (p != null) job.pct = p; paint(job); note(job); } }; jobs.set(job.id, job); show(job); return job; };
+  async function resume() {
+    if (!db || !myId) return;
+    const keys = (await idbTx("readonly", st => st.getAllKeys())) || [];
+    for (const k of keys) {
+      if (typeof k !== "string" || !k.startsWith("job:")) continue; const rec = await idbGet(k); if (!rec || rec.uid !== myId) continue;
+      if ([...jobs.values()].some(j => j.mid === rec.id)) continue;
+      if (Date.now() - rec.t0 > 3 * 86400000) { idbTx("readwrite", st => { st.delete(k); st.delete(pk(rec.id)); }); continue; }
+      const dn = (await idbGet(pk(rec.id))) || [];
+      const job = { id: "r" + rec.id, mid: rec.id, rid: rec.rid, cap: rec.cap, mime: rec.mime, n: rec.n, meta: rec.meta || {}, poster: rec.poster, reply: rec.reply, blob: rec.blob, t0: rec.t0, done: new Set(dn), state: "up", pct: rec.n ? dn.length / rec.n * 100 : 0, resumed: 1 };
+      job.ui = { get cancel() { return job.cancel; }, set(_t, p) { if (p != null) job.pct = p; paint(job); note(job); } };
+      jobs.set(job.id, job); show(job); run(job);
     }
-  } catch (e) {
-    if (e && e.message === "cancel") flash("اتلغى رفع الفيديو");
-    else if (e && e.code === "permission-denied") flash("⚠️ قواعد Firebase مش مسمحة بحفظ الفيديو الكبير (collection media). راجع القواعد.");
-    else flash("الفيديو ماتبعتش، اتأكد من النت وجرّب تاني.");
-  } finally { ui.done(); }
+  }
+  const save = job => idbTx("readwrite", st => st.put({ id: job.mid, uid: myId, rid: job.rid, cap: job.cap, mime: job.mime, n: job.n, meta: { thumb: job.meta.thumb, w: job.meta.w, h: job.meta.h }, poster: job.poster, reply: job.reply || null, t0: job.t0, blob: job.blob }, jk(job.mid)));
+  const kick = () => { resume().catch(() => {}); [...jobs.values()].forEach(j => { if (j.state === "err" && !j.running) run(j); }); };
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) kick(); });
+  window.addEventListener("online", kick);
+  const iv = setInterval(() => { if (db && myId) { clearInterval(iv); kick(); } }, 2500);
+  return { make, show, paint, run, save, drop, mount: (list, box) => { for (const j of jobs.values()) { if (j.rid !== room) continue; if (j.mid && list.some(m => m.mid === j.mid)) { if (j.row) j.row.remove(); continue; } mount(j, box); } }, jobs };
+})();
+async function sendVideo(file, rid, o) {
+  rid = rid || room; o = o || {};
+  if (!mediaGuard(rid)) return;
+  const cap = o.cap !== undefined ? o.cap : $("inp").value.trim(); if (o.cap === undefined && cap && rid === room) { $("inp").value = ""; try { localStorage.removeItem(draftKey(rid)); } catch (_) {} }
+  const reply = rid === room && replyTo ? replyTo : null; if (reply) clearReply();
+  const job = UPL.make({ rid, cap: cap.slice(0, 300), file, reply });   // الفقاعة بتظهر فورًا في الشات
+  try {
+    const meta = await videoMeta(file); if (job.cancel) return;
+    job.meta = meta; job.poster = meta.poster || ""; UPL.paint(job);
+    if (file.size < 650000 && !o.edit) { job.small = true; UPL.run(job); return; }
+    let blob = file, mime = (file.type || "video/mp4").split(";")[0]; if (!/^video\//i.test(mime)) mime = "video/mp4";
+    if (file.size > VID_MAX || o.edit) {
+      const r = await shrinkVideo(file, job.ui, o.edit ? { ...o.edit, hq: file.size <= VID_MAX } : {});
+      if (job.cancel) return;
+      if (r && r.tooLong) { UPL.drop(job); flash("🎥 الفيديو أطول من " + Math.round(VID_MAX_SEC / 60) + " دقايق، قصّره وجرّب تاني"); return; }
+      if (!r) { UPL.drop(job); flash("ماقدرتش أجهّز الفيديو الكبير ده على المتصفح. جرّب مقطع أصغر."); return; }
+      blob = r; mime = (r.type || "video/webm").split(";")[0];
+      if (blob.size > VID_MAX * 1.08) { UPL.drop(job); flash("الفيديو لسه كبير بعد الضغط. قصّره شوية."); return; }
+    }
+    job.blob = blob; job.mime = mime; job.n = Math.max(1, Math.ceil(blob.size / RAW_CH)); job.mid = db.collection("media").doc().id; job.pct = 0; job.state = "up";
+    await UPL.save(job);           // بنحفظه على الجهاز علشان لو التطبيق اتقفل يكمّل من مكانه
+    UPL.run(job);                  // الرفع بيكمّل في الخلفية من غير ما نستنّاه
+  } catch (e) { UPL.drop(job); flash("الفيديو ماتبعتش، اتأكد من النت وجرّب تاني."); }
 }
-$("aMix").onchange = async e => {
-  const rid = room, f = [...e.target.files]; e.target.value = ""; if (!f.length) return;
-  const im = f.filter(x => (x.type || "").startsWith("image")).slice(0, 5), vd = f.filter(x => (x.type || "").startsWith("video")).slice(0, 3);
-  if (im.length) await sendImages(im, rid);
-  for (const v of vd) await sendVideo(v, rid);
-  if (f.length > im.length + vd.length) flash("اتبعت أول ٥ صور و٣ فيديوهات بس");
-};
-$("aCam").onchange = e => { const rid = room, f = e.target.files[0]; e.target.value = ""; if (!f) return; if ((f.type || "").startsWith("video")) sendVideo(f, rid); else sendImages([f], rid); };
-$("aCamV").onchange = e => { const rid = room, f = e.target.files[0]; e.target.value = ""; if (f) sendVideo(f, rid); };
+// ───── استوديو الإرسال: معاينة وتعديل الصور والفيديو وشرح لكل ملف قبل الإرسال ─────
+const STU = (() => {
+  const CROPS = [["أصلي", 0], ["١:١", 1], ["٤:٥", .8], ["٣:٤", .75], ["١٦:٩", 16 / 9], ["٩:١٦", 9 / 16]];
+  const FLT = [["أصلي", ""], ["نابض", "saturate(1.55) contrast(1.08)"], ["دافي", "sepia(.28) saturate(1.3) hue-rotate(-8deg) brightness(1.04)"], ["بارد", "saturate(1.15) hue-rotate(14deg) brightness(1.02) contrast(1.05)"], ["سينما", "contrast(1.28) saturate(.82) brightness(.92)"], ["أبيض وأسود", "grayscale(1) contrast(1.15)"], ["ذكرى", "sepia(.7) contrast(.95) brightness(1.05)"], ["فجر", "brightness(1.1) saturate(1.25) sepia(.15)"], ["ليل", "brightness(.85) contrast(1.2) saturate(.9) hue-rotate(15deg)"]];
+  const EMO = "😂 🥹 😍 🔥 ❤️ 👍 🙏 🎉 ✨ 💯 😎 🤝 🌹 ⭐ 😭 🤲 💪 👀 🫶 🌙 ☀️ ✅ ❌ 🇪🇬".split(" ");
+  const COL = ["#ffffff", "#111111", "#ff4d6d", "#ffb703", "#2cc4a9", "#4cc9f0", "#9b5cff", "#7ae582"];
+  const MAX_ITEMS = 10, MAX_VIDS = 3;
+  const canF = (() => { try { return "filter" in CanvasRenderingContext2D.prototype; } catch (_) { return false; } })();
+  const ICO = {
+    flt: '<path d="M12 3l2.2 5.3L20 9l-4.3 3.8L17 18.5 12 15.6 7 18.5l1.3-5.7L4 9l5.8-.7z"/>',
+    adj: '<path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/>',
+    crop: '<path d="M7 3v14h14M3 7h14v14"/>',
+    rot: '<path d="M20 12a8 8 0 1 1-2.6-5.9M20 4v5h-5"/>',
+    draw: '<path d="M4 20l1-4L16.5 4.5a2 2 0 0 1 3 3L8 19z"/>',
+    text: '<path d="M5 6V4h14v2M12 4v16M9 20h6"/>',
+    emo: '<circle cx="12" cy="12" r="9"/><path d="M8 14s1.5 2.5 4 2.5S16 14 16 14M9 9.5h.01M15 9.5h.01"/>',
+    trim: '<circle cx="6" cy="6" r="2.5"/><circle cx="6" cy="18" r="2.5"/><path d="M8 7.5L20 18M8 16.5L20 6"/>',
+    mute: '<path d="M4 9v6h4l5 4V5L8 9zM17 9l4 6M21 9l-4 6"/>',
+    snd: '<path d="M4 9v6h4l5 4V5L8 9zM16.5 8.5a5 5 0 0 1 0 7"/>',
+    reset: '<path d="M4 4v6h6M4.5 10A8 8 0 1 1 5 15"/>',
+    plus: '<path d="M12 5v14M5 12h14"/>',
+    trash: '<path d="M5 7h14M10 7V4h4v3M7 7l1 13h8l1-13"/>',
+    undo: '<path d="M9 14L4 9l5-5M4 9h10a6 6 0 0 1 0 12h-3"/>',
+  };
+  const svg = (k, s) => '<svg viewBox="0 0 24 24" width="' + (s || 22) + '" height="' + (s || 22) + '" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + ICO[k] + "</svg>";
+  const fmt = s => { s = Math.max(0, s || 0); return Math.floor(s / 60) + ":" + String(Math.floor(s % 60)).padStart(2, "0"); };
+  const arN = n => String(n).replace(/\d/g, d => "٠١٢٣٤٥٦٧٨٩"[d]);
+  let S = null, root = null, R = {}, uid = 0, raf = 0;
+
+  const fstr = it => !canF ? "" : [FLT[it.flt][1], it.br ? "brightness(" + (1 + it.br / 100) + ")" : "", it.ct ? "contrast(" + (1 + it.ct / 100) + ")" : "", it.sa ? "saturate(" + (1 + it.sa / 100) + ")" : ""].filter(Boolean).join(" ");
+  const edited = it => it.kind === "img" ? !!(it.rot || it.crop || it.flt || it.br || it.ct || it.sa || it.strokes.length || it.layers.length) : (it.st > .05 || it.en < it.dur - .05 || it.mute);
+  function geom(it, maxPx) {
+    const sw = it.bmp.width, sh = it.bmp.height, odd = it.rot % 2, rw = odd ? sh : sw, rh = odd ? sw : sh, a = CROPS[it.crop][1];
+    let cw = rw, ch = rh; if (a) { if (rw / rh > a) cw = rh * a; else ch = rw / a; }
+    const k = Math.min(1, maxPx / Math.max(cw, ch));
+    return { sw, sh, k, ow: Math.max(1, Math.round(cw * k)), oh: Math.max(1, Math.round(ch * k)) };
+  }
+  function paint(it, cv, maxPx, ed) {
+    const g = geom(it, maxPx); if (cv.width !== g.ow) cv.width = g.ow; if (cv.height !== g.oh) cv.height = g.oh;
+    const c = cv.getContext("2d"); c.clearRect(0, 0, g.ow, g.oh); c.imageSmoothingQuality = "high";
+    c.save(); if (canF) c.filter = fstr(it) || "none"; c.translate(g.ow / 2, g.oh / 2); c.rotate(it.rot * Math.PI / 2); c.scale(g.k, g.k); c.drawImage(it.bmp, -g.sw / 2, -g.sh / 2); c.restore();
+    for (const s of it.strokes) {
+      c.strokeStyle = s.c; c.lineWidth = Math.max(1.5, s.w * g.ow); c.lineCap = c.lineJoin = "round"; c.beginPath();
+      s.p.forEach(([x, y], i) => i ? c.lineTo(x * g.ow, y * g.oh) : c.moveTo(x * g.ow, y * g.oh));
+      if (s.p.length === 1) c.lineTo(s.p[0][0] * g.ow + .1, s.p[0][1] * g.oh); c.stroke();
+    }
+    it._box = [];
+    it.layers.forEach((L, i) => {
+      const fs = L.s * g.ow, x = L.x * g.ow, y = L.y * g.oh; c.save();
+      c.font = (L.e ? "" : "800 ") + fs + "px system-ui,'Segoe UI Emoji','Noto Color Emoji',sans-serif"; c.textAlign = "center"; c.textBaseline = "middle"; c.direction = /[؀-ۿ]/.test(L.t) ? "rtl" : "ltr";
+      const w = c.measureText(L.t).width, pad = fs * .32;
+      if (!L.e && L.bg) {
+        c.fillStyle = L.c; const bx = x - w / 2 - pad, by = y - fs * .75, bw = w + pad * 2, bh = fs * 1.5; c.beginPath();
+        if (c.roundRect) c.roundRect(bx, by, bw, bh, fs * .4); else c.rect(bx, by, bw, bh); c.fill();
+        c.fillStyle = L.c === "#ffffff" || L.c === "#ffb703" || L.c === "#7ae582" || L.c === "#4cc9f0" ? "#111" : "#fff";
+      } else { c.fillStyle = L.c; if (!L.e) { c.shadowColor = "rgba(0,0,0,.55)"; c.shadowBlur = fs * .25; } }
+      c.fillText(L.t, x, y + (L.e ? fs * .04 : 0)); c.restore();
+      it._box[i] = { x: (x - w / 2 - pad) / g.ow, y: (y - fs * .75) / g.oh, w: (w + pad * 2) / g.ow, h: fs * 1.5 / g.oh };
+      if (ed && S && S.sel === i) { c.save(); c.setLineDash([6, 5]); c.strokeStyle = "#fff"; c.lineWidth = 2; c.strokeRect(x - w / 2 - pad, y - fs * .75, w + pad * 2, fs * 1.5); c.restore(); }
+    });
+  }
+  const sched = () => { if (raf) return; raf = requestAnimationFrame(() => { raf = 0; repaint(); }); };
+  function repaint() { const it = cur(); if (!it || it.kind !== "img") return; paint(it, R.cv, 1000, true); }
+  const cur = () => S && S.items[S.i];
+  function ambient(src, w, h) {
+    try { const c = document.createElement("canvas"); c.width = c.height = 1; c.getContext("2d").drawImage(src, 0, 0, w, h, 0, 0, 1, 1); const d = c.getContext("2d").getImageData(0, 0, 1, 1).data; root.style.setProperty("--amb", Math.max(30, d[0]) + "," + Math.max(30, d[1]) + "," + Math.max(30, d[2])); } catch (_) {}
+  }
+  const tick = () => { try { navigator.vibrate && navigator.vibrate(6); } catch (_) {} };
+
+  function build() {
+    root = document.createElement("div"); root.id = "stu"; root.hidden = true; root.setAttribute("role", "dialog"); root.setAttribute("aria-label", "إرسال صور وفيديو");
+    root.innerHTML = '<div class="stu-aur"></div>' +
+      '<div class="stu-top"><button type="button" class="stu-x" id="stuX" aria-label="إغلاق">✕</button><div class="stu-to"><span>إلى</span><b id="stuTo"></b></div><div class="stu-n" id="stuN"></div></div>' +
+      '<div class="stu-stage"><div class="stu-rail" id="stuRail"></div><div class="stu-frame" id="stuFrame"><canvas id="stuCv"></canvas><video id="stuV" playsinline webkit-playsinline controls hidden></video><div class="stu-tip" id="stuTip" hidden></div><div class="stu-ld" id="stuLd" hidden></div></div></div>' +
+      '<div class="stu-panel" id="stuPanel" hidden></div>' +
+      '<div class="stu-strip" id="stuStrip"></div>' +
+      '<div class="stu-bar"><div class="stu-cap"><label id="stuCapL" for="stuCap"></label><textarea id="stuCap" rows="1" maxlength="300" placeholder="اكتب شرح…" dir="auto" enterkeyhint="enter"></textarea></div>' +
+      '<button type="button" class="stu-send" id="stuSend" aria-label="إرسال"><svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor" aria-hidden="true"><path d="M21.5 3.2 2.9 10.4c-.8.3-.8 1.4 0 1.7l4.6 1.8 1.8 4.6c.3.8 1.4.8 1.7 0L18.2 5.1 21.5 3.2z" transform="scale(-1 1) translate(-24 0)"/></svg><b id="stuSN"></b></button></div>';
+    document.body.append(root);
+    ["stuX", "stuTo", "stuN", "stuRail", "stuFrame", "stuCv", "stuV", "stuTip", "stuLd", "stuPanel", "stuStrip", "stuCapL", "stuCap", "stuSend", "stuSN"].forEach(k => R[k.slice(3).toLowerCase() || k] = document.getElementById(k));
+    R.x = R.x; R.cv = R.cv; R.v = R.v;
+    R.x.onclick = () => close(false);
+    R.send.onclick = send;
+    R.cap.oninput = () => { const it = cur(); if (it) it.cap = R.cap.value; R.cap.style.height = "auto"; R.cap.style.height = Math.min(96, R.cap.scrollHeight) + "px"; };
+    document.addEventListener("keydown", e => { if (e.key === "Escape" && S && !root.hidden) close(false); });
+    // لوحة المفاتيح: نخلي الشاشة على قد المساحة المرئية بس
+    const vv = window.visualViewport; if (vv) { const fit = () => { if (root.hidden) return; root.style.height = vv.height + "px"; root.style.top = vv.offsetTop + "px"; root.classList.toggle("kb", vv.height < window.innerHeight * .75); }; vv.addEventListener("resize", fit); vv.addEventListener("scroll", fit); R.fit = fit; }
+    // لمس الصورة: رسم أو سحب نص/ملصق
+    let stroke = null, drag = null;
+    const pt = e => { const r = R.cv.getBoundingClientRect(); return [Math.min(1, Math.max(0, (e.clientX - r.left) / r.width)), Math.min(1, Math.max(0, (e.clientY - r.top) / r.height))]; };
+    R.cv.style.touchAction = "none";
+    R.cv.addEventListener("pointerdown", e => {
+      const it = cur(); if (!it || it.kind !== "img") return; const p = pt(e);
+      if (S.mode === "draw") { stroke = { c: S.col, w: S.pw, p: [p] }; it.strokes.push(stroke); try { R.cv.setPointerCapture(e.pointerId); } catch (_) {} sched(); return; }
+      for (let i = it.layers.length - 1; i >= 0; i--) { const b = it._box[i]; if (b && p[0] >= b.x && p[0] <= b.x + b.w && p[1] >= b.y && p[1] <= b.y + b.h) { S.sel = i; drag = { i, dx: it.layers[i].x - p[0], dy: it.layers[i].y - p[1] }; try { R.cv.setPointerCapture(e.pointerId); } catch (_) {} panel(); sched(); return; } }
+      if (S.sel !== -1) { S.sel = -1; panel(); sched(); }
+    });
+    R.cv.addEventListener("pointermove", e => {
+      const it = cur(); if (!it) return; const p = pt(e);
+      if (stroke) { const l = stroke.p[stroke.p.length - 1]; if (Math.hypot(p[0] - l[0], p[1] - l[1]) > .002) { stroke.p.push(p); sched(); } }
+      else if (drag) { const L = it.layers[drag.i]; if (L) { L.x = Math.min(1, Math.max(0, p[0] + drag.dx)); L.y = Math.min(1, Math.max(0, p[1] + drag.dy)); sched(); } }
+    });
+    const up = () => { if (stroke) { stroke = null; thumbOf(cur()); dock(); } if (drag) { drag = null; thumbOf(cur()); } };
+    R.cv.addEventListener("pointerup", up); R.cv.addEventListener("pointercancel", up);
+    R.v.addEventListener("timeupdate", () => { const it = cur(); if (!it || it.kind !== "vid" || !it.dur) return; if (R.v.currentTime >= it.en - .05) { R.v.currentTime = it.st; if (!R.v.paused) R.v.play().catch(() => {}); } });
+    R.v.addEventListener("play", () => { const it = cur(); if (it && it.kind === "vid" && (R.v.currentTime < it.st - .05 || R.v.currentTime >= it.en - .05)) R.v.currentTime = it.st; });
+    const fitV = () => { const it = cur(); if (!it || it.kind !== "vid" || !it.tw || !it.th) return; const fw = R.frame.clientWidth, fh = R.frame.clientHeight; if (!fw || !fh) return; const k = Math.min(fw / it.tw, fh / it.th); R.v.style.width = Math.floor(it.tw * k) + "px"; R.v.style.height = Math.floor(it.th * k) + "px"; };
+    R.fitV = fitV; if (window.ResizeObserver) new ResizeObserver(fitV).observe(R.frame); window.addEventListener("resize", fitV);
+    R.v.addEventListener("volumechange", () => { const it = cur(); if (it && it.kind === "vid") R.v.muted = it.mute; });
+  }
+
+  // ───── تحميل الملفات ─────
+  async function loadImg(it) {
+    let bmp;
+    try { bmp = await createImageBitmap(it.file); } catch (e) { bmp = await new Promise((ok, no) => { const u = URL.createObjectURL(it.file), im = new Image(); im.onload = () => { URL.revokeObjectURL(u); ok(im); }; im.onerror = no; im.src = u; }); }
+    const w = bmp.width || bmp.naturalWidth, h = bmp.height || bmp.naturalHeight, k = Math.min(1, 2400 / Math.max(w, h));
+    if (k < 1) { const c = document.createElement("canvas"); c.width = Math.round(w * k); c.height = Math.round(h * k); c.getContext("2d").drawImage(bmp, 0, 0, c.width, c.height); if (bmp.close) bmp.close(); bmp = c; }
+    it.bmp = bmp; it.tw = bmp.width; it.th = bmp.height; thumbOf(it);
+  }
+  function loadVid(it) {
+    return new Promise(res => {
+      it.url = URL.createObjectURL(it.file); const v = document.createElement("video"); v.muted = true; v.playsInline = true; v.preload = "auto"; let done = false;
+      const fin = () => { if (done) return; done = true; it.dur = isFinite(v.duration) ? v.duration : 0; it.en = Math.min(it.dur || 0, 300); it.tw = v.videoWidth; it.th = v.videoHeight; res(); };
+      v.onloadeddata = () => { try { v.currentTime = Math.min(.2, (v.duration || 1) / 2); } catch (e) { fin(); } };
+      v.onseeked = () => { try { const k = 160 / Math.max(v.videoWidth, v.videoHeight, 1), c = document.createElement("canvas"); c.width = Math.max(1, Math.round(v.videoWidth * k)); c.height = Math.max(1, Math.round(v.videoHeight * k)); c.getContext("2d").drawImage(v, 0, 0, c.width, c.height); it.poster = c.toDataURL("image/jpeg", .7); it.pc = c; } catch (e) {} fin(); };
+      v.onerror = fin; v.src = it.url; setTimeout(fin, 7000);
+    });
+  }
+  function thumbOf(it) {
+    if (!it) return;
+    if (it.kind === "img") { const c = it.tc || (it.tc = document.createElement("canvas")); try { paint(it, c, 140); } catch (_) {} }
+    strip();
+  }
+
+  // ───── الواجهة ─────
+  function dock() {
+    const it = cur(), r = R.rail; r.textContent = ""; if (!it) return;
+    const B = (ic, lb, fn, on, dis) => { const b = document.createElement("button"); b.type = "button"; b.className = "stu-t" + (on ? " on" : ""); b.innerHTML = svg(ic) + "<i>" + lb + "</i>"; b.disabled = !!dis; b.onclick = () => { tick(); fn(); }; r.append(b); };
+    const mode = m => () => { S.mode = S.mode === m ? "" : m; S.sel = -1; panel(); dock(); sched(); };
+    if (it.kind === "img") {
+      if (canF) { B("flt", "فلاتر", mode("flt"), S.mode === "flt"); B("adj", "ضبط", mode("adj"), S.mode === "adj"); }
+      B("crop", "قص", mode("crop"), S.mode === "crop"); B("rot", "تدوير", rotate);
+      B("draw", "رسم", mode("draw"), S.mode === "draw"); B("text", "نص", mode("text"), S.mode === "text"); B("emo", "ملصق", mode("emo"), S.mode === "emo");
+    } else {
+      B("trim", "قص", mode("trim"), S.mode === "trim");
+      B(it.mute ? "mute" : "snd", it.mute ? "صامت" : "الصوت", () => { it.mute = !it.mute; R.v.muted = it.mute; dock(); strip(); });
+    }
+    B("reset", "إلغاء", resetIt, false, !edited(it));
+  }
+  function panel() {
+    const it = cur(), p = R.panel; p.textContent = ""; const m = it && S.mode; p.hidden = !m; R.frame.classList.toggle("tall", !!m); if (!m) { tip(); return; }
+    const row = (cls) => { const d = document.createElement("div"); d.className = "stu-row " + (cls || ""); p.append(d); return d; };
+    const chip = (host, label, on, fn) => { const b = document.createElement("button"); b.type = "button"; b.className = "stu-c" + (on ? " on" : ""); b.textContent = label; b.onclick = () => { tick(); fn(); }; host.append(b); return b; };
+    const dots = (host, sel, fn) => COL.forEach(c => { const b = document.createElement("button"); b.type = "button"; b.className = "stu-dot" + (c === sel ? " on" : ""); b.style.background = c; b.setAttribute("aria-label", "لون"); b.onclick = () => { tick(); fn(c); }; host.append(b); });
+    const slider = (lb, val, fn) => { const d = row("sl"); const l = document.createElement("span"); l.textContent = lb; const i = document.createElement("input"); i.type = "range"; i.min = -50; i.max = 50; i.value = val; const o = document.createElement("b"); o.textContent = arN(val); i.oninput = () => { fn(+i.value); o.textContent = arN(i.value); sched(); }; i.onchange = () => { thumbOf(it); dock(); }; d.append(l, i, o); };
+    if (m === "flt") {
+      const d = row("scroll"); FLT.forEach(([n, f], i) => { const b = document.createElement("button"); b.type = "button"; b.className = "stu-f" + (it.flt === i ? " on" : ""); const c = document.createElement("canvas"); const k = 64 / Math.max(it.bmp.width, it.bmp.height); c.width = Math.max(1, Math.round(it.bmp.width * k)); c.height = Math.max(1, Math.round(it.bmp.height * k)); const g = c.getContext("2d"); g.filter = f || "none"; g.drawImage(it.bmp, 0, 0, c.width, c.height); const s = document.createElement("span"); s.textContent = n; b.append(c, s); b.onclick = () => { tick(); it.flt = i; thumbOf(it); panel(); dock(); sched(); }; d.append(b); });
+    } else if (m === "adj") {
+      slider("سطوع", it.br, v => it.br = v); slider("تباين", it.ct, v => it.ct = v); slider("ألوان", it.sa, v => it.sa = v);
+    } else if (m === "crop") {
+      const d = row("scroll"); CROPS.forEach(([n], i) => chip(d, n, it.crop === i, () => { if (it.crop === i) return; if (clearNotes()) return; it.crop = i; thumbOf(it); panel(); dock(); sched(); }));
+    } else if (m === "draw") {
+      const d = row(); dots(d, S.col, c => { S.col = c; panel(); });
+      const t = row("scroll"); [["رفيع", .006], ["وسط", .011], ["عريض", .022]].forEach(([n, w]) => chip(t, n, S.pw === w, () => { S.pw = w; panel(); }));
+      const u = chip(t, "↩ تراجع", false, () => { it.strokes.pop(); thumbOf(it); dock(); sched(); }); u.disabled = !it.strokes.length;
+    } else if (m === "text") {
+      const d = row("txt"), i = document.createElement("input"); i.type = "text"; i.placeholder = "اكتب النص…"; i.maxLength = 60; i.dir = "auto"; i.id = "stuTxt";
+      const L = it.layers[S.sel]; if (L && !L.e) i.value = L.t;
+      const add = document.createElement("button"); add.type = "button"; add.className = "stu-add"; add.textContent = L && !L.e ? "تحديث" : "إضافة";
+      add.onclick = () => { const t = i.value.trim(); if (!t) { i.focus(); return; } const cl = it.layers[S.sel]; if (cl && !cl.e) { cl.t = t; cl.c = S.tc; cl.bg = S.tbg; } else { it.layers.push({ t, x: .5, y: .5, s: .075, c: S.tc, bg: S.tbg }); S.sel = it.layers.length - 1; } i.value = ""; thumbOf(it); panel(); dock(); sched(); };
+      i.onkeydown = e => { if (e.key === "Enter") { e.preventDefault(); add.click(); } };
+      d.append(i, add);
+      const c = row(); dots(c, S.tc, col => { S.tc = col; const cl = it.layers[S.sel]; if (cl && !cl.e) cl.c = col; panel(); sched(); });
+      const o = row("scroll"); chip(o, S.tbg ? "▣ بخلفية" : "▢ بدون خلفية", false, () => { S.tbg = !S.tbg; const cl = it.layers[S.sel]; if (cl && !cl.e) cl.bg = S.tbg; panel(); sched(); });
+    } else if (m === "emo") {
+      const d = row("emo"); EMO.forEach(e => { const b = document.createElement("button"); b.type = "button"; b.textContent = e; b.onclick = () => { tick(); it.layers.push({ t: e, e: 1, x: .5, y: .5, s: .17, c: "#fff" }); S.sel = it.layers.length - 1; thumbOf(it); panel(); dock(); sched(); }; d.append(b); });
+    } else if (m === "trim") {
+      const d = row("trim"), mk = (lb, key) => { const w = document.createElement("label"); const s = document.createElement("span"), i = document.createElement("input"), o = document.createElement("b"); s.textContent = lb; i.type = "range"; i.min = 0; i.max = it.dur; i.step = .1; i.value = it[key]; o.textContent = fmt(it[key]);
+        i.oninput = () => { let v = +i.value; if (key === "st") { v = Math.min(v, it.en - .5); it.st = Math.max(0, v); R.v.currentTime = it.st; } else { v = Math.max(v, it.st + .5); it.en = Math.min(it.dur, v); R.v.currentTime = Math.max(it.st, it.en - .3); } i.value = it[key]; o.textContent = fmt(it[key]); len.textContent = "المدة " + fmt(it.en - it.st); };
+        i.onchange = () => { dock(); strip(); }; w.append(s, i, o); d.append(w); }, len = document.createElement("div"); len.className = "stu-len"; mk("من", "st"); mk("إلى", "en"); len.textContent = "المدة " + fmt(it.en - it.st); d.append(len);
+      if (it.dur > 300) { const w = document.createElement("div"); w.className = "stu-len"; w.textContent = "الحد الأقصى ٥ دقايق"; d.append(w); }
+    }
+    if (it.kind === "img" && (m === "text" || m === "emo") && S.sel >= 0 && it.layers[S.sel]) {
+      const d = row("lay"), L = it.layers[S.sel];
+      chip(d, "＋ أكبر", false, () => { L.s = Math.min(.6, L.s * 1.2); thumbOf(it); sched(); }); chip(d, "－ أصغر", false, () => { L.s = Math.max(.02, L.s / 1.2); thumbOf(it); sched(); });
+      chip(d, "🗑 حذف", false, () => { it.layers.splice(S.sel, 1); S.sel = -1; thumbOf(it); panel(); dock(); sched(); });
+    }
+    tip();
+  }
+  function tip() { const it = cur(), t = R.tip; const on = it && it.kind === "img" && S.mode === "draw" ? "ارسم بصباعك على الصورة" : it && it.kind === "img" && it.layers.length ? "اسحب النص أو الملصق عشان تحرّكه" : ""; t.hidden = !on; t.textContent = on; }
+  function clearNotes() { const it = cur(); if (it.strokes.length || it.layers.length) { if (!confirm("ده هيمسح الرسم والنصوص اللي على الصورة. تكمّل؟")) return true; it.strokes = []; it.layers = []; S.sel = -1; } return false; }
+  function rotate() { const it = cur(); if (clearNotes()) return; it.rot = (it.rot + 1) % 4; thumbOf(it); dock(); sched(); }
+  function resetIt() {
+    const it = cur(); if (!it) return;
+    if (it.kind === "img") Object.assign(it, { rot: 0, crop: 0, flt: 0, br: 0, ct: 0, sa: 0, strokes: [], layers: [] }); else { it.st = 0; it.en = Math.min(it.dur, 300); it.mute = false; R.v.muted = false; R.v.currentTime = 0; }
+    S.sel = -1; thumbOf(it); panel(); dock(); sched();
+  }
+  function strip() {
+    const s = R.strip; s.textContent = "";
+    S.items.forEach((it, i) => {
+      const b = document.createElement("button"); b.type = "button"; b.className = "stu-th" + (i === S.i ? " on" : ""); b.setAttribute("aria-label", "ملف " + (i + 1));
+      const src = it.kind === "img" ? it.tc : it.pc; if (src && src.width) { const c = document.createElement("canvas"); c.width = src.width; c.height = src.height; c.getContext("2d").drawImage(src, 0, 0); b.append(c); }
+      if (it.kind === "vid") { const t = document.createElement("i"); t.className = "stu-vd"; t.textContent = "▶ " + fmt(it.en - it.st); b.append(t); }
+      if (edited(it)) { const e = document.createElement("u"); e.textContent = "✎"; b.append(e); }
+      if (it.cap.trim()) { const e = document.createElement("s"); e.textContent = "Aa"; b.append(e); }
+      b.onclick = () => { if (i !== S.i) show(i); };
+      if (S.items.length > 1) { const x = document.createElement("span"); x.className = "stu-rm"; x.textContent = "✕"; x.onclick = ev => { ev.stopPropagation(); removeAt(i); }; b.append(x); }
+      s.append(b);
+    });
+    if (S.items.length < MAX_ITEMS) { const a = document.createElement("button"); a.type = "button"; a.className = "stu-th stu-add2"; a.setAttribute("aria-label", "إضافة المزيد"); a.innerHTML = svg("plus", 22); a.onclick = () => document.getElementById("aMix").click(); s.append(a); }
+    R.sn.textContent = S.items.length > 1 ? arN(S.items.length) : ""; R.n.textContent = S.items.length > 1 ? arN(S.i + 1) + " / " + arN(S.items.length) : "";
+    R.send.classList.toggle("multi", S.items.length > 1);
+    const on = s.querySelector(".on"); if (on && on.scrollIntoView) try { on.scrollIntoView({ inline: "center", block: "nearest" }); } catch (_) {}
+  }
+  function removeAt(i) { const it = S.items[i]; releaseOne(it); S.items.splice(i, 1); if (!S.items.length) { close(true); return; } show(Math.min(i, S.items.length - 1)); }
+  function show(i) {
+    S.i = i; const it = cur(); if (!it) return; S.sel = -1; if (it.kind === "vid" && !["trim", ""].includes(S.mode)) S.mode = ""; if (it.kind === "img" && S.mode === "trim") S.mode = "";
+    R.cv.hidden = it.kind !== "img"; R.v.hidden = it.kind !== "vid";
+    if (it.kind === "vid") { if (R.v.dataset.id !== String(it.id)) { R.v.dataset.id = it.id; R.v.src = it.url; R.v.muted = it.mute; R.v.currentTime = it.st || 0; } } else { try { R.v.pause(); } catch (_) {} }
+    R.cap.value = it.cap; R.cap.style.height = "auto"; R.cap.style.height = Math.min(96, R.cap.scrollHeight) + "px";
+    R.capl.textContent = (it.kind === "vid" ? "🎬 شرح الفيديو" : "🖼 شرح الصورة") + (S.items.length > 1 ? " · " + arN(i + 1) : "");
+    if (it.kind === "img") { thumbOf(it); ambient(it.bmp, it.bmp.width, it.bmp.height); } else if (it.pc) ambient(it.pc, it.pc.width, it.pc.height);
+    dock(); panel(); strip(); repaint(); if (R.fitV) { R.fitV(); requestAnimationFrame(R.fitV); }
+  }
+  function releaseOne(it) { try { if (it.url) URL.revokeObjectURL(it.url); if (it.bmp && it.bmp.close) it.bmp.close(); } catch (_) {} }
+  function close(sent) {
+    if (!S) return;
+    if (!sent && S.items.some(x => edited(x) || x.cap.trim()) && !confirm("تقفل من غير ما تبعت؟ التعديلات هتضيع.")) return;
+    try { R.v.pause(); R.v.removeAttribute("src"); R.v.load(); } catch (_) {} delete R.v.dataset.id;
+    root.hidden = true; document.documentElement.classList.remove("stu-open");
+    if (!sent) S.items.forEach(releaseOne);
+    S = null;
+  }
+
+  // ───── التجهيز والإرسال ─────
+  const toBlob = (cv, q) => new Promise(res => cv.toBlob(b => res(b), "image/jpeg", q));
+  async function exportImg(it) { const cv = document.createElement("canvas"); paint(it, cv, 1800, false); return (await toBlob(cv, .92)) || it.file; }
+  async function send() {
+    if (!S || !S.items.length) return; const rid = S.rid;
+    if (!mediaGuard(rid)) return;
+    const items = S.items.slice();
+    if (S.inpTaken && rid === room) { $("inp").value = ""; try { localStorage.removeItem(draftKey(rid)); } catch (_) {} }
+    close(true); let n = 0;
+    for (const it of items) {
+      const cap = it.cap.trim().slice(0, 300);
+      try {
+        if (it.kind === "img") {
+          setStatus("جاري تجهيز الصورة…");
+          const r = await shrinkImage(edited(it) ? await exportImg(it) : it.file); if (!r) { setStatus("الصورة كبيرة جدًا."); continue; }
+          setStatus("جاري الإرسال…");
+          await postMedia({ ...(await saveMedia("img", r.url, r)), ...(cap ? { text: cap } : {}) }, rid); n++;
+        } else await sendVideo(it.file, rid, { cap, edit: edited(it) ? { start: it.st, end: it.en || it.dur, mute: it.mute } : null });
+      } catch (e) { setStatus("الملف ماتبعتش."); }
+      releaseOne(it);
+    }
+    if (n && !$("status").textContent.startsWith("جاري تحميل")) setStatus("");
+  }
+
+  async function open(files, rid) {
+    files = [...files].filter(f => /^(image|video)\//i.test(f.type || "")); if (!files.length) return;
+    if (!root) build();
+    if (!S) {
+      rid = rid || room; if (!mediaGuard(rid)) return;
+      S = { items: [], i: -1, rid, mode: "", sel: -1, col: COL[2], pw: .011, tc: "#ffffff", tbg: true, inpTaken: false };
+      const first = $("inp").value.trim(); S.pre = first;
+      R.to.textContent = roomLabel(rid); root.hidden = false; document.documentElement.classList.add("stu-open"); if (R.fit) R.fit();
+    }
+    const SS = S; R.ld.hidden = false; R.ld.textContent = "بجهّز الملفات…";
+    for (const f of files) {
+      if (S !== SS) return;
+      if (S.items.length >= MAX_ITEMS) { flash("الحد " + arN(MAX_ITEMS) + " ملفات في المرة"); break; }
+      const vid = (f.type || "").startsWith("video");
+      if (vid && S.items.filter(x => x.kind === "vid").length >= MAX_VIDS) { flash("٣ فيديوهات بس في المرة"); continue; }
+      const it = { id: ++uid, file: f, kind: vid ? "vid" : "img", cap: "", rot: 0, crop: 0, flt: 0, br: 0, ct: 0, sa: 0, strokes: [], layers: [], mute: false, st: 0, en: 0, dur: 0 };
+      try { await (vid ? loadVid(it) : loadImg(it)); } catch (e) { flash(vid ? "الفيديو ده مش بيفتح" : "الصورة دي مش بتفتح"); continue; }
+      if (S !== SS) { releaseOne(it); return; }
+      if (!S.items.length && S.pre) { it.cap = S.pre; S.inpTaken = true; }
+      S.items.push(it); if (S.i < 0) show(0); else strip();
+    }
+    R.ld.hidden = true;
+    if (!S.items.length) close(true);
+  }
+  return { open, isOpen: () => !!S };
+})();
+$("aMix").onchange = e => { const f = [...e.target.files]; e.target.value = ""; if (f.length) STU.open(f, room); };
+$("aCam").onchange = e => { const f = e.target.files[0]; e.target.value = ""; if (f) STU.open([f], room); };
+$("aCamV").onchange = e => { const f = e.target.files[0]; e.target.value = ""; if (f) STU.open([f], room); };
 
 // ───── زرار الكاميرا: ضغطة = كاميرا الموبايل للصور، ضغطة مطوّلة = تصوير فيديو ─────
 (() => {
