@@ -3,11 +3,11 @@
  * ومكتبات Firebase (نسخة ثابتة) بتتخزّن مرة واحدة وتتقدّم من الكاش.
  * لما تعدّل أي ملف: غيّر رقم BUILD هنا وفي index.html (meta vc-build و ?v= و التعليق الأخير). */
 "use strict";
-const BUILD = "20261123-35";
+const BUILD = "20261123-37";
 const PREFIX = "verychat-";
 const CACHE = PREFIX + BUILD;
 const V = "?v=" + BUILD;
-const SHELL = ["./", "index.html", "manifest.webmanifest", "icon-192.png", "icon-any-192.png", "icon-any-512.png", "style.css" + V, "app.js" + V];
+const SHELL = ["./", "index.html", "manifest.webmanifest", "icon-192.png", "style.css" + V, "app.js" + V];
 const FB = ["app", "auth", "firestore", "app-check", "messaging"].map(n => "https://www.gstatic.com/firebasejs/10.12.2/firebase-" + n + "-compat.js");
 
 const isFirebaseSDK = u => u.hostname === "www.gstatic.com" && u.pathname.startsWith("/firebasejs/");

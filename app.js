@@ -2378,12 +2378,12 @@ const STU = (() => {
       '<div class="stu-panel" id="stuPanel" hidden></div>' +
       '<div class="stu-strip" id="stuStrip"></div>' +
       '<div class="stu-bar"><div class="stu-cap"><label id="stuCapL" for="stuCap"></label><textarea id="stuCap" rows="1" maxlength="300" placeholder="اكتب شرح…" dir="auto" enterkeyhint="enter"></textarea></div>' +
-      '<button type="button" class="stu-send" id="stuSend" aria-label="إرسال"><svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor" aria-hidden="true"><path d="M21.5 3.2 2.9 10.4c-.8.3-.8 1.4 0 1.7l4.6 1.8 1.8 4.6c.3.8 1.4.8 1.7 0L18.2 5.1 21.5 3.2z" transform="scale(-1 1) translate(-24 0)"/></svg><b id="stuSN"></b></button></div>';
+      '<button type="button" class="stu-send" id="stuSend" aria-label="إرسال"><svg class="pl" viewBox="0 0 24 24" width="26" height="26" aria-hidden="true"><path class="tr" d="M2 9.2h4M1 12h5M2 14.8h4"/><path class="bd" d="M8.2 4.1 21.4 10.6c.9.5.9 1.8 0 2.3L8.2 19.4c-.8.4-1.7-.3-1.5-1.2l.9-4.6 7.2-1.6-7.2-1.6-.9-4.6c-.2-.9.7-1.6 1.5-1.2z"/></svg><b id="stuSN"></b></button></div>';
     document.body.append(root);
     ["stuX", "stuTo", "stuN", "stuRail", "stuFrame", "stuCv", "stuV", "stuVW", "stuPlay", "stuTm", "stuSeek", "stuTip", "stuLd", "stuPanel", "stuStrip", "stuCapL", "stuCap", "stuSend", "stuSN"].forEach(k => R[k.slice(3).toLowerCase() || k] = document.getElementById(k));
     R.x = R.x; R.cv = R.cv; R.v = R.v;
     R.x.onclick = () => close(false);
-    R.send.onclick = send;
+    R.send.onclick = () => { if (R.send.dataset.busy || !S) return; R.send.dataset.busy = "1"; tick(); const rm = matchMedia("(prefers-reduced-motion:reduce)").matches; R.send.classList.add("go"); setTimeout(() => { delete R.send.dataset.busy; R.send.classList.remove("go"); send(); }, rm ? 0 : 280); };
     R.cap.oninput = () => { const it = cur(); if (it) it.cap = R.cap.value; R.cap.style.height = "auto"; R.cap.style.height = Math.min(96, R.cap.scrollHeight) + "px"; };
     document.addEventListener("keydown", e => { if (e.key === "Escape" && S && !root.hidden) close(false); });
     // لوحة المفاتيح: نخلي الشاشة على قد المساحة المرئية بس
@@ -2664,18 +2664,27 @@ async function sendMyCard() {
 function openSharePicker() {
   const c = $("mcard"); c.textContent = "";
   c.append(el("div", "mprev", "🏠 اختار غرفة تشاركها"));
+  // الغرفة العامة مفيهاش مشاركة (الكل فيها أصلًا)
+  const mine = rooms.filter(r => r.id !== "general" && canSee(r) && (!r.private || r.by === myId || adminOf(r)));
+  const q = el("input", "dsearch"); q.type = "search"; q.placeholder = "🔎 ابحث بالاسم أو بالكود…"; q.autocomplete = "off"; q.autocapitalize = "off"; q.spellcheck = false; q.enterKeyHint = "search"; q.setAttribute("aria-label", "بحث عن غرفة");
   const list = el("div", "acts"); list.style.cssText = "display:flex;flex-direction:column;gap:6px;max-height:52vh;overflow-y:auto";
-  const mine = [generalRoom(), ...rooms.filter(r => canSee(r) && (!r.private || r.by === myId || adminOf(r)))];
-  mine.forEach(r => {
-    const b = el("button", "rrow"); b.type = "button"; b.append(avatar(r.emoji || r.photo ? r : { emoji: "💬", color: "#5b6b78" }), el("b", "", r.name));
-    b.onclick = async () => {
-      $("msheet").hidden = true;
-      if (!mediaGuard()) return;
-      try { await postMedia({ share: { id: r.id, name: String(r.name || "").slice(0, 30), emoji: r.emoji || "", color: r.color || "" } }); } catch (e) { setStatus("ماقدرتش أشارك الغرفة."); }
-    };
-    list.append(b);
-  });
-  c.append(list); $("msheet").hidden = false;
+  const draw = () => {
+    list.textContent = "";
+    const hits = mine.filter(r => roomMatches(r, q.value.trim()));
+    if (!hits.length) { const n = el("div", "note", mine.length ? "مفيش غرفة بالاسم أو الكود ده" : "مفيش غرف تشاركها لسه"); n.style.cssText = "text-align:center;padding:18px 8px;opacity:.7"; list.append(n); return; }
+    hits.forEach(r => {
+      const b = el("button", "rrow"); b.type = "button"; b.append(avatar(r.emoji || r.photo ? r : { emoji: "💬", color: "#5b6b78" }), el("b", "", r.name));
+      if (r.code) { const k = el("small", "", r.code); k.dir = "ltr"; k.style.cssText = "margin-inline-start:auto;opacity:.55;font-variant-numeric:tabular-nums"; b.append(k); }
+      b.onclick = async () => {
+        $("msheet").hidden = true;
+        if (!mediaGuard()) return;
+        try { await postMedia({ share: { id: r.id, name: String(r.name || "").slice(0, 30), emoji: r.emoji || "", color: r.color || "" } }); } catch (e) { setStatus("ماقدرتش أشارك الغرفة."); }
+      };
+      list.append(b);
+    });
+  };
+  q.addEventListener("input", draw); draw();
+  c.append(q, list); $("msheet").hidden = false;
 }
 $("plusBtn").onclick = () => {
   const c = $("mcard"); c.textContent = "";

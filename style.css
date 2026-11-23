@@ -1199,3 +1199,26 @@ html.stu-open,html.stu-open body{overflow:hidden}
 .poll{direction:rtl;width:min(280px,calc(100vw - 132px));min-width:0;max-width:none}
 .plr input{text-align:start}
 #pin{border-inline-start-color:var(--line)}
+
+/* ───── زرار الإرسال الجديد (Studio): طيارة ورق بتطير + عدّاد الملفات ───── */
+.stu-send{overflow:visible;isolation:isolate;background:radial-gradient(120% 120% at 25% 15%,#5eead4 0,#2cc4a9 38%,#6d5cff 100%);box-shadow:0 10px 28px rgba(44,196,169,.5),inset 0 1px 0 rgba(255,255,255,.45);-webkit-tap-highlight-color:transparent;transition:transform .18s cubic-bezier(.3,1.4,.5,1),box-shadow .2s}
+.stu-send::before{content:"";position:absolute;inset:-4px;border-radius:50%;z-index:-1;background:conic-gradient(from 0deg,#2cc4a9,#7c5cff,#ffb703,#2cc4a9);opacity:0;filter:blur(7px);transition:opacity .25s}
+.stu-send.multi::before{opacity:.75}
+.stu-send:focus-visible{outline:3px solid #fff;outline-offset:3px}
+.stu-send:active{transform:scale(.92)}
+.stu-send svg.pl{color:#fff;overflow:visible;filter:drop-shadow(0 2px 3px rgba(0,0,0,.28))}
+html[dir=rtl] .stu-send svg.pl{transform:scaleX(-1)}
+.stu-send .bd{fill:currentColor}
+.stu-send .tr{fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;opacity:0;transition:opacity .15s}
+.stu-send.go .tr{opacity:.85}
+.stu-send.go svg.pl{animation:stuFly .28s cubic-bezier(.5,0,.9,.4) forwards}
+@keyframes stuFly{to{transform:translate(26px,-26px) scale(.7) rotate(-12deg);opacity:0}}
+html[dir=rtl] .stu-send.go svg.pl{animation-name:stuFlyR}
+@keyframes stuFlyR{from{transform:scaleX(-1)}to{transform:translate(-26px,-26px) scaleX(-1) scale(.7) rotate(-12deg);opacity:0}}
+.stu-send b{top:-6px;left:-6px;box-shadow:0 2px 8px rgba(0,0,0,.35);font-variant-numeric:tabular-nums;animation:stuPop .3s cubic-bezier(.3,1.6,.5,1)}
+@keyframes stuPop{from{transform:scale(.3)}}
+.stu-send[data-busy]{pointer-events:none}
+@media (prefers-reduced-motion:reduce){.stu-send,.stu-send b,.stu-send.go svg.pl{animation:none!important;transition:none!important}}
+
+/* بحث نافذة مشاركة الغرفة */
+#mcard .dsearch{margin:10px 0 8px;flex:none}
