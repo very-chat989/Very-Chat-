@@ -1042,6 +1042,11 @@ function updateComposer() {
   $("inp").disabled = !!why; $("sendBtn").disabled = !!why || !db;
   { const c0 = curR(); $("inp").maxLength = c0 && c0.maxLen && !adminOf(c0) ? c0.maxLen : 1000; }
   $("inp").placeholder = why ? "🔒 " + why : "اكتب رسالة…";
+  // سبب المنع بيظهر كامل في سطرين لو لزم (الـ placeholder كان بيتقطع)
+  const pill = $("pill"); let lk = $("lockMsg");
+  if (why) { if (!lk) { lk = document.createElement("div"); lk.id = "lockMsg"; lk.setAttribute("role", "status"); pill.insertBefore(lk, $("inp")); } lk.textContent = "🔒 " + why; }
+  else if (lk) lk.remove();
+  pill.classList.toggle("locked", !!why);
 }
 // مين يقدر يثبّت: الخاص = الاتنين (لو مفيش حظر) · الغرف والعام = الأدمن بس
 function canPin(r) { if (!r) return false; if (r.dm) return !(r.blocked || []).length; return adminOf(r); }

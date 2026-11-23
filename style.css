@@ -1249,3 +1249,8 @@ html:not([dir=rtl]) #drawer.vc-out .dpanel{animation-name:vcOutPanelL}
 #pview:not([hidden]),#lb:not([hidden]){animation:vcIn .2s ease both}
 #pview.vc-out,#lb.vc-out{animation:vcOutFade .2s ease both}
 @media (prefers-reduced-motion:reduce){.vc-out,.vc-out *{animation:none!important}}
+
+/* رسالة سبب المنع في شريط الكتابة: كاملة وبتلف على سطرين */
+#pill.locked{padding:0 14px}
+#pill.locked input,#pill.locked .pb{display:none!important}
+#pill #lockMsg{flex:1;min-width:0;padding:9px 6px;font-size:13.5px;line-height:1.55;font-weight:600;color:var(--mute);text-align:center;overflow-wrap:anywhere}
