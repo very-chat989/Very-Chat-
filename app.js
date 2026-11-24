@@ -396,7 +396,7 @@ function render(list) {
     const sig = [sgs(m), mine ? 1 : 0, first ? 1 : 0, sel.has(m.id) ? 1 : 0, selMode ? 1 : 0, first ? sgs(p) : "", first && !mine ? nickOf(m.uid) : "", m.reply && m.reply.uid ? nickOf(m.reply.uid) : "", mine && seenOK() ? seenBy(m).length : -1, p2 ? (p2.name || "") + (p2.fcode || "") + (m.ucard.name || "") + (nickOf(m.ucard.uid) || "") : "", m.share ? rooms.length : ""].join("¦");
     const hit = RC.get(m.id); if (hit && hit.sig === sig) { keep.add(m.id); nodes.push(hit.row); return; }
     const b = document.createElement("div"); b.className = "b";
-    if (first && !mine) { const n = document.createElement("div"); n.className = "n"; n.dir = "rtl"; n.textContent = nameOf(m.uid); n.style.cursor = "pointer"; n.onclick = e => { e.stopPropagation(); if (Date.now() - (b._f || 0) > 800) peerTap(m.uid, m.room || room); }; b.appendChild(n); }
+    if (first && !mine && !isDM(room)) { const n = document.createElement("div"); n.className = "n"; n.dir = "rtl"; n.textContent = nameOf(m.uid); n.style.cursor = "pointer"; n.onclick = e => { e.stopPropagation(); if (Date.now() - (b._f || 0) > 800) peerTap(m.uid, m.room || room); }; b.appendChild(n); }
     const dl = !!m.del;
     if (dl) { const x = el("div", "dl", delLabel(m)); x.dir = "rtl"; b.appendChild(x); b.classList.add("deld"); if (hit && !hit.dl) b.classList.add("poof"); row.dataset.dl = "1"; row._l0 = delLabel(m); }
     if (!dl && m.fwd) b.appendChild(el("div", "fw", "↪️ محوّلة من " + m.fwd));
