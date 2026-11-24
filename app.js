@@ -1621,7 +1621,7 @@ function renderInfo(tabSwitch) {
     let stOn = null;
     if (!locked) {
       const st = el("div", "ri-stats"), tile = (n, lb, ic) => { const t = el("div", "ri-stat"), b = el("b", "", String(n)); t.append(el("i", "", ic), b, el("span", "", lb)); st.append(t); return b; };
-      tile(visible.length, "عضو", "👥"); stOn = tile(0, "متصل", "🟢"); tile(visible.filter(isAdm).length, "مشرف", "🛡️");
+      tile(visible.length, "عضو", "👥"); tile(visible.filter(isAdm).length, "مشرف", "🛡️");
       pane.append(st);
     } else if (memTotal != null) {
       const st = el("div", "ri-stats one"), t = el("div", "ri-stat"); t.append(el("i", "", "👥"), el("b", "", String(memTotal)), el("span", "", "عضو")); st.append(t); pane.append(st);
@@ -3579,8 +3579,8 @@ function renderReqs() {
 $("dReq").onclick = openReqs; $("reqBack").onclick = () => { $("reqView").hidden = true; };
 if (navigator.serviceWorker) navigator.serviceWorker.addEventListener("message", e => { openByTag(e.data && e.data.tag); });
 // ═══ المتصلين / بيكتب / إشعار الانضمام للمالك ═══
-const PRES_TTL = 90000, PRES_BEAT = 30000, TYPE_TTL = 5000;
-let presence = {}, presOn = false, typingSent = 0, typingActive = false;
+const PRES_TTL = 300000, PRES_BEAT = 120000, TYPE_TTL = 5000;   // زي واتساب: الحضور بيتسمع للشخص اللي فاتح محادثته بس (مش للكل) علشان قراءات Firebase ما تزيدش بعدد المستخدمين
+let presence = {}, peerUn = null, peerId = null, presOn = false, typingSent = 0, typingActive = false;
 const isOnline = p => !!p && p.online !== false && Date.now() - (p.ts || 0) < PRES_TTL;
 function presWrite(extra) {
   if (!db || !myId) return;
@@ -3590,6 +3590,15 @@ function lastSeenText(p) {
   if (!p || !p.ts) return "";
   const d = new Date(p.ts), t = d.toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit" });
   return "آخر ظهور " + (d.toDateString() === new Date().toDateString() ? "اليوم " : d.toLocaleDateString("ar-EG", { day: "numeric", month: "short" }) + " ") + t;
+}
+// بنسمع وثيقة حضور واحدة بس: الطرف التاني في المحادثة الخاصة المفتوحة (مش مجموعة الحضور كلها)
+function watchPeer() {
+  const other = isDM(room) ? room.slice(3).split("_").find(u => u !== myId) : null;
+  if (other === peerId) return;
+  if (peerUn) { try { peerUn(); } catch (_) {} peerUn = null; }
+  peerId = other || null; presence = {};
+  if (!other || !db) { paintHSub(); return; }
+  peerUn = db.collection("presence").doc(other).onSnapshot(d => { presence = d.exists ? { [other]: d.data() } : {}; paintHSub(); }, () => {});
 }
 function presenceInfo() {
   const r = curR(); if (!r) return { text: "", typing: false };
@@ -3601,10 +3610,8 @@ function presenceInfo() {
   }
   if (dm) { const p = presence[other]; return { typing: false, text: isOnline(p) ? "🟢 متصل" : (lastSeenText(p) || "💬 دردشة خاصة") }; }
   const gen = room === "general", mem = !gen && r.members ? new Set([...r.members, r.by].filter(Boolean)) : null;
-  const on = new Set(Object.keys(presence).filter(u => isOnline(presence[u]) && (gen || (mem ? mem.has(u) : presence[u].room === room))));
-  if (!document.hidden) on.add(myId);
   const total = countHidden(r) ? 0 : gen ? Object.keys(profiles).length : mem ? mem.size : 0;
-  return { typing: false, text: "🟢 " + on.size + " متصل" + (total > on.size ? " من " + total : "") };
+  return { typing: false, text: total ? "👥 " + total + " عضو" : "" };
 }
 function paintHSub() { try { if (window.__memPaint && !$("rinfo").hidden) window.__memPaint(); } catch (x0) {} const e = $("hSub"); if (!e) return; const x = presenceInfo(); e.textContent = x.text; e.classList.toggle("typing", x.typing); }
 function stopTyping() { if (typingActive) { typingActive = false; typingSent = 0; presWrite({ typing: "", tts: 0 }); } }
@@ -3621,7 +3628,7 @@ function logJoin(r, kind) {
 const joinText = j => j.kind === "dm_ok" ? "✅ " + j.name + " قبل طلب محادثتك، تقدر تراسله دلوقتي" : j.kind === "dm_no" ? "❌ " + j.name + " رفض طلب محادثتك" : j.kind === "request" ? "✋ " + j.name + " طلب الانضمام لغرفة «" + j.roomName + "»" : j.kind === "invite" ? "📨 " + j.name + " دعاك لغرفة «" + j.roomName + "»" : j.kind === "inv_ok" ? "✅ " + j.name + " قبل دعوتك لغرفة «" + j.roomName + "»" : j.kind === "inv_no" ? "❌ " + j.name + " رفض دعوتك لغرفة «" + j.roomName + "»" : j.kind === "approved" ? "✅ اتقبل طلب انضمامك لغرفة «" + j.roomName + "»" : j.kind === "declined" ? "❌ طلب انضمامك لغرفة «" + j.roomName + "» اترفض" : j.room === "general" ? "👋 " + j.name + " انضم للدردشة العامة" : "👋 " + j.name + " انضم لغرفة «" + j.roomName + "»";
 function presenceStart() {
   if (presOn) return; presOn = true;
-  db.collection("presence").onSnapshot(s => { presence = {}; s.docs.forEach(d => { presence[d.id] = d.data(); }); paintHSub(); }, () => {});
+  watchPeer();
   presWrite({ typing: "", tts: 0 });
   setInterval(() => { if (!document.hidden) presWrite(); }, PRES_BEAT);
   setInterval(paintHSub, 8000);
@@ -3629,7 +3636,7 @@ function presenceStart() {
   window.addEventListener("pagehide", () => presWrite({ online: false, typing: "", tts: 0 }));
   window.addEventListener("online", () => presWrite());
   const inp = $("inp");
-  inp.addEventListener("input", () => { if (!inp.value.trim()) { stopTyping(); return; } const n = Date.now(); if (n - typingSent > 2500) { typingSent = n; typingActive = true; presWrite({ typing: room, tts: n }); } });
+  inp.addEventListener("input", () => { if (!inp.value.trim()) { stopTyping(); return; } const n = Date.now(); if (isDM(room) && n - typingSent > 2500) { typingSent = n; typingActive = true; presWrite({ typing: room, tts: n }); } });
   inp.addEventListener("blur", stopTyping); $("f").addEventListener("submit", stopTyping);
   // إشعار المالك بالانضمام (للمالك بس)
   let seen = 0; try { seen = +localStorage.getItem("vc_joins_seen") || 0; } catch (e) {}
@@ -3649,7 +3656,7 @@ function presenceStart() {
     else if (d.exists && noProfile && !gLogged) { gLogged = true; logJoin({ id: "general", name: "عام" }, "join"); }
   }, () => {});
 }
-{ const _open = openRoom; openRoom = function (id) { _open(id); clearNotifs(id); stopTyping(); if (started) { presWrite({ typing: "", tts: 0 }); paintHSub(); } }; }
+{ const _open = openRoom; openRoom = function (id) { _open(id); clearNotifs(id); stopTyping(); if (started) { presWrite({ typing: "", tts: 0 }); watchPeer(); paintHSub(); } }; }
 
 const vv = window.visualViewport;
 function fit() {
