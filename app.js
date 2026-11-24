@@ -2178,6 +2178,7 @@ async function saveMedia(kind, data, meta) {
   const id = db.collection("media").doc().id, base = { thumb: meta.thumb || "", w: meta.w || 0, h: meta.h || 0 };
   MEDIA.set(id, data);
   const p = db.collection("media").doc(id).set({ data, kind, uid: myId, ts: Date.now() });
+  mineAdd(id, 1); idbPut(id, data);   // نسخة دايمة على جهازك + تسجيل للمسح التلقائي من Firestore
   try { const r = await Promise.race([p.then(() => "ok"), new Promise(x => setTimeout(() => x("slow"), 5000))]); if (r === "slow") p.catch(() => {}); return { mid: id, mk: kind, ...base }; }
   catch (e) { MEDIA.delete(id); return { [kind === "vid" ? "vid" : "img"]: data, ...base }; }
 }
@@ -2255,6 +2256,21 @@ function getMedia(id, onp) {
 const dlResume = () => { if (!db || !myId) return; dlqGet().forEach(id => { try { getMedia(id).catch(() => {}); } catch (_) {} }); };
 document.addEventListener("visibilitychange", () => { if (!document.hidden) dlResume(); }); window.addEventListener("online", dlResume);
 { const iv = setInterval(() => { if (db && myId) { clearInterval(iv); dlResume(); } }, 2500); }
+// ───── مسح تلقائي زي واتساب: الميديا اللي انت رفعتها بتتمسح من Firestore بعد MEDIA_DAYS يوم، ونسختك بتفضل على جهازك ─────
+const MEDIA_DAYS = 2;
+function mineAdd(id, n) { try { const a = JSON.parse(localStorage.getItem("vc_mine") || "[]"); a.push([id, n || 1, Date.now()]); localStorage.setItem("vc_mine", JSON.stringify(a.slice(-1500))); } catch (_) {} }
+async function cleanOldMedia() {
+  if (!db || !myId || navigator.onLine === false) return;
+  let a; try { a = JSON.parse(localStorage.getItem("vc_mine") || "[]"); } catch (_) { return; }
+  const cut = Date.now() - MEDIA_DAYS * 864e5, old = a.filter(x => x[2] < cut).slice(0, 30); if (!old.length) return;
+  const done = new Set();
+  for (const [id, n, ts] of old) {
+    const rs = await Promise.allSettled(Array.from({ length: n }, (_, i) => db.collection("media").doc(i ? id + "_" + i : id).delete()));
+    if (rs.every(r => r.status === "fulfilled" || (r.reason && r.reason.code === "permission-denied"))) done.add(id + "|" + ts);
+  }
+  try { localStorage.setItem("vc_mine", JSON.stringify(a.filter(x => !done.has(x[0] + "|" + x[2])))); } catch (_) {}
+}
+setTimeout(() => { cleanOldMedia().catch(() => {}); setInterval(() => cleanOldMedia().catch(() => {}), 6 * 3600e3); }, 20000);
 const MIO = "IntersectionObserver" in window ? new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { MIO.unobserve(e.target); if (e.target._load) e.target._load(); } }), { rootMargin: "400px" }) : null;
 function mediaBox(m) {
   const vid = m.mk === "vid" || !!m.vid, w0 = +m.w || 4, h0 = +m.h || 3; let W = 240, H = W * h0 / w0; if (H > 320) { H = 320; W = H * w0 / h0; } if (W < 120) W = 120;
@@ -2460,6 +2476,7 @@ const UPL = (() => {
       else {
         await uploadChunks(job.blob, job.mime, job.ui, "فيديو", { id: job.mid, skip: job.done, onChunk: i => { job.done.add(i); idbTx("readwrite", st => st.put([...job.done], pk(job.mid))); } });
         if (job.cancel) throw new Error("cancel");
+        mineAdd(job.mid, job.n || 1);
         job.state = "post"; job.pct = 100; paint(job); note(job);
         try { MEDIA.set(job.mid, URL.createObjectURL(job.blob)); idbPut(job.mid, job.blob); } catch (_) {}
         if (!(await posted(job))) await postMedia({ mid: job.mid, mk: "vid", thumb: job.meta.thumb || "", w: job.meta.w || 0, h: job.meta.h || 0, ...(job.cap ? { text: job.cap } : {}), ...(job.reply ? { reply: job.reply } : {}) }, job.rid);
@@ -3017,6 +3034,7 @@ const DUP = (() => {
       if (!job.mid) job.mid = db.collection("media").doc().id;
       await uploadChunks(job.file, "application/octet-stream", job.ui, job.name.slice(0, 22), { id: job.mid, skip: job.done, onChunk: i => job.done.add(i) });
       if (job.cancel) throw new Error("cancel");
+      mineAdd(job.mid, Math.max(1, Math.ceil(job.file.size / RAW_CH))); try { idbPut(job.mid, job.file); } catch (_) {}
       job.state = "post"; job.pct = 100; paint(job);
       await postMedia({ mid: job.mid, mk: "doc", fname: job.name, fsize: job.file.size, ftype: String(job.file.type || "").slice(0, 80) }, job.rid);
       job.state = "done"; setTimeout(() => drop(job), 700);
