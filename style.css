@@ -1325,3 +1325,19 @@ html:not([dir=rtl]) #drawer.vc-out .dpanel{animation-name:vcOutPanelL}
 /* التفاعلات تحت الفقاعة من ناحية الذيل */
 #msgs .row .rxs{left:auto;right:10px}
 #msgs .row.me .rxs{right:auto;left:10px}
+
+/* ───── إصلاح المربع الأسود: الإيموجي لوحده + قايمة الضغط المطوّلة ───── */
+#msgs .row .b.jumbo,#msgs .row.me .b.jumbo{background:none!important;background-image:none!important;border:0!important;box-shadow:none!important;min-width:0;padding:0 4px;filter:none!important}
+#msgs .row .b.jumbo::before,#msgs .row .b.jumbo::after{display:none!important}
+.jumbo .tx{filter:none!important;text-shadow:none}
+.jumbo .t{background:none!important;box-shadow:none!important;padding:0 2px}
+/* القايمة: الـ overflow كان بيقصّ الضلال وبيطلّع مستطيل أسود حوالين الكروت */
+.mx{overflow:visible}
+.mx-pv,.mx-q,.mx-l{box-shadow:none!important;border:1px solid var(--line)}
+.mx-pv.me{border-color:transparent}
+#msheet:has(.mx) .card{background:none!important;box-shadow:none!important}
+
+/* قايمة الضغط المطوّل: من غير أي خلفية غامقة أو بلور ورا الكروت */
+#msheet:has(.mx){background:transparent!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
+#msheet:has(.mx) .card,.mx{background:none!important;box-shadow:none!important;border:0!important}
+.mx-pv,.mx-q,.mx-l{border:0!important}
