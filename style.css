@@ -1347,3 +1347,6 @@ html:not([dir=rtl]) #drawer.vc-out .dpanel{animation-name:vcOutPanelL}
 .dpanel{box-shadow:none!important}
 .dfab{box-shadow:none!important;filter:none!important}
 .dfabw{background:none!important;overflow:visible}
+
+/* الريأكشن ما يغطيش الوقت تحت الإيموجي الكبير */
+#msgs .row .b.jumbo.hasrx,#msgs .row.me .b.jumbo.hasrx{padding-bottom:18px}
