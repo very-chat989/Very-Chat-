@@ -1341,3 +1341,9 @@ html:not([dir=rtl]) #drawer.vc-out .dpanel{animation-name:vcOutPanelL}
 #msheet:has(.mx){background:transparent!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
 #msheet:has(.mx) .card,.mx{background:none!important;box-shadow:none!important;border:0!important}
 .mx-pv,.mx-q,.mx-l{border:0!important}
+
+/* القايمة الجانبية: من غير أطياف/ضلال أسود حوالين اللوحة وزرار الإضافة */
+#drawer{background:transparent!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
+.dpanel{box-shadow:none!important}
+.dfab{box-shadow:none!important;filter:none!important}
+.dfabw{background:none!important;overflow:visible}
