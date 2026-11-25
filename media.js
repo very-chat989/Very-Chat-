@@ -114,7 +114,7 @@ async function postMedia(extra, rid) {
 }
 const readURL = f => new Promise(res => { const fr = new FileReader(); fr.onload = () => res(fr.result); fr.onerror = () => res(null); fr.readAsDataURL(f); });
 // ───── تخزين الملفات مرة واحدة + تحميل تدريجي (زي تيليجرام) ─────
-const MEDIA = new Map(), MEDIA_P = new Map();
+const MEDIA = new Map(), MEDIA_P = new Map(), MEDIA_ERR = new Map();
 function mkThumb(src, w, h) { try { const k = Math.min(1, 28 / Math.max(w, h)), c = document.createElement("canvas"); c.width = Math.max(1, Math.round(w * k)); c.height = Math.max(1, Math.round(h * k)); c.getContext("2d").drawImage(src, 0, 0, c.width, c.height); return c.toDataURL("image/jpeg", .5); } catch (e) { return ""; } }
 function videoMeta(file) {
   return new Promise(res => {
@@ -178,15 +178,21 @@ async function loadChunked(id, first, mm) {
     // الأجزاء اللي نزلت قبل كده (لو التطبيق اتقفل في النص) ما بتتحمّلش تاني
     for (let i = 1; i < n; i++) { const s = await idbGet(dk(i)); if (typeof s === "string" && s) { parts[i] = s; done++; } }
     tell();
+    let dead = false;
     const one = async i => {
-      const t0 = Date.now();
-      for (let t = 0; ; t++) {
-        try { const d = await db.collection("media").doc(id + "_" + i).get(); if (d.exists && typeof d.data().data === "string") return d.data().data; } catch (e) {}
-        if (Date.now() - t0 > 30 * 60000) throw new Error("chunk " + i);
-        if (t < 3) await sleep(500 * (t + 1)); else await waitBack();      // ما نستسلمش: نستنى النت أو رجوعك للتطبيق ونكمّل
+      const t0 = Date.now(); let miss = 0, last = null;
+      for (let t = 0; !dead; t++) {
+        try {
+          const d = await withTO(db.collection("media").doc(id + "_" + i).get(), 45000);
+          if (d.exists && typeof d.data().data === "string") return d.data().data;
+          if (!d.exists && ++miss >= 3) { const e = new Error("gone"); e.code = "gone"; throw e; }
+        } catch (e) { if (e && (e.code === "permission-denied" || e.code === "gone")) throw e; last = e; }
+        if (Date.now() - t0 > 5 * 60000) throw last || new Error("chunk " + i);
+        if (t < 3) await sleep(500 * (t + 1)); else await waitBack();
       }
+      throw new Error("aborted");
     };
-    await Promise.all(Array.from({ length: Math.min(4, n - 1) }, async () => { while (next < n) { const i = next++; if (parts[i] !== undefined) continue; parts[i] = await one(i); idbTx("readwrite", st => st.put(parts[i], dk(i))); done++; tell(); } }));
+    await Promise.all(Array.from({ length: Math.min(4, n - 1) }, async () => { while (next < n && !dead) { const i = next++; if (parts[i] !== undefined) continue; try { parts[i] = await one(i); } catch (e) { dead = true; throw e; } idbTx("readwrite", st => st.put(parts[i], dk(i))); done++; tell(); } }));
     const blob = new Blob(parts.map(b64Bytes), { type: mm[1].toLowerCase() });
     idbTx("readwrite", st => { for (let i = 1; i < n; i++) st.delete(dk(i)); }); dlq(id, 0);
     return blob;
@@ -201,14 +207,14 @@ function getMedia(id, onp) {
   const p = (async () => {
     const loc = await idbGet(id);
     if (loc) return fin(typeof loc === "string" ? loc : URL.createObjectURL(loc));
-    const d = await db.collection("media").doc(id).get(); let v = d.exists ? d.data().data : null;
+    MEDIA_ERR.delete(id); const d = await withTO(db.collection("media").doc(id).get(), 45000); if (!d.exists) MEDIA_ERR.set(id, "gone"); let v = d.exists ? d.data().data : null;
     if (typeof v === "string") {
       const mm = VCN.exec(v);
       if (mm) { const blob = await loadChunked(id, v, mm); idbPut(id, blob); v = URL.createObjectURL(blob); }
       else idbPut(id, v);
     }
     return fin(v);
-  })().catch(() => fin(null));
+  })().catch(e => { MEDIA_ERR.set(id, (e && e.code) || (e && e.message) || "err"); return fin(null); });
   MEDIA_P.set(id, p); return p;
 }
 const dlResume = () => { if (!db || !myId) return; dlqGet().forEach(id => { try { getMedia(id).catch(() => {}); } catch (_) {} }); };
@@ -255,7 +261,7 @@ function mediaBox(m) {
   const show = data => {
     if (data && !okSrc(data, vid ? "video" : "image")) data = "";
     box.querySelectorAll(".mretry").forEach(x => x.remove());
-    if (!data) { const r = el("button", "mretry", "تعذّر التحميل · اضغط للإعادة"); r.type = "button"; r.onclick = e => { e.stopPropagation(); r.remove(); box.append(el("div", "msp")); box._load(); }; box.querySelectorAll(".msp").forEach(x => x.remove()); box.append(r); return; }
+    if (!data) { const why = MEDIA_ERR.get(m.mid); const r = el("button", "mretry", why === "gone" ? "الملف اتمسح من السيرفر (الميديا بتتمسح بعد فترة)" : why === "permission-denied" ? "قواعد Firebase مش مسمحة بقراءة الميديا" : why === "timeout" ? "النت بطيء · اضغط للإعادة" : "تعذّر التحميل · اضغط للإعادة"); r.type = "button"; r.onclick = e => { e.stopPropagation(); r.remove(); box.append(el("div", "msp")); box._load(); }; box.querySelectorAll(".msp").forEach(x => x.remove()); box.append(r); return; }
     let node;
     if (vid) { node = el("video", "mvid"); node.src = data; node.controls = true; node.playsInline = true; node.preload = "auto"; if (okSrc(m.thumb, "image")) node.poster = m.thumb; const snap = () => { if (node._sharp) return node._sharp; try { if (node.videoWidth && node.readyState >= 2) { const k = Math.min(1, 720 / Math.max(node.videoWidth, node.videoHeight)), c = document.createElement("canvas"); c.width = Math.max(1, Math.round(node.videoWidth * k)); c.height = Math.max(1, Math.round(node.videoHeight * k)); c.getContext("2d").drawImage(node, 0, 0, c.width, c.height); return c.toDataURL("image/jpeg", .88); } } catch (_) {} return ""; };   // لقطة واضحة من الفيديو نفسه؛ ومابنستخدمش الصورة المصغّرة المشوّشة أبدًا في شاشة التشغيل
       node.controls = false; node.onclick = e => { e.stopPropagation(); if (!selMode) openVideo(data, snap()); }; { let sought = false, fin = false; const finish = u => { if (fin) return; fin = true; if (u) { node._sharp = u; ph.style.backgroundImage = 'url("' + u + '")'; ph.classList.add("sharp"); ph.style.filter = "none"; ph.style.transform = "none"; } box.classList.add("vok"); };
