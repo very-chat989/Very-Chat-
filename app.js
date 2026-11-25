@@ -325,13 +325,16 @@ document.addEventListener("click", e => {
   const closers = { vview: () => { $("vvX").click(); }, pview: () => { $("pvX").click(); }, reqView: () => { $("reqView").hidden = true; }, lb: () => { $("lb").hidden = true; }, msheet: () => { $("msheet").hidden = true; }, sheet: () => { $("sheet").hidden = true; }, drawer: () => closeDrawer(), rinfo: () => closeInfo(), selBar: () => exitSel(), emoPanel: () => { $("emoPanel").hidden = true; } };
   let pushed = 0, skip = 0;
   const count = () => ids.filter(open).length + (room !== "general" ? 1 : 0);
+  let busy = false, busyT = 0;   // لما history.go() يكون لسه شغال ما نعملش pushState فوقه (كان بيضيّع عنصر من سجل الرجوع ويقفل التطبيق)
+  const unbusy = () => { clearTimeout(busyT); busy = false; };
   window.syncHistory = function () {
+    if (busy) return;
     const n = count();
     while (pushed < n) { history.pushState({ vc: 1 }, ""); pushed++; }
-    if (pushed > n) { const k = pushed - n; pushed = n; skip++; history.go(-k); }
+    if (pushed > n) { const k = pushed - n; pushed = n; skip++; busy = true; clearTimeout(busyT); busyT = setTimeout(() => { skip = 0; unbusy(); syncHistory(); }, 1200); history.go(-k); }
   };
   window.addEventListener("popstate", () => {
-    if (skip > 0) { skip--; return; }
+    if (skip > 0) { skip--; if (!skip) { unbusy(); syncHistory(); } return; }
     if (pushed > 0) pushed--;
     const top = ids.find(open);
     if (top) { if (top === "sheet" && forced()) { history.pushState({ vc: 1 }, ""); pushed++; return; } closers[top](); }
