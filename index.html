@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>Very Chat</title>
+<meta name="description" content="Very Chat — شات الشلة: غرف ورسايل خاصة وصوت وصور في تطبيق واحد">
+<meta name="vc-build" content="20261124-95">
+<link rel="manifest" href="manifest.webmanifest">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; script-src 'self' https://www.gstatic.com https://apis.google.com https://www.google.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://*.googleusercontent.com https://www.gstatic.com https://www.google.com; media-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' data: blob: https://*.googleapis.com https://*.firebaseio.com https://*.firebaseapp.com https://www.google.com https://www.gstatic.com https://verychat-push.adhamemaad14.workers.dev wss://*.firebaseio.com; frame-src https://*.firebaseapp.com https://accounts.google.com https://apis.google.com https://www.google.com https://content.googleapis.com; worker-src 'self' blob:; manifest-src 'self'">
+<meta name="referrer" content="no-referrer">
+<meta name="theme-color" content="#0f8f7a">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Very Chat">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+<link rel="stylesheet" href="style.css?v=20261124-95">
+</head>
+<body>
+<div id="splash"><div id="sLogo"></div><div class="sn">Very Chat</div><div class="ss">شات الشلة</div></div>
+<div id="login" hidden><div class="lbox"><div id="lLogo"></div><div class="sn">Very Chat</div><div class="ss">سجّل دخولك علشان غرفك ورسايلك تفضل معاك على أي جهاز</div><button class="gbtn" id="gBtn"><svg viewBox="0 0 48 48" width="20" height="20"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.9 6.1C12.4 13.6 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.5-4.8 7.2l7.6 5.9c4.4-4.1 7-10.1 7-17.6z"/><path fill="#FBBC05" d="M10.5 28.7c-.5-1.5-.8-3-.8-4.7s.3-3.2.8-4.7l-7.9-6.1C1 16.5 0 20.1 0 24s1 7.5 2.6 10.8l7.9-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 12-2.1 16-5.8l-7.6-5.9c-2.1 1.4-4.9 2.3-8.4 2.3-6.3 0-11.6-4.1-13.5-9.8l-7.9 6.1C6.5 42.6 14.6 48 24 48z"/></svg> المتابعة بحساب Google</button><div id="lErr" class="note" hidden></div></div></div>
+<div id="lb" hidden><button id="lbX" type="button" aria-label="إغلاق">✕</button><div id="lbPic"></div><b id="lbName"></b></div>
+<div class="app">
+  <header>
+    <button class="hb" id="menuBtn" aria-label="الغرف">☰</button>
+    <div id="hRoom"></div>
+    <button class="me-btn" id="meBtn" title="شخصيتك"><div class="av" id="meAv">👤</div></button>
+    <div id="selBar" hidden><button class="sx" id="selCancel" aria-label="إلغاء التحديد"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button><div class="sc"><span id="selCount">0</span><small>تم التحديد</small></div><button class="sa" id="selFwd"><svg viewBox="0 0 24 24"><path d="M10 5l-7 7 7 7M3 12h12a6 6 0 0 1 6 6v1"/></svg><span class="l">توجيه</span></button><button class="sa" id="selCopy"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2.5"/><path d="M5 15V6.5A2.5 2.5 0 0 1 7.5 4H15"/></svg><span class="l">نسخ</span></button><button class="sa del" id="selDel"><svg viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/></svg><span class="l">حذف</span></button></div>
+  </header>
+  <div id="pin" hidden></div>
+  <div id="net" hidden>⚠️ مفيش اتصال بالنت، رسايلك هتتبعت أول ما يرجع</div>
+  <div id="status">جاري التحميل…</div>
+  <div id="msgs"></div>
+  <button id="toBottom" type="button" hidden aria-label="لآخر الرسايل"><svg viewBox="0 0 24 24" width="22" height="22"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg><b id="tbN" hidden></b></button>
+  <div id="replyBar" hidden><span id="replyTxt"></span><button type="button" id="cancelReply">✕</button></div>
+  <div id="editBar" hidden><span>✏️ بتعدّل رسالة</span><button type="button" id="cancelEdit">إلغاء</button></div>
+  <div id="emoPanel" hidden><div id="emoGrid"></div><div id="emoTabs"></div></div>
+  <form class="bar" id="f">
+    <div id="pill">
+      <button class="pb" id="emoBtn" type="button" aria-label="إيموجي"></button>
+      <input id="inp" placeholder="اكتب رسالة…" autocomplete="off" maxlength="1000" dir="auto" enterkeyhint="send">
+      <button class="pb" id="plusBtn" type="button" aria-label="مرفقات"></button>
+      <button class="pb" id="camBtn" type="button" aria-label="كاميرا"></button>
+    </div>
+    <div id="recBar" hidden><button class="x" id="recCancel" type="button" aria-label="إلغاء">🗑</button><span class="dot"></span><span id="recTime">0:00</span><button id="recFx" type="button" aria-label="تأثير الصوت">🎛 عادي</button></div>
+    <button class="send" id="micBtn" type="button" aria-label="رسالة صوتية"></button>
+    <button class="send" id="sendBtn" aria-label="إرسال" hidden></button>
+  </form>
+</div>
+
+<div id="pview" hidden><button type="button" id="pvX" aria-label="إغلاق">✕</button><button type="button" id="pvSave" aria-label="حفظ على الجهاز"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11m0 0-4.5-4.5M12 15l4.5-4.5M5 20h14"/></svg></button><img id="pvImg" alt=""></div>
+<input type="file" id="aMix" accept="image/*,video/*" multiple hidden>
+<input type="file" id="aCam" accept="image/*" capture="environment" hidden>
+<input type="file" id="aCamV" accept="video/*" capture="environment" hidden>
+<input type="file" id="aDoc" multiple hidden>
+<div id="rinfo" hidden>
+  <div class="ri-top"><button id="riBack" aria-label="رجوع">→</button><b>معلومات الغرفة</b></div>
+  <div id="riBody"></div>
+</div>
+
+<div id="reqView" hidden>
+  <div class="ri-top"><button id="reqBack" aria-label="رجوع">→</button><b>📥 الطلبات</b></div>
+  <div class="rq-tabs" id="reqTabs" role="tablist"></div>
+  <div id="reqBody"></div>
+</div>
+
+<div id="drawer" hidden>
+  <div class="dpanel">
+    <div class="dhead"><button id="dClose" type="button" aria-label="إغلاق">✕</button><div id="dLogo"></div><b>Very Chat</b></div>
+    <input class="dsearch" id="dSearch" type="search" placeholder="🔎 ابحث بالاسم أو بالكود…" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="search">
+    <div class="dscroll" id="dScroll">
+      <div id="dpin"></div>
+      <div class="dtabs" id="dTabs" role="tablist">
+        <button type="button" class="dtab" id="dmSub" data-k="dm" role="tab" aria-selected="true"><span class="dti">💬</span><span class="dtl">الخاص</span><b class="cnt"></b><i class="ubd" hidden></i></button>
+        <button type="button" class="dtab" id="rmSub" data-k="rooms" role="tab" aria-selected="false"><span class="dti">🏠</span><span class="dtl">الغرف</span><b class="cnt"></b><i class="ubd" hidden></i></button>
+      </div>
+      <div class="dhint" id="dHint"></div>
+      <div id="dmList" style="display:flex;flex-direction:column;gap:2px"></div>
+      <div id="dlist"></div>
+      <div class="dempty" id="dEmpty" hidden></div>
+      <div class="dfabw"><button class="dfab" id="dNew" type="button" aria-label="محادثة جديدة" title="محادثة جديدة"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8.5" r="3.3"/><path d="M3 19.5c.6-3.3 3-5 6-5s5.4 1.7 6 5"/><circle cx="17" cy="9.5" r="2.5"/><path d="M16.2 14.6c2.6.1 4.3 1.6 4.8 4.4"/></svg><i class="ncp">＋</i></button></div>
+    </div>
+    <div class="dfoot">
+      <button class="dnotif" id="dNotif" type="button" hidden>🔔 فعّل الإشعارات علشان توصلك الرسايل</button>
+      <div class="dtiles">
+        <button class="dt" id="dReq" type="button"><i></i><span>الطلبات</span><b class="bdg" id="reqBdg" hidden></b></button>
+        <button class="dt" id="dFind" type="button"><i></i><span>انضم بكود</span></button>
+        <button class="dt" id="dInvite" type="button"><i></i><span>دعوة صديق</span></button>
+        <button class="dt" id="dSound" type="button"><i></i><span>الصوت</span></button>
+        <button class="dt" id="dReqMute" type="button"><i></i><span>تنبيهات</span></button>
+      </div>
+      <button class="send" id="dAdd" type="button">＋ غرفة جديدة</button>
+    </div>
+    <div id="dToast" hidden></div>
+  </div>
+</div>
+
+<div id="sheet" hidden>
+  <div class="card shc" id="shCard">
+    <div class="shtop">
+      <div class="grab"></div>
+      <h2 id="shTitle">بروفايلك</h2>
+      <div class="tabs top" id="pgSeg" hidden><button type="button" data-pg="p" class="on">البروفايل</button><button type="button" data-pg="s">الحساب والتخزين</button></div>
+    </div>
+    <div class="shbody" id="shBody">
+      <div id="pgP">
+        <div class="hero2" id="hero2">
+          <div class="banner"></div>
+          <div class="avwrap">
+            <div class="av big" id="pvAv"></div>
+            <label class="fab cam" aria-label="رفع صورة من جهازك"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l1.6-2.4h6.8L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13" r="3.6"/></svg><input type="file" id="file" accept="image/*"></label>
+            <button class="fab rm" id="rmPhoto" type="button" hidden aria-label="إزالة الصورة"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+          </div>
+          <div class="chtag" id="chTag" hidden></div>
+          <input type="text" id="nameIn" placeholder="اسمك" maxlength="20" autocomplete="off">
+          <input type="text" id="descIn" placeholder="وصف الغرفة (اختياري)" maxlength="120" autocomplete="off" hidden>
+        </div>
+        <div class="grp pk">
+          <div class="tabs" id="pkSeg"><button type="button" data-pk="emojis" class="on">إيموجي</button><button type="button" data-pk="shalla">شخصيات الشلة</button></div>
+          <div id="pk-emojis" class="pkp">
+            <div class="clrs" id="colors"></div>
+            <div class="grid" id="emojis"></div>
+          </div>
+          <div id="pk-shalla" class="pkp" hidden><div class="hint tp">اختار شخصيتك 🎭 كل واحدة ليها طابعها في الشلة</div><div class="grid" id="shalla"></div></div>
+          <div class="hint">📷 زرار الكاميرا على الصورة بيرفع صورة من جهازك. لو ماشتغلش افتح الصفحة من Chrome أو Safari بدل التطبيق.</div>
+        </div>
+        <div class="grp" id="codeSec" hidden>
+          <div class="gl">كودك <small>شاركه مع صحابك علشان يضيفوك</small></div>
+          <div class="codebox"><div id="myCode" dir="ltr">—</div><button class="ghost" id="copyCode" type="button">📋 نسخ</button></div>
+          <details class="uidbox"><summary>معرّف الحساب التقني</summary><div id="myUidRow" dir="ltr">—</div></details>
+        </div>
+        <label class="grp trow" id="privRow" hidden><span class="tt"><b>🔒 غرفة خاصة</b><small>الأعضاء اللي تضيفهم بس يشوفوها</small></span><input type="checkbox" id="privCk" class="tgl"></label>
+      </div>
+      <div id="pgS" hidden>
+        <div class="grp" id="accSec" hidden>
+          <div class="gl">حسابك</div>
+          <div class="note" id="accNote"></div>
+          <button class="ghost" id="accBtn"></button>
+        </div>
+        <div class="grp" id="stoSec" hidden>
+          <div class="gl">💾 التخزين والبيانات المحمّلة</div>
+          <div class="sto" id="stoInfo">جاري الحساب…</div>
+          <div class="lrows">
+            <button class="lrow" id="stoClear" type="button">🧹 مسح الملفات المؤقتة (الصور والفيديو)</button>
+            <button class="lrow danger" id="stoAll" type="button">🗑 مسح كل بيانات التطبيق وتسجيل الخروج</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="shfoot">
+      <div id="pErr" hidden></div>
+      <button class="ghost" id="skipBtn" hidden>استخدم بروفايلي الأساسي</button>
+      <div class="frow">
+        <button class="ghost" id="cancelSheet" hidden>إلغاء</button>
+        <button class="send" id="saveBtn">حفظ</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="msheet" hidden><div class="card" id="mcard"></div></div>
+
+<noscript><p style="padding:24px;text-align:center">Very Chat محتاج JavaScript علشان يشتغل.</p></noscript>
+
+<script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
+<script defer src="core.js?v=20261124-95"></script>
+<script defer src="rooms.js?v=20261124-95"></script>
+<script defer src="media.js?v=20261124-95"></script>
+<script defer src="app.js?v=20261124-95"></script>
+<!-- const BUILD = "20261124-95" (متساب للتوافق مع النسخ القديمة اللي بتقرا التحديث من هنا) -->
+</body>
+</html>
