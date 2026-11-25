@@ -26,7 +26,7 @@ function openPollMaker() {
     x.onclick = () => { if (ol.children.length > 2) { r.remove(); sync(); } };
     i.oninput = check;
     i.onkeydown = e => { if (e.key !== "Enter") return; e.preventDefault(); const n = r.nextElementSibling; if (n) n.firstChild.focus(); else if (ol.children.length < 6) mk().focus(); else go.focus(); };
-    r.append(i, x); ol.append(r); sync(); return i;
+    r.append(i, x); ol.append(r); sync(); try { r.scrollIntoView({ block: "nearest" }); } catch (_) {} return i;
   };
   mk(); mk(); add.onclick = () => mk().focus(); q.oninput = check;
   cn.onclick = () => { $("msheet").hidden = true; };
@@ -48,18 +48,24 @@ function openPollMaker() {
       err.textContent = (e && e.custom ? e.message : errMsg(e)) || "الاستطلاع ماتبعتش، جرّب تاني."; err.hidden = false;
     }
   };
-  w.append(qw, el("div", "asl", "الاختيارات"), ol, add, mt, err, row); c.append(w); check(); $("msheet").hidden = false; setTimeout(() => q.focus(), 250);
-  // ثبات الشيت مع الكيبورد: ارتفاع الشيت بالبكسل، بيصغر فورًا لو الكيبورد طلع، وبيكبر بس لو الشاشة فضلت أكبر ٦٠٠ مللي (رمشة الكيبورد بين الخانات أقصر من كده)
+  // الهيكل زي واتساب: العنوان فوق ثابت، المحتوى بيتسكرول لوحده، وزرار الإرسال تحت ثابت — فمفيش حاجة بتقفز لما الكيبورد يطلع أو تضيف اختيار
+  const sc = el("div", "plsc"); sc.append(qw, el("div", "asl", "الاختيارات"), ol, add, mt, err);
+  w.append(sc, row); c.append(w); check(); $("msheet").hidden = false;
+  // التركيز بعد ما حركة الطلوع تخلص، ومن غير ما المتصفح يسكرول الصفحة
+  setTimeout(() => { try { q.focus({ preventScroll: true }); } catch (_) { q.focus(); } }, 320);
+  // المتصفحات اللي بتصغّر الشاشة مع الكيبورد (أندرويد) مش محتاجة أي كود: الشيت CSS بس.
+  // اللي بيغطي الكيبورد الشاشة من غير ما يصغّرها (iOS) بنثبّت الشيت فوقه مباشرة وبدون تأخير أو تردد.
   { const ms = $("msheet"), vv = window.visualViewport;
     if (vv) {
-      let cur = 0, tm = 0, mo = null;
-      const set = h => { cur = h; ms.style.transition = "none"; ms.style.top = "0px"; ms.style.bottom = "auto"; ms.style.height = h + "px"; };
-      const on = () => { const h = Math.round(vv.height + vv.offsetTop); if (Math.abs(h - cur) < 3) { clearTimeout(tm); tm = 0; return; } if (h < cur) { clearTimeout(tm); tm = 0; set(h); } else if (!tm) tm = setTimeout(() => { tm = 0; const g = Math.round(vv.height + vv.offsetTop); if (g > cur + 2) set(g); }, 600); };
-      const off = () => { clearTimeout(tm); vv.removeEventListener("resize", on); if (mo) mo.disconnect(); ms.style.top = ms.style.bottom = ms.style.height = ms.style.transition = ""; };
-      mo = new MutationObserver(() => { if (ms.hidden || !w.isConnected) off(); });
-      set(Math.round(vv.height + vv.offsetTop)); vv.addEventListener("resize", on);
+      let raf = 0;
+      const clr = () => { ms.style.top = ms.style.bottom = ms.style.height = ""; };
+      const apply = () => { raf = 0; if (ms.hidden || !w.isConnected) return off(); const ov = window.innerHeight - vv.height; if (ov > 80) { ms.style.top = Math.round(vv.offsetTop) + "px"; ms.style.bottom = "auto"; ms.style.height = Math.round(vv.height) + "px"; } else clr(); };
+      const on = () => { if (!raf) raf = requestAnimationFrame(apply); };
+      const off = () => { if (raf) cancelAnimationFrame(raf); raf = 0; vv.removeEventListener("resize", on); vv.removeEventListener("scroll", on); mo.disconnect(); clr(); };
+      const mo = new MutationObserver(() => { if (ms.hidden || !w.isConnected) off(); });
+      vv.addEventListener("resize", on); vv.addEventListener("scroll", on);
       mo.observe(ms, { attributes: true, attributeFilter: ["hidden"] }); mo.observe(c, { childList: true });
-      setTimeout(() => { w.style.animation = "none"; c.style.animation = "none"; }, 450);   // مايعيدش حركة الطلوع
+      on();
     } }
 }
 function pollBox(m) {

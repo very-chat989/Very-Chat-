@@ -1350,3 +1350,15 @@ html:not([dir=rtl]) #drawer.vc-out .dpanel{animation-name:vcOutPanelL}
 
 /* الريأكشن ما يغطيش الوقت تحت الإيموجي الكبير */
 #msgs .row .b.jumbo.hasrx,#msgs .row.me .b.jumbo.hasrx{padding-bottom:18px}
+
+/* ═════════ v36: شيت الاستطلاع ثابت زي واتساب (من غير قفز مع الكيبورد) ═════════ */
+#msheet:has(.plm){padding:0;overflow:hidden}
+#msheet:has(.plm) .card{display:flex;flex-direction:column;justify-content:flex-end;min-height:0;max-height:calc(100% - 8px)}
+.plm{min-height:0;max-height:100%;overflow:hidden;gap:0;padding:10px 0 0;contain:layout;will-change:auto}
+.plm>.agr{flex:none;margin-bottom:8px}
+.plm>.atit{flex:none;margin:0 0 8px}
+.plsc{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;display:flex;flex-direction:column;gap:8px;padding:2px 16px 10px;scroll-padding-bottom:16px}
+.plm>.plb{flex:none;margin:0;padding:10px 16px calc(12px + env(safe-area-inset-bottom,0px));background:var(--card);box-shadow:0 -1px 0 var(--line)}
+.plm .plq,.plm .plr input{font-size:16px}   /* 16px: يمنع زووم آيفون عند التركيز */
+.plm .plo{gap:8px}
+@media (prefers-reduced-motion:reduce){.plm{animation:none}}
