@@ -1362,3 +1362,50 @@ html:not([dir=rtl]) #drawer.vc-out .dpanel{animation-name:vcOutPanelL}
 .plm .plq,.plm .plr input{font-size:16px}   /* 16px: يمنع زووم آيفون عند التركيز */
 .plm .plo{gap:8px}
 @media (prefers-reduced-motion:reduce){.plm{animation:none}}
+
+/* ═════════ v37: إنشاء الاستطلاع شاشة كاملة (زي واتساب) ═════════ */
+#msheet:has(.plfull){align-items:stretch;justify-content:stretch;padding:0;background:var(--bg);-webkit-backdrop-filter:none;backdrop-filter:none}
+#msheet:has(.plfull) .card{width:100%;max-width:none;height:100%;max-height:none;padding:0;gap:0;display:block;background:var(--bg);box-shadow:none;border-radius:0}
+.plm.plfull{position:relative;display:flex;flex-direction:column;height:100%;max-height:none;padding:0;border-radius:0;background:var(--bg);color:var(--ink);box-shadow:none;overflow:hidden;contain:none;animation:plIn .2s ease-out both}
+@keyframes plIn{from{opacity:0;transform:translateX(18px)}}
+.plh{flex:none;display:flex;align-items:center;gap:14px;padding:calc(8px + env(safe-area-inset-top,0px)) 8px 8px;border-bottom:1px solid var(--line)}
+.plbk{flex:none;width:44px;height:44px;border:0;border-radius:50%;background:none;color:var(--ink);display:grid;place-items:center;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.plbk:active{background:rgba(127,127,127,.18)}
+.plht{margin:0;font-size:19px;font-weight:600}
+.plfull .plsc{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:18px 20px calc(110px + env(safe-area-inset-bottom,0px));gap:0;scroll-padding-bottom:120px}
+.pls{font-size:15px;color:var(--mute);margin:10px 2px 14px}
+.plf{display:flex;flex-direction:column;margin-bottom:18px}
+.plbx{position:relative;border:2px solid var(--line);border-radius:16px;background:transparent;transition:border-color .15s}
+.plbx:focus-within{border-color:var(--pri)}
+.plbx input,.plbx textarea{display:block;width:100%;box-sizing:border-box;border:0;outline:0;background:transparent;color:var(--ink);font:inherit;font-size:17px;padding:0 16px;margin:0}
+.plbx input{height:62px;padding-inline-end:48px}
+.plbx textarea{min-height:62px;max-height:150px;padding-top:19px;padding-bottom:17px;resize:none;line-height:1.4;overflow-y:auto}
+.pl1,.pl2{position:absolute;inset-inline-start:16px;pointer-events:none;white-space:nowrap;transition:opacity .15s,top .15s}
+.pl1{top:50%;transform:translateY(-50%);font-size:17px;color:var(--mute)}
+.pl2{top:0;transform:translateY(-50%);font-size:13px;padding:0 6px;margin-inline-start:-6px;background:var(--bg);color:var(--pri);opacity:0}
+.plbx:focus-within .pl1,.plbx.has .pl1{opacity:0}
+.plbx:focus-within .pl2,.plbx.has .pl2{opacity:1}
+.plbx.has:not(:focus-within) .pl2{color:var(--mute)}
+.plcnt{align-self:flex-end;margin:7px 14px 0;font-size:13px;color:var(--mute);font-variant-numeric:tabular-nums}
+.plfull .plo{display:flex;flex-direction:column;gap:0}
+.plfull .plx{position:absolute;inset-inline-end:8px;top:50%;transform:translateY(-50%);width:36px;height:36px;border:0;border-radius:50%;background:none;color:var(--mute);font-size:16px;cursor:pointer}
+.plfull .plo.min .plx{display:none}
+.plsep{height:1px;background:var(--line);margin:6px -20px 18px}
+.plfull .plt{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:6px 2px;font-size:17px}
+.plfull .tgl{appearance:none;-webkit-appearance:none;flex:none;width:54px;height:32px;border-radius:16px;background:var(--line);position:relative;cursor:pointer;transition:background .2s;margin:0;border:0}
+.plfull .tgl::after{content:"";position:absolute;top:4px;inset-inline-start:4px;width:24px;height:24px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.35);transition:transform .2s}
+.plfull .tgl:checked{background:var(--pri)}
+.plfull .tgl:checked::after{transform:translateX(-22px)}
+html:not([dir=rtl]) .plfull .tgl:checked::after{transform:translateX(22px)}
+.plfull .plerr{margin-top:14px}
+.plsend{position:absolute;inset-inline-end:20px;bottom:calc(20px + env(safe-area-inset-bottom,0px));width:58px;height:58px;border:0;border-radius:18px;background:var(--pri);color:var(--onpri);display:grid;place-items:center;cursor:pointer;box-shadow:0 6px 18px rgba(0,0,0,.35);transition:opacity .2s,transform .15s;-webkit-tap-highlight-color:transparent}
+.plsend:active{transform:scale(.93)}
+.plsend.off,.plsend:disabled{opacity:.4;box-shadow:none;cursor:default}
+.plsend.busy{opacity:.7}
+@media (min-width:600px){.plfull .plsc{padding-inline:max(20px,calc(50% - 280px))}.plsep{margin-inline:calc(-1 * max(20px,calc(50vw - 280px)))}}
+@media (prefers-reduced-motion:reduce){.plm.plfull{animation:none}.pl1,.pl2,.plbx{transition:none}}
+/* v37: تصحيح تعارض مع قواعد قديمة (العدّاد والحقول) */
+.plfull .plcnt{position:static;inset:auto;pointer-events:none}
+.plfull .plbx input,.plfull .plbx textarea{border:0!important;box-shadow:none!important;background:transparent!important;text-align:start!important;border-radius:0!important;-webkit-appearance:none;appearance:none}
+.plfull .plbx input{padding-inline-start:16px!important;padding-inline-end:48px!important}
+.plfull .plbx textarea{padding-inline:16px!important}

@@ -10,51 +10,64 @@ function pollVotes(m) {
 }
 function openPollMaker() {
   const rid = room; if (!mediaGuard(rid)) return;
-  const c = $("mcard"); c.textContent = ""; const w = el("div", "plm");
-  w.append(el("div", "agr"), el("h3", "atit", "📊 استطلاع رأي"));
-  const qw = el("div", "plqw"), q = el("textarea", "plq"), qn = el("small", "plcnt", "٠/١٢٠"); q.rows = 2; q.maxLength = 120; q.placeholder = "اسأل سؤالك…"; q.dir = "auto"; qw.append(q, qn);
-  const ol = el("div", "plo"), add = el("button", "pla", "＋ أضف اختيار"); add.type = "button";
-  const err = el("div", "plerr"); err.hidden = true;
-  const mt = el("label", "plt"), mc = el("input"); mc.type = "checkbox"; mc.className = "tgl"; mt.append(el("span", "", "السماح بأكتر من اختيار"), mc);
-  const row = el("div", "plb"), cn = el("button", "plc", "إلغاء"), go = el("button", "plg", "إرسال الاستطلاع"); cn.type = go.type = "button"; row.append(cn, go);
-  const vals = () => [...new Set([...ol.querySelectorAll("input")].map(i => i.value.trim()).filter(Boolean))];
-  const check = () => { const okq = !!q.value.trim(), okc = vals().length >= 2; go.disabled = !(okq && okc); go.classList.toggle("off", go.disabled); err.hidden = true; qn.textContent = arN(q.value.length) + "/" + arN(120); };
-  const sync = () => { add.hidden = ol.children.length >= 6; ol.classList.toggle("min", ol.children.length <= 2); [...ol.children].forEach((r, i) => { r.firstChild.placeholder = "اختيار " + arN(i + 1); }); check(); };
-  const mk = () => {
-    const r = el("div", "plr"), i = el("input"); i.type = "text"; i.maxLength = 40; i.dir = "auto"; i.enterKeyHint = "next";
-    const x = el("button", "plx", "✕"); x.type = "button"; x.setAttribute("aria-label", "حذف الاختيار");
-    x.onclick = () => { if (ol.children.length > 2) { r.remove(); sync(); } };
-    i.oninput = check;
-    i.onkeydown = e => { if (e.key !== "Enter") return; e.preventDefault(); const n = r.nextElementSibling; if (n) n.firstChild.focus(); else if (ol.children.length < 6) mk().focus(); else go.focus(); };
-    r.append(i, x); ol.append(r); sync(); try { r.scrollIntoView({ block: "nearest" }); } catch (_) {} return i;
+  const QMAX = 255, OMAX = 100, MAXO = 12;
+  const c = $("mcard"); c.textContent = ""; const w = el("div", "plm plfull");
+  const close = () => { $("msheet").hidden = true; };
+  // الهيدر: سهم رجوع + عنوان (شاشة كاملة زي واتساب)
+  const hd = el("div", "plh"), bk = el("button", "plbk"); bk.type = "button"; bk.setAttribute("aria-label", "رجوع");
+  bk.innerHTML = '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h16M14 6l6 6-6 6"/></svg>';
+  bk.onclick = close; hd.append(bk, el("h3", "plht", "إنشاء استطلاع رأي"));
+  // حقل بإطار وعنوان بيطلع على الحد (floating label) + عدّاد حروف
+  const fld = (inp, idle, up, max) => {
+    const wrap = el("div", "plf"), box = el("div", "plbx"), l1 = el("span", "pl1", idle), l2 = el("span", "pl2", up), cnt = el("small", "plcnt");
+    inp.maxLength = max; inp.dir = "auto"; box.append(inp, l1, l2); wrap.append(box, cnt);
+    const upd = () => { box.classList.toggle("has", !!inp.value); cnt.textContent = arN(inp.value.length) + "/" + arN(max); };
+    upd(); return { wrap, box, upd, l2 };
   };
-  mk(); mk(); add.onclick = () => mk().focus(); q.oninput = check;
-  cn.onclick = () => { $("msheet").hidden = true; };
+  const q = el("textarea", "plq"); q.rows = 1; const qf = fld(q, "اطرح سؤالاً", "اطرح سؤالاً", QMAX);
+  const ol = el("div", "plo"), err = el("div", "plerr"); err.hidden = true;
+  const mt = el("label", "plt"), mc = el("input"); mc.type = "checkbox"; mc.className = "tgl"; mt.append(el("span", "", "السماح بإجابات متعددة"), mc);
+  const go = el("button", "plsend"); go.type = "button"; go.setAttribute("aria-label", "إرسال الاستطلاع");
+  go.innerHTML = '<svg viewBox="0 0 24 24" width="26" height="26" fill="currentColor"><path d="M2 21 23 12 2 3v7l15 2-15 2z" transform="matrix(-1 0 0 1 25 0)"/></svg>';
+  const vals = () => [...new Set([...ol.querySelectorAll("input")].map(i => i.value.trim()).filter(Boolean))];
+  const check = () => { const ok = !!q.value.trim() && vals().length >= 2; go.disabled = !ok; go.classList.toggle("off", !ok); err.hidden = true; };
+  const sync = () => { const n = ol.children.length; ol.classList.toggle("min", n <= 2); [...ol.children].forEach((r, i) => { r._l2.textContent = "خيار " + arN(i + 1); }); check(); };
+  const mk = () => {
+    const inp = el("input"); inp.type = "text"; inp.enterKeyHint = "next";
+    const f = fld(inp, "+ إضافة", "خيار", OMAX), r = f.wrap; r._l2 = f.l2;
+    const x = el("button", "plx", "✕"); x.type = "button"; x.setAttribute("aria-label", "حذف الاختيار"); f.box.append(x);
+    x.onclick = () => { if (ol.children.length <= 2) return; r.remove(); const l = ol.lastElementChild; if (l && l.querySelector("input").value.trim() && ol.children.length < MAXO) mk(); sync(); };
+    inp.oninput = () => { f.upd(); if (r === ol.lastElementChild && inp.value.trim() && ol.children.length < MAXO) mk(); check(); };
+    inp.onkeydown = e => { if (e.key !== "Enter") return; e.preventDefault(); const n = r.nextElementSibling; if (n) n.querySelector("input").focus(); else inp.blur(); };
+    ol.append(r); sync(); return inp;
+  };
+  mk(); mk();
+  q.oninput = () => { qf.upd(); q.style.height = "auto"; q.style.height = Math.min(q.scrollHeight, 150) + "px"; check(); };
+  q.onkeydown = e => { if (e.key === "Enter") { e.preventDefault(); const f = ol.querySelector("input"); if (f) f.focus(); } };
+  const sc = el("div", "plsc");
+  sc.append(el("div", "pls", "السؤال"), qf.wrap, el("div", "pls", "الخيارات"), ol, el("div", "plsep"), mt, err);
+  w.append(hd, sc, go); c.append(w); check(); $("msheet").hidden = false;
   let sending = false;
   go.onclick = async () => {
     if (sending) return;
     const qq = q.value.trim(), opts = vals();
     if (!qq) { q.focus(); return; } if (opts.length < 2) { err.textContent = "اكتب اختيارين مختلفين على الأقل"; err.hidden = false; return; }
-    if (!mediaGuard(rid)) { $("msheet").hidden = true; return; }
-    sending = true; go.disabled = true; go.textContent = "جاري الإرسال…";
-    const post = postMedia({ poll: { q: qq, opts: opts.slice(0, 6), multi: !!mc.checked } }, rid);
+    if (!mediaGuard(rid)) { close(); return; }
+    sending = true; go.disabled = true; go.classList.add("busy");
+    const post = postMedia({ poll: { q: qq, opts: opts.slice(0, MAXO), multi: !!mc.checked } }, rid);
     try {
       // لو الإرسال فشل بسرعة (صلاحيات/قواعد) نفضل في الشاشة ونقول السبب؛ لو بطيء (نت ضعيف) نقفل والرسالة هتتبعت لوحدها
       const r = await Promise.race([post.then(() => "ok"), new Promise(x => setTimeout(() => x("slow"), 3500))]);
       if (r === "slow") post.catch(e => { console.warn("poll send", e); flash(errMsg(e)); });
-      $("msheet").hidden = true;
+      close();
     } catch (e) {
-      console.warn("poll send", e); sending = false; go.disabled = false; go.textContent = "إرسال الاستطلاع";
+      console.warn("poll send", e); sending = false; go.classList.remove("busy"); check();
       err.textContent = (e && e.custom ? e.message : errMsg(e)) || "الاستطلاع ماتبعتش، جرّب تاني."; err.hidden = false;
+      try { err.scrollIntoView({ block: "nearest" }); } catch (_) {}
     }
   };
-  // الهيكل زي واتساب: العنوان فوق ثابت، المحتوى بيتسكرول لوحده، وزرار الإرسال تحت ثابت — فمفيش حاجة بتقفز لما الكيبورد يطلع أو تضيف اختيار
-  const sc = el("div", "plsc"); sc.append(qw, el("div", "asl", "الاختيارات"), ol, add, mt, err);
-  w.append(sc, row); c.append(w); check(); $("msheet").hidden = false;
-  // التركيز بعد ما حركة الطلوع تخلص، ومن غير ما المتصفح يسكرول الصفحة
-  setTimeout(() => { try { q.focus({ preventScroll: true }); } catch (_) { q.focus(); } }, 320);
-  // المتصفحات اللي بتصغّر الشاشة مع الكيبورد (أندرويد) مش محتاجة أي كود: الشيت CSS بس.
-  // اللي بيغطي الكيبورد الشاشة من غير ما يصغّرها (iOS) بنثبّت الشيت فوقه مباشرة وبدون تأخير أو تردد.
+  setTimeout(() => { try { q.focus({ preventScroll: true }); } catch (_) { q.focus(); } }, 280);
+  // أندرويد بيصغّر الصفحة مع الكيبورد لوحده (CSS بس)؛ iOS بيغطي من غير ما يصغّر فبنثبّت الشاشة فوق الكيبورد
   { const ms = $("msheet"), vv = window.visualViewport;
     if (vv) {
       let raf = 0;
