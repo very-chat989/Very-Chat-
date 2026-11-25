@@ -438,7 +438,7 @@ const UPL = (() => {
     e.lb.textContent = st === "err" ? (job.err || "اتقطع الرفع") + " · اضغط ↻" : st === "post" ? "بيتبعت…" : st === "prep" ? "بجهّز الفيديو… " + (pct ? PC(pct) : "") + " · سيب التطبيق مفتوح" : "بيترفع… " + (pct ? PC(pct) : "") + sz;
   }
   const mount = (job, box) => { if (!job.row) build(job); box.append(job.row); };
-  function show(job) { if (job.rid !== room) return; const box = $("msgs"); mount(job, box); box.scrollTop = box.scrollHeight; }
+  function show(job) { if (job.rid !== room) return; const box = $("msgs"); mount(job, box); box.scrollTop = box.scrollHeight; if (box._stickDown) box._stickDown(); }
   function drop(job) { jobs.delete(job.id); if (job.row) job.row.remove(); act(); }
   const wipe = job => { if (job.mid) { idbTx("readwrite", st => { st.delete(jk(job.mid)); st.delete(pk(job.mid)); }); } };
   async function cancel(job) {
@@ -1002,7 +1002,7 @@ const DUP = (() => {
     const sz = docSize(job.file.size);
     e.sm.textContent = st === "err" ? (job.err || "اتقطع الرفع") + " · اضغط ↻" : st === "post" ? "بيتبعت…" : (pct ? PC(pct) + " · " : "") + sz;
   }
-  function show(job) { if (job.rid !== room) return; const box = $("msgs"); if (!box) return; if (!job.row) build(job); box.append(job.row); box.scrollTop = box.scrollHeight; }
+  function show(job) { if (job.rid !== room) return; const box = $("msgs"); if (!box) return; if (!job.row) build(job); box.append(job.row); box.scrollTop = box.scrollHeight; if (box._stickDown) box._stickDown(); }
   function drop(job) { jobs.delete(job.id); if (job.row) job.row.remove(); }
   function cancel(job) {
     job.cancel = true; drop(job); flash("اتلغى رفع المستند");
@@ -1018,7 +1018,7 @@ const DUP = (() => {
       mineAdd(job.mid, Math.max(1, Math.ceil(job.file.size / RAW_CH))); try { idbPut(job.mid, job.file); } catch (_) {}
       job.state = "post"; job.pct = 100; paint(job);
       await postMedia({ mid: job.mid, mk: "doc", n: Math.max(1, Math.ceil(job.file.size / RAW_CH)), fname: job.name, fsize: job.file.size, ftype: String(job.file.type || "").slice(0, 80) }, job.rid);
-      job.state = "done"; setTimeout(() => drop(job), 700);
+      job.state = "done"; { let tries = 0; const fin = () => { const has = typeof lastList !== "undefined" && lastList.some(m => m.mid === job.mid); if (has || ++tries > 24) drop(job); else setTimeout(fin, 500); }; setTimeout(fin, 300); }
     } catch (e) {
       if (job.cancel || (e && e.message === "cancel")) drop(job);
       else if (e && e.code === "permission-denied") { drop(job); flash("⚠️ قواعد Firebase مش مسمحة برفع المستندات (collection media)."); }
@@ -1033,7 +1033,7 @@ const DUP = (() => {
   const kick = () => [...jobs.values()].forEach(j => { if (j.state === "err" && !j.running) run(j); });
   window.addEventListener("online", kick);
   document.addEventListener("visibilitychange", () => { if (!document.hidden) kick(); });
-  return { make, run, mount: (list, box) => { for (const j of jobs.values()) { if (j.rid !== room) continue; if (j.state === "done" && j.mid && list.some(m => m.mid === j.mid)) { if (j.row) j.row.remove(); continue; } if (!j.row) build(j); box.append(j.row); } } };
+  return { make, run, mount: (list, box) => { for (const j of jobs.values()) { if (j.rid !== room) continue; if (j.mid && (j.state === "post" || j.state === "done") && list.some(m => m.mid === j.mid)) { if (j.row) j.row.remove(); continue; } if (!j.row) build(j); box.append(j.row); } } };
 })();
 async function sendDocFile(file, rid) {
   rid = rid || room; if (!mediaGuard(rid)) return;

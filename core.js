@@ -369,6 +369,17 @@ function jumpBottom(smooth) {
   if (gap > b.clientHeight * 1.5) b.scrollTo({ top: end() - b.clientHeight * 1.2, behavior: "instant" });
   requestAnimationFrame(() => b.scrollTo({ top: end(), behavior: "smooth" }));
 }
+// ───── السكرول يلزق في آخر رسالة زي واتساب: لو إنت تحت، أي حاجة جديدة (رسالة، فقاعة رفع، صورة بتحمّل، كيبورد) تنزّلك لآخر القايمة؛ ولو طلعت فوق تقرا، ماحدش يسحبك ─────
+{ const b = $("msgs"); let stick = true, raf = 0;
+  const atEnd = () => b.scrollHeight - b.scrollTop - b.clientHeight < 48;
+  const down = () => { raf = 0; if (stick) b.scrollTop = b.scrollHeight; };
+  const later = () => { if (!stick) return; b.scrollTop = b.scrollHeight; if (!raf) raf = requestAnimationFrame(down); };
+  b.addEventListener("scroll", () => { stick = atEnd(); }, { passive: true });
+  try { new MutationObserver(later).observe(b, { childList: true, subtree: true }); } catch (_) {}
+  try { new ResizeObserver(later).observe(b); } catch (_) {}
+  ["load", "loadedmetadata", "loadeddata"].forEach(ev => b.addEventListener(ev, later, true));
+  b._stickDown = () => { stick = true; later(); };   // بعد ما تبعت إنت أو تفتح غرفة
+}
 $("toBottom").onclick = () => { jumpBottom(true); if (lastList.length) setSeen(room, lastList[lastList.length - 1].ts); setTimeout(boxScrolled, 350); };
 ["touchstart", "wheel", "mousedown"].forEach(ev => $("msgs").addEventListener(ev, () => { $("msgs")._pin = 0; }, { passive: true }));
 /* Very Chat — رسم الرسايل والتفاعلات والتحديد */
@@ -431,8 +442,8 @@ function render(list) {
     nodes.forEach(n => { if (n.dataset && n.dataset.dl && (!run.length || run[0].dataset.uid === n.dataset.uid)) run.push(n); else { flush(); if (n.dataset && n.dataset.dl) run.push(n); } }); flush(); }
   { const ns = new Set(nodes); [...box.childNodes].forEach(c => { if (!ns.has(c)) c.remove(); }); let cur = box.firstChild; for (const n of nodes) { if (n === cur) cur = cur.nextSibling; else box.insertBefore(n, cur); } for (const k of [...RC.keys()]) if (!keep.has(k)) RC.delete(k); } box._ids = new Set(list.map(x => x.id)); try { UPL.mount(list, box); } catch (_) {} try { DUP.mount(list, box); } catch (_) {}
   const lm = list[list.length - 1], mineNew = lm && lm.uid === myId && Date.now() - lm.ts < 5000;
-  if (fresh) { box.scrollTop = box.scrollHeight; box._pin = 1; requestAnimationFrame(() => { if (box._pin) box.scrollTop = box.scrollHeight; setTimeout(() => { if (box._pin) box.scrollTop = box.scrollHeight; box._pin = 0; }, 400); }); }
-  else if (near || mineNew || list.length < 4) box.scrollTop = box.scrollHeight;
+  if (fresh) { box.scrollTop = box.scrollHeight; if (box._stickDown) box._stickDown(); box._pin = 1; requestAnimationFrame(() => { if (box._pin) box.scrollTop = box.scrollHeight; setTimeout(() => { if (box._pin) box.scrollTop = box.scrollHeight; box._pin = 0; }, 400); }); }
+  else if (near || mineNew || list.length < 4) { box.scrollTop = box.scrollHeight; if (box._stickDown) box._stickDown(); }
   try { netUI(); } catch (_) {} boxScrolled(); _spMsg = true; if (_spMin) hideSplash();
   try { renderPin(); } catch (_) {}
   markSeen(list); updateTotal();
