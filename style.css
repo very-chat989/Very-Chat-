@@ -697,7 +697,8 @@ html[dir=rtl] #sendBtn svg{transform:scaleX(-1)}
 .ri-tab b{font-size:11.5px;font-weight:800;background:rgba(127,127,127,.22);border-radius:10px;padding:1px 7px;min-width:18px;text-align:center}
 .ri-tab.on b{background:rgba(255,255,255,.3)}
 .ri-tab b.rq{background:#e0507a;color:#fff}
-.ri-pane{min-height:60vh;padding:2px 0 8px;animation:riFade .22s ease both}
+.ri-pane{min-height:60vh;padding:2px 0 8px}
+.ri-pane.fx{animation:riFade .22s ease both}
 @keyframes riFade{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
 .ri-sh{margin:20px 22px 8px;font-size:12.5px;font-weight:800;color:var(--mute);letter-spacing:.3px}
 .ri-pane>.ri-card:first-child{margin-top:16px}

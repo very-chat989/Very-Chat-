@@ -100,7 +100,7 @@ function riPaged(c, items, build, step) {
   paint();
 }
 let infoSig = null;
-function openInfo(id) { if (!id) return; infoId = id; infoSig = null; riTab = null; riQ = ""; riFlt = "all"; riLim = 20; riDraft = {}; $("rinfo").hidden = false; $("riBody").scrollTop = 0; renderInfo(); }
+function openInfo(id) { if (!id) return; infoId = id; infoSig = null; riPaneKey = null; riTab = null; riQ = ""; riFlt = "all"; riLim = 20; riDraft = {}; $("rinfo").hidden = false; $("riBody").scrollTop = 0; renderInfo(); }
 function closeInfo() { infoId = null; $("rinfo").hidden = true; }
 const FW_ADD = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9.5" cy="8" r="3.8"/><path d="M2.5 20c.8-3.6 3.5-5.5 7-5.5s6.2 1.9 7 5.5M19 8v6M16 11h6"/></svg>';
 function addFriend(r, mem) {
@@ -337,7 +337,7 @@ async function wipeRoomMsgs(rid, onProg, uid) {
   }
   return { done, failed };
 }
-let riTab = null, riQ = "", riFlt = "all", riLim = 20, riDraft = {};
+let riTab = null, riQ = "", riFlt = "all", riLim = 20, riDraft = {}, riPaneKey = null;
 function renderInfo(tabSwitch) {
   const G = infoId === "general", r = G ? generalRoom() : rooms.find(x => x.id === infoId), box = $("riBody");
   if (!r || (!G && !canSee(r))) { closeInfo(); return; }
@@ -388,7 +388,7 @@ function renderInfo(tabSwitch) {
     bar.append(b);
   });
   const head = el("div", "ri-head"); head.append(bar); box.append(head);
-  const pane = el("div", "ri-pane"); box.append(pane);
+  const pane = el("div", "ri-pane"), paneKey = infoId + "|" + tab; if (tabSwitch || paneKey !== riPaneKey) pane.classList.add("fx"); riPaneKey = paneKey; box.append(pane);
   { let tx = 0, ty = 0, tt = 0;
     pane.addEventListener("touchstart", e => { const t = e.touches[0]; tx = t.clientX; ty = t.clientY; tt = Date.now(); }, { passive: true });
     pane.addEventListener("touchend", e => {
