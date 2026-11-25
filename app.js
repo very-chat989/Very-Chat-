@@ -360,7 +360,7 @@ if (APPCHECK_KEY && firebase.appCheck) { try { firebase.appCheck().activate(APPC
   started = true; starting = false; $("sendBtn").disabled = false; syncNicks();
   db.collection("profiles").onSnapshot(s => {
     profiles = {}; s.docs.forEach(d => profiles[d.id] = d.data());
-    refreshMe(); ensureMyCode(); paintMyCode();
+    refreshMe(); ensureMyCode(); paintMyCode(); try { saveNickByName(); } catch (_) {}
     if (!loaded) { loaded = true; if (!profiles[myId]) openProfile(); }
     if (lastList.length) render(lastList);
   }, () => { loaded = true; });

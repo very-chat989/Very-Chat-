@@ -3,7 +3,7 @@
  * ومكتبات Firebase (نسخة ثابتة) بتتخزّن مرة واحدة وتتقدّم من الكاش.
  * لما تعدّل أي ملف: غيّر رقم BUILD هنا وفي index.html (meta vc-build و ?v= و التعليق الأخير). */
 "use strict";
-const BUILD = "20261125-111";
+const BUILD = "20261125-112";
 const PREFIX = "verychat-";
 const CACHE = PREFIX + BUILD;
 const V = "?v=" + BUILD;
@@ -114,7 +114,7 @@ self.addEventListener("push", e => {
   e.waitUntil((async () => {
     const cs = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
     if (cs.some(c => c.visibilityState === "visible")) return;
-    { const nk = await dmNick(tag); if (nk) title = "💬 " + nk; else if (!/^dm_/.test(tag)) { body = await nickSwap(body); } }          // التطبيق مفتوح قدامك، مش محتاج إشعار
+    { const nk = await dmNick(tag); if (nk) title = "💬 " + nk; else { body = await nickSwap(body); } }          // التطبيق مفتوح قدامك، مش محتاج إشعار
     const ex = await self.registration.getNotifications({ tag });
     const bt = n => (n.data && n.data.title) || n.title, bb = n => (n.data && n.data.body) || n.body;
     if (ex.some(n => bt(n) === title && bb(n) === body && Date.now() - n.timestamp < 20000)) return;   // نفس الإشعار اتعرض لسه من التطبيق نفسه
