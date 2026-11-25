@@ -3,7 +3,7 @@
  * ومكتبات Firebase (نسخة ثابتة) بتتخزّن مرة واحدة وتتقدّم من الكاش.
  * لما تعدّل أي ملف: غيّر رقم BUILD هنا وفي index.html (meta vc-build و ?v= و التعليق الأخير). */
 "use strict";
-const BUILD = "20261125-102";
+const BUILD = "20261125-103";
 const PREFIX = "verychat-";
 const CACHE = PREFIX + BUILD;
 const V = "?v=" + BUILD;

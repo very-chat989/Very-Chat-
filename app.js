@@ -49,16 +49,17 @@ function openPollMaker() {
     }
   };
   w.append(qw, el("div", "asl", "الاختيارات"), ol, add, mt, err, row); c.append(w); check(); $("msheet").hidden = false; setTimeout(() => q.focus(), 250);
-  // ثبات الشيت مع الكيبورد: لو الشاشة صغرت (الكيبورد طلع) بنصغّر الشيت فورًا، ولو كبرت فجأة (رمشة الكيبورد وإنت بتنقل بين الخانات) بنستنى ٤٠٠ مللي علشان ما يتخطفش
+  // ثبات الشيت مع الكيبورد: ارتفاع الشيت بالبكسل، بيصغر فورًا لو الكيبورد طلع، وبيكبر بس لو الشاشة فضلت أكبر ٦٠٠ مللي (رمشة الكيبورد بين الخانات أقصر من كده)
   { const ms = $("msheet"), vv = window.visualViewport;
     if (vv) {
       let cur = 0, tm = 0, mo = null;
-      const set = h => { cur = h; ms.style.top = Math.round(vv.offsetTop) + "px"; ms.style.bottom = "auto"; ms.style.height = h + "px"; };
-      const on = () => { const h = Math.round(vv.height); if (h <= cur) { clearTimeout(tm); tm = 0; set(h); } else if (!tm) tm = setTimeout(() => { tm = 0; set(Math.round(vv.height)); }, 400); };
-      const off = () => { clearTimeout(tm); vv.removeEventListener("resize", on); vv.removeEventListener("scroll", on); if (mo) mo.disconnect(); ms.style.top = ms.style.bottom = ms.style.height = ""; };
+      const set = h => { cur = h; ms.style.transition = "none"; ms.style.top = "0px"; ms.style.bottom = "auto"; ms.style.height = h + "px"; };
+      const on = () => { const h = Math.round(vv.height + vv.offsetTop); if (Math.abs(h - cur) < 3) { clearTimeout(tm); tm = 0; return; } if (h < cur) { clearTimeout(tm); tm = 0; set(h); } else if (!tm) tm = setTimeout(() => { tm = 0; const g = Math.round(vv.height + vv.offsetTop); if (g > cur + 2) set(g); }, 600); };
+      const off = () => { clearTimeout(tm); vv.removeEventListener("resize", on); if (mo) mo.disconnect(); ms.style.top = ms.style.bottom = ms.style.height = ms.style.transition = ""; };
       mo = new MutationObserver(() => { if (ms.hidden || !w.isConnected) off(); });
-      set(Math.round(vv.height)); vv.addEventListener("resize", on); vv.addEventListener("scroll", on);
+      set(Math.round(vv.height + vv.offsetTop)); vv.addEventListener("resize", on);
       mo.observe(ms, { attributes: true, attributeFilter: ["hidden"] }); mo.observe(c, { childList: true });
+      setTimeout(() => { w.style.animation = "none"; c.style.animation = "none"; }, 450);   // مايعيدش حركة الطلوع
     } }
 }
 function pollBox(m) {
