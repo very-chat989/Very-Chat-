@@ -342,7 +342,7 @@ function renderInfo(tabSwitch) {
   const G = infoId === "general", r = G ? generalRoom() : rooms.find(x => x.id === infoId), box = $("riBody");
   if (!r || (!G && !canSee(r))) { closeInfo(); return; }
   const keep = box.scrollTop, ae = document.activeElement, refocus = ae && ae.id === "riSearch", caret = refocus ? ae.selectionStart : 0;
-  const firstPaint = !box.firstChild; box.textContent = ""; window.__memPaint = null;
+  const firstPaint = !box.firstChild; if (!tabSwitch && !firstPaint) box.style.minHeight = box.scrollHeight + "px"; box.textContent = ""; window.__memPaint = null;
   const owner = ownerOf(r), admin = adminOf(r), mem = [...new Set([...(r.members || []), ...(r.by ? [r.by] : [])])];
   /* ── الهيرو (زي الأول) ── */
   const hero = el("div", "ri-hero"); hero.style.background = "linear-gradient(160deg," + (safeCol(r.color) || "#5b6b78") + ",#0d1413)";
@@ -613,6 +613,7 @@ function renderInfo(tabSwitch) {
   /* ── تثبيت التاب والسكرول ── */
   try { const on = bar.querySelector(".on"); if (on) bar.scrollLeft = on.offsetLeft - (bar.clientWidth - on.offsetWidth) / 2; } catch (_) {}
   box.scrollTop = tabSwitch ? Math.min(keep, Math.max(0, head.offsetTop - box.offsetTop)) : keep;
+  if (box.style.minHeight) requestAnimationFrame(() => { box.style.minHeight = ""; });   // مانع القفزة: الارتفاع ثابت لحد ما السكرول يتثبّت
   if (refocus) { const s = $("riSearch"); if (s) { s.focus(); try { s.setSelectionRange(caret, caret); } catch (_) {} } }
 }
 $("riBack").onclick = closeInfo;
