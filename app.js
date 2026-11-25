@@ -48,7 +48,7 @@ function openPollMaker() {
       err.textContent = (e && e.custom ? e.message : errMsg(e)) || "الاستطلاع ماتبعتش، جرّب تاني."; err.hidden = false;
     }
   };
-  w.append(qw, el("div", "asl", "الاختيارات"), ol, add, mt, err, row); c.append(w); check(); $("msheet").hidden = false; setTimeout(() => q.focus(), 250);
+  w.append(qw, el("div", "asl", "الاختيارات"), ol, add, mt, err, row); w.style.setProperty("--plmH", Math.round(screen.height / (devicePixelRatio || 1) * .5) + "px"); c.append(w); check(); $("msheet").hidden = false; setTimeout(() => q.focus(), 250);
 }
 function pollBox(m) {
   const P = m.poll || {}, V = pollVotes(m), opts = Array.isArray(P.opts) ? P.opts : [], mine = V[myId] || [];

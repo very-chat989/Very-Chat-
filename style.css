@@ -1350,3 +1350,8 @@ html:not([dir=rtl]) #drawer.vc-out .dpanel{animation-name:vcOutPanelL}
 
 /* الريأكشن ما يغطيش الوقت تحت الإيموجي الكبير */
 #msgs .row .b.jumbo.hasrx,#msgs .row.me .b.jumbo.hasrx{padding-bottom:18px}
+
+/* استطلاع: الشيت مثبّت من فوق، فرمشة الكيبورد ما بتحرّكوش */
+#msheet:has(.plm){align-items:flex-start;padding-top:60px;box-sizing:border-box}
+#msheet:has(.plm) .card{width:calc(100% - 16px);max-width:520px;max-height:none;overflow:visible}
+.plm{border-radius:26px;max-height:var(--plmH,440px);overflow-y:auto;overscroll-behavior:contain;scroll-padding-bottom:90px;animation:none}
