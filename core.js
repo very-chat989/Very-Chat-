@@ -223,7 +223,8 @@ function openDMMenu(d) {
   act("🗑", "حذف المحادثة", "linear-gradient(135deg,#ff7a7a,#d64545)", async (b, sp) => {
     if (!sure(b, sp)) return; close();
     try {
-      const r = await deleteDmChat(d.id); if (room === d.id) openRoom("general");
+      if (room === d.id) openRoom("general");   // نخرج من المحادثة فورًا، مش بعد ما الحذف يخلص (لو فتحتها تاني أثناء الحذف كان بيرجّعك للعام)
+      const r = await deleteDmChat(d.id);
       flash(r.hidden || !r.left ? "🗑 اتحذفت المحادثة بالكامل عند الطرفين" : "⚠️ اتحذفت رسايلك بس، رسايل صاحبك مش بتتمسح (قواعد Firebase)");
     } catch (e) { flash(errMsg(e)); }
   });;
