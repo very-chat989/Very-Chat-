@@ -114,7 +114,7 @@ function addFriend(r, mem) {
   });
   function mkFr(u, viaCode) {
     const p = profiles[u] || {}, dis = inRoom.has(u) ? "✓ موجود في الغرفة" : banned.has(u) ? "🚫 محظور" : invited.has(u) ? "⏳ اتبعتله دعوة" : "";
-    return { id: u, name: p.name || "مجهول", fcode: p.fcode || "", av: p, keys: normFCode(p.fcode), dis, viaCode: !!viaCode };
+    return { id: u, name: pname(u), orig: p.name || "", fcode: p.fcode || "", av: p, keys: normFCode(p.fcode), dis, viaCode: !!viaCode };
   }
   const pick = new Map(); let extra = null, extraQ = "", busy = false, tok = 0;
   const root = el("div", "fw"), head = el("div", "fwh"), x = el("button", "fwx", "✕"); x.type = "button"; x.setAttribute("aria-label", "إغلاق");
@@ -158,7 +158,7 @@ function addFriend(r, mem) {
   }
   function paint() {
     const q = si.value, qn = nzq(q), qf = normFCode(q), qc = nzc(q); sx.hidden = !q; list.textContent = ""; rowEls.clear();
-    vis = friends.filter(t => !q || nzq(t.name).includes(qn) || (qc.length >= 2 && t.keys.toLowerCase().includes(qc)));
+    vis = friends.filter(t => !q || nzq(t.name).includes(qn) || nzq(t.orig).includes(qn) || (qc.length >= 2 && t.keys.toLowerCase().includes(qc)));
     vis.sort((p, o) => (p.dis ? 1 : 0) - (o.dis ? 1 : 0));
     if (vis.length) {
       const hd = el("div", "fwsec fwsech"); hdTxt = el("span", "", q ? "نتايج البحث (" + vis.length + ")" : "👥 أصدقائك (" + vis.length + ")"); hdBtn = el("button", "fwall"); hdBtn.type = "button";
@@ -227,12 +227,12 @@ function openFriends() {
     if (loc) { uid = loc; data = profiles[loc]; }
     else { try { const sn = await db.collection("profiles").where("fcode", "==", code).limit(1).get(); if (!sn.empty) { uid = sn.docs[0].id; data = sn.docs[0].data(); } } catch (e) { if (my === tok) { extra = { err: true }; extraQ = q; paint(); } return; } }
     if (my !== tok) return;
-    if (uid && uid !== myId) { if (!profiles[uid]) profiles[uid] = data; extra = { u: uid, p: data, name: data.name || "مجهول", fcode: data.fcode || "" }; } else extra = { none: true, self: uid === myId };
+    if (uid && uid !== myId) { if (!profiles[uid]) profiles[uid] = data; extra = { u: uid, p: data, name: nickOf(uid) || data.name || "مجهول", fcode: data.fcode || "" }; } else extra = { none: true, self: uid === myId };
     extraQ = q; paint();
   }
   function paint() {
     const q = si.value, qn = nzq(q), qc = nzc(q), qf = normFCode(q); sx.hidden = !q; list.textContent = "";
-    const hit = fr.filter(t => !q || nzq(t.name).includes(qn) || (qc.length >= 2 && t.keys.toLowerCase().includes(qc)));
+    const hit = fr.filter(t => !q || nzq(t.name).includes(qn) || nzq((t.p || {}).name).includes(qn) || (qc.length >= 2 && t.keys.toLowerCase().includes(qc)));
     if (q && hit.length) list.appendChild(el("div", "fwsec", "نتايج البحث (" + hit.length + ")"));
     hit.forEach(t => list.appendChild(mkRow(t, q)));
     if (qf.length === 8 && !fr.some(t => t.keys === qf)) {

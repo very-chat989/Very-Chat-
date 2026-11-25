@@ -241,7 +241,7 @@ function buildDMs(q) {
   const pu = qc.length === 8 ? Object.keys(profiles).find(u => u !== myId && profiles[u] && profiles[u].fcode === qc) : null;
   if (pu && !list.some(d => dmPeerOf(d.id) === pu)) {
     const p = profiles[pu], row = el("button", "rrow"), tx = el("div", "rt"); row.type = "button";
-    tx.append(el("b", "", p.name || "مجهول"), el("small", "", "اضغط للمراسلة")); row.append(avatar(p), tx);
+    tx.append(el("b", "", nickOf(pu) || p.name || "مجهول"), el("small", "", "اضغط للمراسلة")); row.append(avatar(p), tx);
     row.onclick = () => { closeDrawer(); openPeer(pu); }; box.appendChild(row);
   }
   sub.hidden = false;
@@ -888,7 +888,7 @@ function openForward(msgs) {
       n.textContent = q ? "مفيش نتيجة بالاسم أو الكود ده هنا." + (other ? " فيه " + other + " نتيجة في «" + (tab === 1 ? "الغرف" : "خاصة") + "»." : "") : tab === 1 ? "مفيش محادثات خاصة تقدر تحوّل ليها." : "مفيش غرف تقدر تحوّل ليها.";
       list.appendChild(n);
       const pu = tab === 1 && qf.length === 8 ? Object.keys(profiles).find(u => u !== myId && profiles[u] && profiles[u].fcode === qf) : null;
-      if (pu) n.textContent = "«" + (profiles[pu].name || "مجهول") + "» لسه ما بينكوش محادثة مفتوحة. ابعتله طلب محادثة الأول من «🔑 غرفة أو صديق بالكود».";
+      if (pu) n.textContent = "«" + pname(pu) + "» لسه ما بينكوش محادثة مفتوحة. ابعتله طلب محادثة الأول من «🔑 غرفة أو صديق بالكود».";
       if (q && other) { const sw = el("button", "ghost", "اعرض النتائج في «" + (tab === 1 ? "الغرف" : "خاصة") + "»"); sw.type = "button"; sw.onclick = () => { tab = tab === 1 ? 2 : 1; paint(); }; list.appendChild(sw); }
     }
   }
@@ -949,7 +949,7 @@ function friendFinder(mem, banned, onAdd, btnLabel, memLabel) {
     }
     go.disabled = false;
     if (!uid) { out.append(el("div", "note", "مفيش حد بالكود ده، اتأكد منه.")); return; }
-    const row = el("div", "rrow"); row.style.cursor = "default"; row.append(avatar(data), el("b", "", data.name || "مجهول"));
+    const row = el("div", "rrow"); row.style.cursor = "default"; row.append(avatar(data), el("b", "", nickOf(uid) || data.name || "مجهول"));
     if (uid === myId) row.append(el("span", "note", "ده كودك أنت"));
     else if (mem.includes(uid)) row.append(el("span", "note", memLabel || "موجود في الغرفة"));
     else if (banned.includes(uid)) row.append(el("span", "note", "محظور"));
