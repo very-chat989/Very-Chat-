@@ -3,7 +3,7 @@
  * ومكتبات Firebase (نسخة ثابتة) بتتخزّن مرة واحدة وتتقدّم من الكاش.
  * لما تعدّل أي ملف: غيّر رقم BUILD هنا وفي index.html (meta vc-build و ?v= و التعليق الأخير). */
 "use strict";
-const BUILD = "20261125-110";
+const BUILD = "20261125-111";
 const PREFIX = "verychat-";
 const CACHE = PREFIX + BUILD;
 const V = "?v=" + BUILD;
@@ -93,15 +93,28 @@ async function dmNick(tag) {
     db.close(); return nick;
   } catch (_) { return ""; }
 }
+// بدّل الاسم الأصلي اللي جوه نص الإشعار باسمك المعدّل (خريطة saveNickByName في التطبيق)
+async function nickSwap(text) {
+  try {
+    const db = await new Promise(res => { try { const q = indexedDB.open("vc-media"); q.onupgradeneeded = () => { try { q.transaction.abort(); } catch (_) {} }; q.onsuccess = () => res(q.result); q.onerror = q.onblocked = () => res(null); } catch (_) { res(null); } });
+    if (!db) return text;
+    if (!db.objectStoreNames.contains("m")) { db.close(); return text; }
+    const all = await new Promise(res => { try { const r = db.transaction("m").objectStore("m").getAll(IDBKeyRange.bound("nick:~orig:", "nick:~orig:\uffff")); r.onsuccess = () => res(r.result || []); r.onerror = () => res([]); } catch (_) { res([]); } });
+    db.close();
+    const by = {}; all.forEach(r => { try { Object.assign(by, JSON.parse(r.s)); } catch (_) {} });
+    for (const o of Object.keys(by).sort((a, b) => b.length - a.length)) if (o && text.includes(o)) { text = text.replace(o, by[o]); break; }
+    return text;
+  } catch (_) { return text; }
+}
 // إشعارات الـ Push (من Firebase Cloud Messaging): بتوصل والتطبيق مقفول
 self.addEventListener("push", e => {
   let p = {}; try { p = e.data ? e.data.json() : {}; } catch (_) { try { p = { data: { body: e.data.text() } }; } catch (__) {} }
   const d = p.data || p.notification || p || {};
-  let title = String(d.title || "Very Chat"); const body = String(d.body || ""), tag = String(d.tag || "vc");
+  let title = String(d.title || "Very Chat"); let body = String(d.body || ""), tag = String(d.tag || "vc");
   e.waitUntil((async () => {
     const cs = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
     if (cs.some(c => c.visibilityState === "visible")) return;
-    { const nk = await dmNick(tag); if (nk) title = "💬 " + nk; }          // التطبيق مفتوح قدامك، مش محتاج إشعار
+    { const nk = await dmNick(tag); if (nk) title = "💬 " + nk; else if (!/^dm_/.test(tag)) { body = await nickSwap(body); } }          // التطبيق مفتوح قدامك، مش محتاج إشعار
     const ex = await self.registration.getNotifications({ tag });
     const bt = n => (n.data && n.data.title) || n.title, bb = n => (n.data && n.data.body) || n.body;
     if (ex.some(n => bt(n) === title && bb(n) === body && Date.now() - n.timestamp < 20000)) return;   // نفس الإشعار اتعرض لسه من التطبيق نفسه

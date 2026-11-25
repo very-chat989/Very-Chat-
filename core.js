@@ -160,7 +160,19 @@ const saveNicks = () => {
   const uid = myId; if (!uid) return; const m = nickMap(), str = JSON.stringify(m), ts = Date.now();
   try { localStorage.setItem("vc_nick_" + uid, str); localStorage.setItem("vc_nickts_" + uid, String(ts)); } catch (_) {}
   try { idbTx("readwrite", st => st.put({ s: str, ts }, "nick:" + uid)).catch(() => {}); } catch (_) {}
+  saveNickByName();
   try { if (db) db.collection("nicks").doc(uid).set({ m, ts }).catch(e => console.warn("nicks sync:", e && e.code)); } catch (_) {}
+};
+// خريطة «الاسم الأصلي ← اسمك المعدّل» للـ service worker: إشعارات الـ Push بتيجي باسم المُرسِل الأصلي فبنبدّله هناك
+const saveNickByName = () => {
+  try {
+    const m = nickMap(), by = {}, bad = new Set();
+    Object.keys(m).forEach(u => { const o = ((profiles[u] || {}).name || "").trim(); if (!o) return; if (by[o] && by[o] !== m[u]) bad.add(o); by[o] = m[u]; });
+    bad.forEach(o => delete by[o]);
+    // أي شخص بنفس الاسم الأصلي ومالوش اسم معدّل = لبس، فمنبدّلش اسمه
+    Object.keys(profiles).forEach(u => { if (u !== myId && !m[u]) { const o = ((profiles[u] || {}).name || "").trim(); if (o) delete by[o]; } });
+    if (myId) idbTx("readwrite", st => st.put({ s: JSON.stringify(by), ts: Date.now() }, "nick:~orig:" + myId)).catch(() => {});
+  } catch (_) {}
 };
 const setNick = (u, v) => { const m = nickMap(); v = String(v || "").replace(/\s+/g, " ").trim().slice(0, 30); if (v && v !== ((profiles[u] || {}).name || "")) m[u] = v; else delete m[u]; saveNicks(); };
 // بيتنادى بعد تسجيل الدخول: بيرجّع الأسماء من IndexedDB / Firestore لو localStorage اتمسح
@@ -173,7 +185,7 @@ async function syncNicks() {
   if (best && myId === uid) { _nk = best; _nkFor = uid; try { localStorage.setItem("vc_nick_" + uid, JSON.stringify(best)); localStorage.setItem("vc_nickts_" + uid, String(bts)); } catch (_) {} repaintNames(); }
 }
 const pname = u => nickOf(u) || (profiles[u] || {}).name || "مجهول";
-const repaintNames = () => { try { buildChips(); } catch (_) {} try { refreshMe(); } catch (_) {} try { if (lastList.length) render(lastList); } catch (_) {} };
+const repaintNames = () => { saveNickByName(); try { buildChips(); } catch (_) {} try { refreshMe(); } catch (_) {} try { if (lastList.length) render(lastList); } catch (_) {} };
 function openNickEdit(d) {
   const u = dmPeerOf(d.id), p = profiles[u] || {}, c = $("mcard"); c.textContent = ""; const close = () => { $("msheet").hidden = true; };
   const head = el("div", "mprev"); head.style.cssText += ";display:flex;align-items:center;gap:10px";
