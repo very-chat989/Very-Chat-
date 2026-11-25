@@ -342,7 +342,7 @@ function renderInfo(tabSwitch) {
   const G = infoId === "general", r = G ? generalRoom() : rooms.find(x => x.id === infoId), box = $("riBody");
   if (!r || (!G && !canSee(r))) { closeInfo(); return; }
   const keep = box.scrollTop, ae = document.activeElement, refocus = ae && ae.id === "riSearch", caret = refocus ? ae.selectionStart : 0;
-  box.textContent = ""; window.__memPaint = null;
+  const firstPaint = !box.firstChild; box.textContent = ""; window.__memPaint = null;
   const owner = ownerOf(r), admin = adminOf(r), mem = [...new Set([...(r.members || []), ...(r.by ? [r.by] : [])])];
   /* ── الهيرو (زي الأول) ── */
   const hero = el("div", "ri-hero"); hero.style.background = "linear-gradient(160deg," + (safeCol(r.color) || "#5b6b78") + ",#0d1413)";
@@ -388,7 +388,7 @@ function renderInfo(tabSwitch) {
     bar.append(b);
   });
   const head = el("div", "ri-head"); head.append(bar); box.append(head);
-  const pane = el("div", "ri-pane"); box.append(pane);
+  const pane = el("div", "ri-pane" + (tabSwitch || firstPaint ? " ri-in" : "")); box.append(pane);   // الأنيميشن بس لما تفتح أو تبدّل تاب، مش مع كل تحديث (ده كان سبب الرعشة)
   { let tx = 0, ty = 0, tt = 0;
     pane.addEventListener("touchstart", e => { const t = e.touches[0]; tx = t.clientX; ty = t.clientY; tt = Date.now(); }, { passive: true });
     pane.addEventListener("touchend", e => {
