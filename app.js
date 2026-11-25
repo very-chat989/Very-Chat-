@@ -174,7 +174,10 @@ async function checkUpdate() {
   } catch (e) {}
 }
 setTimeout(checkUpdate, 1500); setInterval(checkUpdate, 120000);
-document.addEventListener("visibilitychange", () => { if (!document.hidden) checkUpdate(); });
+// لما بترجع من منتقي الصور/الفيديو مانعملش تحديث ولا إعادة رسم (ده اللي كان بيعمل وميض الشاشة)
+document.addEventListener("click", e => { if (e.target && e.target.type === "file") window._pickAt = Date.now(); }, true);
+const justPicked = () => Date.now() - (window._pickAt || 0) < 30000;
+document.addEventListener("visibilitychange", () => { if (!document.hidden && !justPicked()) checkUpdate(); });
 
 // ───── لوحة الإيموجي ─────
 const EMO_CATS = [
@@ -333,7 +336,7 @@ if (APPCHECK_KEY && firebase.appCheck) { try { firebase.appCheck().activate(APPC
     if (lastList.length) render(lastList);
   }, () => { rpLoaded = true; });
   syncRecent(); pushInit();
-  document.addEventListener("visibilitychange", () => { if (!document.hidden && lastList.length) render(lastList); });
+  document.addEventListener("visibilitychange", () => { if (!document.hidden && lastList.length && !justPicked()) render(lastList); });
   db.collection("reads").onSnapshot(s => {
     reads = {}; s.docs.forEach(d => { reads[d.id] = d.data(); });
     if (!readsLoaded) { readsLoaded = true; myReads = { ...(reads[myId] || {}) }; }
@@ -565,8 +568,11 @@ function fit() {
   const cs = getComputedStyle(document.documentElement);
   const h = vv.height - (parseFloat(cs.paddingTop) || 0) - (parseFloat(cs.paddingBottom) || 0);
   document.documentElement.style.setProperty("--vh", Math.max(200, h) + "px");
-  document.querySelector(".app").style.transform = vv.offsetTop ? "translateY(" + vv.offsetTop + "px)" : "";
-  window.scrollTo(0, 0);
+  const inSheet = !!(document.activeElement && document.activeElement.closest && document.activeElement.closest("#msheet,#sheet"));
+  if (!inSheet) {   // جوه الشيت (استطلاع/غيره) ما نحاربش سكرول المتصفح، ده اللي كان بيعمل الرجفة
+    document.querySelector(".app").style.transform = vv.offsetTop ? "translateY(" + vv.offsetTop + "px)" : "";
+    if (window.scrollX || window.scrollY) window.scrollTo(0, 0);
+  }
   const m = $("msgs"); if (m && document.activeElement === $("inp")) m.scrollTop = m.scrollHeight;
 }
 if (vv) { vv.addEventListener("resize", fit); vv.addEventListener("scroll", fit); }
